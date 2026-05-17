@@ -1,0 +1,4 @@
+flask
+werkzeug
+reportlab
+psycopg2-binary
