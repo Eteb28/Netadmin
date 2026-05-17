@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ERLAN — Monitor PPPoE RADIUS</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#0a0e17;
+  --bg2:#0f1521;
+  --bg3:#151d2e;
+  --border:#1e2d45;
+  --border2:#253550;
+  --accent:#00c8ff;
+  --accent2:#0080ff;
+  --green:#00e676;
+  --red:#ff3d5a;
+  --yellow:#ffc107;
+  --grey:#4a5f78;
+  --text:#c8daf0;
+  --text2:#6a84a0;
+  --card-shadow:0 4px 24px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh}
+.mono{font-family:'JetBrains Mono',monospace}
+
+/* ── HEADER ── */
+header{
+  background:var(--bg2);border-bottom:1px solid var(--border);
+  padding:14px 28px;display:flex;align-items:center;gap:20px;
+  position:sticky;top:0;z-index:100;
+}
+header .logo{font-size:1.15rem;font-weight:800;letter-spacing:.5px;color:#fff}
+header .logo span{color:var(--accent)}
+.back-btn{
+  margin-left:auto;background:var(--bg3);border:1px solid var(--border2);
+  color:var(--text);padding:7px 16px;border-radius:8px;cursor:pointer;
+  font-family:'Syne',sans-serif;font-size:.82rem;font-weight:600;
+  text-decoration:none;transition:all .2s;
+}
+.back-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── MAIN LAYOUT ── */
+.main{padding:24px 28px;max-width:1600px;margin:0 auto}
+
+/* ── STATUS BAR ── */
+.status-bar{
+  display:flex;align-items:center;gap:12px;
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:12px;padding:14px 20px;margin-bottom:20px;
+  flex-wrap:wrap;
+}
+.status-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.status-dot.ok{background:var(--green);box-shadow:0 0 10px var(--green)}
+.status-dot.err{background:var(--red);box-shadow:0 0 10px var(--red)}
+.status-dot.pulse{animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.status-label{font-weight:600;font-size:.9rem}
+.refresh-info{margin-left:auto;font-size:.78rem;color:var(--text2);font-family:'JetBrains Mono',monospace}
+.btn{
+  border:1px solid var(--border2);background:var(--bg3);color:var(--text);
+  padding:7px 16px;border-radius:8px;cursor:pointer;font-family:'Syne',sans-serif;
+  font-size:.82rem;font-weight:600;transition:all .2s;
+}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent2);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:var(--accent)}
+
+/* ── STATS CARDS ── */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+@media(max-width:800px){.stats-row{grid-template-columns:repeat(2,1fr)}}
+.stat-card{
+  background:var(--bg2);border:1px solid var(--border);border-radius:12px;
+  padding:18px 20px;position:relative;overflow:hidden;
+}
+.stat-card::before{
+  content:'';position:absolute;top:0;right:0;width:60px;height:60px;
+  border-radius:0 12px 0 60px;opacity:.15;
+}
+.stat-card.online::before{background:var(--green)}
+.stat-card.offline::before{background:var(--red)}
+.stat-card.unknown::before{background:var(--yellow)}
+.stat-card.total::before{background:var(--accent)}
+.stat-card .label{font-size:.75rem;font-weight:700;letter-spacing:1.5px;color:var(--text2);text-transform:uppercase;margin-bottom:8px}
+.stat-card .value{font-size:2.2rem;font-weight:800;line-height:1}
+.stat-card.online .value{color:var(--green)}
+.stat-card.offline .value{color:var(--red)}
+.stat-card.unknown .value{color:var(--yellow)}
+.stat-card.total .value{color:var(--accent)}
+.stat-card .sub{font-size:.75rem;color:var(--text2);margin-top:6px}
+
+/* ── TOOLBAR ── */
+.toolbar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.search-wrap{position:relative;flex:1;min-width:200px}
+.search-wrap input{
+  width:100%;background:var(--bg2);border:1px solid var(--border2);
+  color:var(--text);border-radius:8px;padding:9px 14px 9px 36px;
+  font-family:'Syne',sans-serif;font-size:.88rem;outline:none;
+  transition:border-color .2s;
+}
+.search-wrap input:focus{border-color:var(--accent)}
+.search-wrap .ico{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text2);font-size:.9rem}
+select.filter{
+  background:var(--bg2);border:1px solid var(--border2);color:var(--text);
+  border-radius:8px;padding:9px 14px;font-family:'Syne',sans-serif;
+  font-size:.85rem;outline:none;cursor:pointer;transition:border-color .2s;
+}
+select.filter:focus{border-color:var(--accent)}
+
+/* ── TABLE ── */
+.table-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:.85rem}
+thead th{
+  background:var(--bg3);color:var(--text2);font-weight:700;letter-spacing:.8px;
+  text-transform:uppercase;font-size:.72rem;padding:12px 14px;text-align:left;
+  position:sticky;top:0;z-index:2;white-space:nowrap;cursor:pointer;
+  user-select:none;
+}
+thead th:hover{color:var(--accent)}
+thead th .sort-icon{margin-left:4px;opacity:.5}
+thead th.active .sort-icon{opacity:1;color:var(--accent)}
+tbody tr{border-top:1px solid var(--border);transition:background .15s;cursor:pointer}
+tbody tr:hover{background:var(--bg3)}
+tbody td{padding:11px 14px;vertical-align:middle}
+.name-cell{font-weight:700;color:#fff;font-size:.88rem}
+.name-cell small{display:block;color:var(--text2);font-size:.72rem;font-weight:400;margin-top:2px;font-family:'JetBrains Mono',monospace}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:700;white-space:nowrap}
+.badge-green{background:rgba(0,230,118,.1);color:var(--green);border:1px solid rgba(0,230,118,.25)}
+.badge-red{background:rgba(255,61,90,.1);color:var(--red);border:1px solid rgba(255,61,90,.25)}
+.badge-yellow{background:rgba(255,193,7,.1);color:var(--yellow);border:1px solid rgba(255,193,7,.25)}
+.badge-grey{background:rgba(74,95,120,.15);color:var(--grey);border:1px solid rgba(74,95,120,.3)}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+.dot-green{background:var(--green);box-shadow:0 0 6px var(--green)}
+.dot-red{background:var(--red)}
+.dot-yellow{background:var(--yellow)}
+
+.mono-cell{font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--text)}
+.traffic-cell{display:flex;flex-direction:column;gap:2px}
+.traffic-cell .rx{color:#4dd0e1;font-size:.78rem}
+.traffic-cell .tx{color:#a5d6a7;font-size:.78rem}
+.uptime-big{font-family:'JetBrains Mono',monospace;font-size:.88rem;font-weight:600;color:#fff}
+.conns-badge{
+  display:inline-block;background:var(--bg3);border:1px solid var(--border2);
+  border-radius:6px;padding:2px 8px;font-family:'JetBrains Mono',monospace;
+  font-size:.8rem;font-weight:600;min-width:28px;text-align:center;
+}
+
+/* ── MODAL HISTORIAL ── */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{
+  background:var(--bg2);border:1px solid var(--border2);border-radius:16px;
+  width:min(860px,96vw);max-height:85vh;display:flex;flex-direction:column;
+  overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.8);
+}
+.modal-header{
+  padding:18px 22px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:12px;
+}
+.modal-header h3{font-weight:800;font-size:1.05rem;color:#fff;flex:1}
+.modal-close{background:none;border:none;color:var(--text2);cursor:pointer;font-size:1.4rem;line-height:1;padding:4px 8px}
+.modal-close:hover{color:var(--red)}
+.modal-body{overflow-y:auto;padding:18px 22px}
+.hist-session{
+  background:var(--bg3);border:1px solid var(--border);border-radius:10px;
+  padding:14px 16px;margin-bottom:10px;
+}
+.hist-session.active-sess{border-color:var(--green)}
+.hist-row{display:flex;gap:24px;flex-wrap:wrap;font-size:.82rem;margin-top:6px}
+.hist-row span{color:var(--text2)}
+.hist-row strong{color:var(--text);font-weight:600}
+
+/* ── CONFIG PANEL ── */
+.config-panel{
+  background:var(--bg2);border:1px solid var(--border);border-radius:12px;
+  padding:22px 24px;margin-bottom:20px;display:none;
+}
+.config-panel.open{display:block}
+.config-panel h3{font-size:.95rem;font-weight:700;margin-bottom:16px;color:#fff}
+.config-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+@media(max-width:700px){.config-grid{grid-template-columns:1fr}}
+.field-group label{display:block;font-size:.72rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px}
+.field-group input{
+  width:100%;background:var(--bg3);border:1px solid var(--border2);
+  color:var(--text);border-radius:7px;padding:8px 12px;
+  font-family:'JetBrains Mono',monospace;font-size:.85rem;outline:none;
+  transition:border-color .2s;
+}
+.field-group input:focus{border-color:var(--accent)}
+
+/* ── EMPTY STATE ── */
+.empty{text-align:center;padding:60px 20px;color:var(--text2)}
+.empty .ico{font-size:2.5rem;margin-bottom:12px}
+.empty p{font-size:.9rem}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">ERLAN <span>//</span> Monitor PPPoE</div>
+  <span style="color:var(--text2);font-size:.8rem" id="last-update">—</span>
+  <a href="/" class="back-btn">← Volver al sistema</a>
+</header>
+
+<div class="main">
+
+  <!-- Status bar -->
+  <div class="status-bar">
+    <div class="status-dot pulse" id="conn-dot"></div>
+    <span class="status-label" id="conn-label">Conectando con RADIUS…</span>
+    <button class="btn" onclick="toggleConfig()">⚙ Configurar conexión</button>
+    <button class="btn" onclick="loadClients()">↺ Actualizar</button>
+    <span class="refresh-info" id="countdown"></span>
+  </div>
+
+  <!-- Config Panel -->
+  <div class="config-panel" id="config-panel">
+    <h3>Conexión al servidor RADIUS (FreeRADIUS MySQL)</h3>
+    <div class="config-grid">
+      <div class="field-group">
+        <label>Host</label>
+        <input id="cfg-host" type="text" placeholder="127.0.0.1"/>
+      </div>
+      <div class="field-group">
+        <label>Puerto</label>
+        <input id="cfg-port" type="number" placeholder="3306"/>
+      </div>
+      <div class="field-group">
+        <label>Base de datos</label>
+        <input id="cfg-db" type="text" placeholder="radius"/>
+      </div>
+      <div class="field-group">
+        <label>Usuario MySQL</label>
+        <input id="cfg-user" type="text" placeholder="radius"/>
+      </div>
+      <div class="field-group">
+        <label>Contraseña</label>
+        <input id="cfg-pass" type="password" placeholder="••••••"/>
+      </div>
+      <div class="field-group">
+        <label>Charset</label>
+        <input id="cfg-charset" type="text" placeholder="utf8mb4"/>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn primary" onclick="saveConfig()">Guardar y probar</button>
+      <button class="btn" onclick="toggleConfig()">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card online">
+      <div class="label">Online</div>
+      <div class="value" id="stat-online">—</div>
+      <div class="sub">Sesiones PPPoE activas</div>
+    </div>
+    <div class="stat-card offline">
+      <div class="label">Offline</div>
+      <div class="value" id="stat-offline">—</div>
+      <div class="sub">Sin sesión activa</div>
+    </div>
+    <div class="stat-card unknown">
+      <div class="label">Sin usuario</div>
+      <div class="value" id="stat-unknown">—</div>
+      <div class="sub">Sin username PPPoE</div>
+    </div>
+    <div class="stat-card total">
+      <div class="label">Total</div>
+      <div class="value" id="stat-total">—</div>
+      <div class="sub">Clientes en Erlan</div>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="search-wrap">
+      <span class="ico">🔍</span>
+      <input id="search" type="text" placeholder="Buscar por nombre, usuario, IP…" oninput="renderTable()"/>
+    </div>
+    <select class="filter" id="filter-status" onchange="renderTable()">
+      <option value="">Todos los estados</option>
+      <option value="online">Online</option>
+      <option value="offline">Offline</option>
+      <option value="unknown">Sin username</option>
+    </select>
+    <select class="filter" id="filter-type" onchange="renderTable()">
+      <option value="">Todos los servicios</option>
+      <option value="fibra">Fibra</option>
+      <option value="inalambrico">Inalámbrico</option>
+    </select>
+    <select class="filter" id="sort-by" onchange="renderTable()">
+      <option value="nombre">Ordenar: Nombre</option>
+      <option value="uptime">Ordenar: Tiempo online</option>
+      <option value="conns">Ordenar: Conexiones hoy</option>
+      <option value="rx">Ordenar: Tráfico RX</option>
+      <option value="tx">Ordenar: Tráfico TX</option>
+    </select>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <table id="main-table">
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Estado</th>
+          <th>Tiempo online</th>
+          <th>Conex. hoy</th>
+          <th>IP RADIUS</th>
+          <th>↓ RX / ↑ TX</th>
+          <th>Última sesión</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="table-body">
+        <tr><td colspan="8" class="empty"><div class="ico">📡</div><p>Cargando datos…</p></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- Modal historial -->
+<div class="modal-overlay" id="hist-modal" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-title">Historial de sesiones</h3>
+      <button class="modal-close" onclick="document.getElementById('hist-modal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body">Cargando…</div>
+  </div>
+</div>
+
+<script>
+let allClients   = [];
+let refreshTimer = null;
+let countdown    = 30;
+const REFRESH_INTERVAL = 30;
+
+// ── Init ──────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  loadConfig();
+  loadClients();
+  startCountdown();
+});
+
+// ── Config ───────────────────────────────────────────────────────
+async function loadConfig(){
+  const r = await fetch('/radius/api/config');
+  const d = await r.json();
+  document.getElementById('cfg-host').value    = d.host    || '';
+  document.getElementById('cfg-port').value    = d.port    || 3306;
+  document.getElementById('cfg-db').value      = d.database|| '';
+  document.getElementById('cfg-user').value    = d.user    || '';
+  document.getElementById('cfg-charset').value = d.charset || 'utf8mb4';
+}
+
+async function saveConfig(){
+  const payload = {
+    host:     document.getElementById('cfg-host').value,
+    port:     parseInt(document.getElementById('cfg-port').value)||3306,
+    database: document.getElementById('cfg-db').value,
+    user:     document.getElementById('cfg-user').value,
+    password: document.getElementById('cfg-pass').value,
+    charset:  document.getElementById('cfg-charset').value,
+  };
+  const r = await fetch('/radius/api/config',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload)
+  });
+  await r.json();
+  toggleConfig();
+  loadClients();
+}
+
+function toggleConfig(){
+  document.getElementById('config-panel').classList.toggle('open');
+}
+
+// ── Clients ───────────────────────────────────────────────────────
+async function loadClients(){
+  setStatus('connecting');
+  try{
+    const r = await fetch('/radius/api/clients');
+    const d = await r.json();
+    if(d.radius_error){
+      setStatus('error', d.radius_error);
+    } else {
+      setStatus('ok');
+      const s = d.summary||{};
+      document.getElementById('stat-online').textContent  = s.online  ?? '—';
+      document.getElementById('stat-offline').textContent = s.offline ?? '—';
+      document.getElementById('stat-unknown').textContent = s.unknown ?? '—';
+      document.getElementById('stat-total').textContent   = s.total   ?? '—';
+    }
+    allClients = d.clients||[];
+    renderTable();
+    document.getElementById('last-update').textContent =
+      'Actualizado: ' + new Date().toLocaleTimeString('es-AR');
+  } catch(e){
+    setStatus('error','Error al obtener datos: '+e.message);
+  }
+}
+
+function setStatus(state, msg){
+  const dot   = document.getElementById('conn-dot');
+  const label = document.getElementById('conn-label');
+  dot.className = 'status-dot';
+  if(state==='ok'){
+    dot.classList.add('ok');
+    label.textContent='RADIUS conectado — Monitoreo activo';
+  } else if(state==='error'){
+    dot.classList.add('err');
+    label.textContent='Error RADIUS: '+(msg||'sin conexión');
+  } else {
+    dot.classList.add('pulse');
+    label.textContent='Conectando con RADIUS…';
+  }
+}
+
+// ── Render table ─────────────────────────────────────────────────
+function renderTable(){
+  const search  = document.getElementById('search').value.toLowerCase();
+  const fStatus = document.getElementById('filter-status').value;
+  const fType   = document.getElementById('filter-type').value;
+  const sortBy  = document.getElementById('sort-by').value;
+
+  let list = allClients.filter(c => {
+    if(fStatus){
+      const st = c.online===true?'online':c.online===false?'offline':'unknown';
+      if(st!==fStatus) return false;
+    }
+    if(fType && c.tipo_servicio!==fType) return false;
+    if(search){
+      const hay = [c.nombre,c.username_pppoe,c.ip_radius,c.localidad].join(' ').toLowerCase();
+      if(!hay.includes(search)) return false;
+    }
+    return true;
+  });
+
+  list.sort((a,b)=>{
+    if(sortBy==='uptime')  return (b.uptime_secs||0)-(a.uptime_secs||0);
+    if(sortBy==='conns')   return (b.conns_today||0)-(a.conns_today||0);
+    if(sortBy==='rx')      return (b.rx_bytes||0)-(a.rx_bytes||0);
+    if(sortBy==='tx')      return (b.tx_bytes||0)-(a.tx_bytes||0);
+    return (a.nombre||'').localeCompare(b.nombre||'');
+  });
+
+  const tbody = document.getElementById('table-body');
+  if(!list.length){
+    tbody.innerHTML = `<tr><td colspan="8">
+      <div class="empty"><div class="ico">🔎</div><p>No hay clientes que coincidan con los filtros.</p></div>
+    </td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = list.map(c => {
+    const statusBadge = c.online===true
+      ? `<span class="badge badge-green"><span class="dot dot-green"></span>Online</span>`
+      : c.online===false
+        ? `<span class="badge badge-red"><span class="dot dot-red"></span>Offline</span>`
+        : `<span class="badge badge-grey">Sin usuario</span>`;
+
+    const uptime   = c.online ? `<span class="uptime-big">${c.uptime_fmt||'—'}</span>` : `<span style="color:var(--text2)">—</span>`;
+    const connsToday = `<span class="conns-badge" title="Conexiones PPPoE hoy">${c.conns_today??0}</span>`;
+    const ip = `<span class="mono-cell">${c.ip_radius||'—'}</span>`;
+
+    const traffic = c.online
+      ? `<div class="traffic-cell"><div class="rx">↓ ${c.rx_fmt}</div><div class="tx">↑ ${c.tx_fmt}</div></div>`
+      : c.rx_last
+        ? `<div class="traffic-cell" style="opacity:.6"><div class="rx">↓ ${c.rx_last}</div><div class="tx">↑ ${c.tx_last}</div></div>`
+        : `<span style="color:var(--text2)">—</span>`;
+
+    const lastSeen = c.last_seen
+      ? `<span style="font-size:.78rem;color:var(--text2)">${fmtDate(c.last_seen)}<br><small style="font-size:.7rem">${c.term_cause||''}</small></span>`
+      : c.online
+        ? `<span style="font-size:.75rem;color:var(--text2)">desde ${fmtDate(c.start_time)}</span>`
+        : `<span style="color:var(--text2)">—</span>`;
+
+    const uname = c.username_pppoe||'';
+    return `<tr onclick="showHistory('${esc(uname)}','${esc(c.nombre)}')">
+      <td>
+        <div class="name-cell">${esc(c.nombre)}
+          <small>${uname||'⚠ sin usuario PPPoE'}</small>
+        </div>
+      </td>
+      <td>${statusBadge}</td>
+      <td>${uptime}</td>
+      <td>${connsToday}</td>
+      <td>${ip}</td>
+      <td>${traffic}</td>
+      <td>${lastSeen}</td>
+      <td><button class="btn" style="font-size:.75rem;padding:5px 10px" onclick="event.stopPropagation();showHistory('${esc(uname)}','${esc(c.nombre)}')">Historial</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Historial sesiones ────────────────────────────────────────────
+async function showHistory(username, nombre){
+  if(!username) return;
+  document.getElementById('modal-title').textContent = `Historial PPPoE — ${nombre} (${username})`;
+  document.getElementById('modal-body').innerHTML    = '<p style="padding:20px;color:var(--text2)">Cargando…</p>';
+  document.getElementById('hist-modal').classList.add('open');
+  try{
+    const r = await fetch(`/radius/api/history/${encodeURIComponent(username)}?limit=25`);
+    const d = await r.json();
+    if(d.error){
+      document.getElementById('modal-body').innerHTML=`<p style="color:var(--red);padding:20px">Error: ${d.error}</p>`;
+      return;
+    }
+    if(!d.sessions||!d.sessions.length){
+      document.getElementById('modal-body').innerHTML='<p style="padding:20px;color:var(--text2)">Sin sesiones registradas.</p>';
+      return;
+    }
+    document.getElementById('modal-body').innerHTML = d.sessions.map((s,i)=>`
+      <div class="hist-session ${s.active?'active-sess':''}">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+          ${s.active?'<span class="badge badge-green"><span class="dot dot-green"></span>Activa</span>':'<span class="badge badge-grey">Cerrada</span>'}
+          <span class="mono" style="font-size:.78rem;color:var(--text2)">${s.session_id||''}</span>
+        </div>
+        <div class="hist-row">
+          <div><span>Inicio</span><br><strong>${fmtDate(s.start)}</strong></div>
+          <div><span>Fin</span><br><strong>${s.stop?fmtDate(s.stop):'—'}</strong></div>
+          <div><span>Duración</span><br><strong>${s.duration}</strong></div>
+          <div><span>IP</span><br><strong class="mono" style="font-size:.8rem">${s.ip||'—'}</strong></div>
+          <div><span>↓ RX</span><br><strong style="color:#4dd0e1">${s.rx}</strong></div>
+          <div><span>↑ TX</span><br><strong style="color:#a5d6a7">${s.tx}</strong></div>
+          ${s.term_cause?`<div><span>Causa</span><br><strong style="font-size:.78rem">${s.term_cause}</strong></div>`:''}
+          ${s.mac?`<div><span>MAC</span><br><strong class="mono" style="font-size:.78rem">${s.mac}</strong></div>`:''}
+        </div>
+      </div>
+    `).join('');
+  } catch(e){
+    document.getElementById('modal-body').innerHTML=`<p style="color:var(--red);padding:20px">Error de red: ${e.message}</p>`;
+  }
+}
+
+function closeModal(e){
+  if(e.target===document.getElementById('hist-modal'))
+    document.getElementById('hist-modal').classList.remove('open');
+}
+
+// ── Countdown auto-refresh ────────────────────────────────────────
+function startCountdown(){
+  setInterval(()=>{
+    countdown--;
+    document.getElementById('countdown').textContent=`↺ ${countdown}s`;
+    if(countdown<=0){
+      countdown=REFRESH_INTERVAL;
+      loadClients();
+    }
+  },1000);
+}
+
+// ── Utils ─────────────────────────────────────────────────────────
+function fmtDate(s){
+  if(!s) return '—';
+  const d = new Date(s.replace(' ','T'));
+  if(isNaN(d)) return s;
+  const now = new Date();
+  const same = d.toDateString()===now.toDateString();
+  return same
+    ? d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})
+    : d.toLocaleString('es-AR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+}
+function esc(s){return String(s||'').replace(/'/g,"\\'").replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+</script>
+</body>
+</html>

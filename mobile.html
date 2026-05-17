@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>ERLAN — Técnicos</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/mobile.css') }}">
+</head>
+<body>
+
+<div class="topbar">
+  <h1>⚡ ERLAN — Técnicos</h1>
+  <button onclick="location.href='/'">🖥 Desktop</button>
+  <button onclick="location.href='/logout'">Salir</button>
+</div>
+
+<div class="content">
+  <!-- MIS SERVICIOS -->
+  <div class="screen active" id="sc-servicios">
+    <div class="search-box">
+      <input type="text" id="mob-svc-q" placeholder="Filtrar servicios..." oninput="filterSvc()">
+    </div>
+    <div style="display:flex;gap:.4rem;margin-bottom:.6rem;overflow-x:auto;padding-bottom:.2rem">
+      <button class="btn btn-prim" style="white-space:nowrap;font-size:.75rem" onclick="filterEstadoSvc('')">Todos</button>
+      <button class="btn btn-am" style="white-space:nowrap;font-size:.75rem" onclick="filterEstadoSvc('pendiente')">Pendientes</button>
+      <button class="btn btn-prim" style="white-space:nowrap;font-size:.75rem;background:#1976d2" onclick="filterEstadoSvc('en_proceso')">En proceso</button>
+    </div>
+    <div id="mob-svc-list"></div>
+  </div>
+
+  <!-- MAPA -->
+  <div class="screen-map" id="sc-mapa">
+    <div id="mob-map" style="width:100%;height:100%"></div>
+    <div style="position:absolute;top:10px;left:10px;right:10px;z-index:500">
+      <div style="position:relative">
+        <input type="text" id="mob-map-q" placeholder="🔍 Buscar cliente..." style="width:100%;padding:.5rem .8rem;border-radius:8px;border:1.5px solid var(--brd);font-size:.85rem;box-shadow:0 2px 8px rgba(0,0,0,.15);color:#222;background:#fff" oninput="mobMapSearch()" autocomplete="off">
+        <div id="mob-map-drop" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--brd);border-radius:0 0 8px 8px;box-shadow:0 4px 12px rgba(0,0,0,.15);max-height:200px;overflow-y:auto;z-index:600"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NAPs -->
+  <div class="screen" id="sc-naps">
+    <div id="mob-nap-list"></div>
+  </div>
+
+  <!-- NUEVA INCIDENCIA -->
+  <div class="screen" id="sc-incidencia">
+    <div class="card">
+      <div class="card-title">🚨 Reportar Incidencia</div>
+      <label>Tipo</label>
+      <select id="mob-inc-tipo">
+        <option value="torre_sin_servicio">Torre sin servicio</option>
+        <option value="ap_caido">AP Caído</option>
+        <option value="nap_sin_luz">NAP sin luz</option>
+        <option value="corte_fibra">Corte de fibra</option>
+        <option value="olt_offline">OLT offline</option>
+        <option value="masivo">Masivo</option>
+        <option value="otro">Otro</option>
+      </select>
+      <label>Título / Descripción corta</label>
+      <input id="mob-inc-titulo" placeholder="Ej: Torre Norte sin energía">
+      <label>Prioridad</label>
+      <select id="mob-inc-prioridad">
+        <option value="media">Media</option>
+        <option value="alta">Alta</option>
+        <option value="critica">Crítica</option>
+      </select>
+      <label>Afectados (zona, clientes)</label>
+      <input id="mob-inc-afectados" placeholder="Zona Norte, 45 clientes...">
+      <label>Descripción detallada</label>
+      <textarea id="mob-inc-desc" placeholder="Detalle lo que estás viendo..."></textarea>
+      <button class="btn btn-rj btn-full" onclick="submitIncidencia()">🚨 Reportar Incidencia</button>
+      <div id="mob-inc-ok" style="display:none;margin-top:.5rem;background:#e8f5e9;color:#2e7d32;border-radius:8px;padding:.5rem .7rem;font-size:.82rem;text-align:center">✅ Incidencia reportada correctamente</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Incidencias recientes</div>
+      <div id="mob-inc-list"></div>
+    </div>
+  </div>
+
+  <!-- BUSCAR CLIENTE -->
+  <div class="screen" id="sc-buscar">
+    <div class="search-box">
+      <input type="text" id="mob-cli-q" placeholder="Nombre, DNI, IP, teléfono..." oninput="searchCliente()">
+    </div>
+    <div id="mob-cli-list"></div>
+  </div>
+
+</div><!-- end content -->
+
+<!-- BOTTOM NAV -->
+<nav class="botnav">
+  <button class="botnav-btn active" id="bn-servicios" onclick="goScreen('servicios')"><span class="icon">🔧</span>Servicios</button>
+  <button class="botnav-btn" id="bn-mapa" onclick="goScreen('mapa')"><span class="icon">🗺️</span>Mapa</button>
+  <button class="botnav-btn" id="bn-naps" onclick="goScreen('naps')"><span class="icon">🔌</span>NAPs</button>
+  <button class="botnav-btn" id="bn-incidencia" onclick="goScreen('incidencia')"><span class="icon">🚨</span>Reportar</button>
+  <button class="botnav-btn" id="bn-buscar" onclick="goScreen('buscar')"><span class="icon">🔍</span>Clientes</button>
+</nav>
+
+<!-- DRAWER DETALLE SERVICIO -->
+<div class="drawer" id="drawer-svc">
+  <div class="drawer-bg" onclick="closeDrawer()"></div>
+  <div class="drawer-content">
+    <div class="drawer-handle"></div>
+    <div class="drawer-title" id="dsvc-title">Detalle de Servicio</div>
+    <div id="dsvc-body"></div>
+  </div>
+</div>
+
+<!-- DRAWER DETALLE CLIENTE -->
+<div class="drawer" id="drawer-cli">
+  <div class="drawer-bg" onclick="closeDrawerCli()"></div>
+  <div class="drawer-content">
+    <div class="drawer-handle"></div>
+    <div class="drawer-title" id="dcli-title">Detalle Cliente</div>
+    <div id="dcli-body"></div>
+  </div>
+</div>
+
+<script>
+let mobMap=null, mobMapInited=false;
+let allSvcs=[], svcEstadoFil='';
+
+async function api(url,method='GET',body=null){
+  const opts={method,headers:{'Content-Type':'application/json'}};
+  if(body) opts.body=JSON.stringify(body);
+  const r=await fetch(url,opts);
+  if(r.status===401){location.href='/login';return null;}
+  return r.json();
+}
+
+function goScreen(name){
+  document.querySelectorAll('.screen,.screen-map').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.botnav-btn').forEach(b=>b.classList.remove('active'));
+  const screen=document.getElementById('sc-'+name);
+  if(screen) screen.classList.add('active');
+  const btn=document.getElementById('bn-'+name);
+  if(btn) btn.classList.add('active');
+  if(name==='mapa') initMobMap();
+  else if(name==='servicios') loadSvc();
+  else if(name==='naps') loadNaps();
+  else if(name==='incidencia') loadIncidencias();
+}
+
+// ── SERVICIOS ──
+async function loadSvc(){
+  const d=await api('/api/servicios?estado='+svcEstadoFil);
+  if(!d) return;
+  allSvcs=d;
+  renderSvcs(d);
+}
+
+function filterEstadoSvc(estado){
+  svcEstadoFil=estado;
+  loadSvc();
+}
+
+function filterSvc(){
+  const q=document.getElementById('mob-svc-q').value.toLowerCase();
+  renderSvcs(allSvcs.filter(s=>(s.cliente_nombre||'').toLowerCase().includes(q)||(s.descripcion||'').toLowerCase().includes(q)));
+}
+
+function renderSvcs(svcs){
+  const list=document.getElementById('mob-svc-list');
+  if(!svcs.length){list.innerHTML='<div class="empty">Sin órdenes pendientes</div>';return;}
+  list.innerHTML=svcs.map(s=>`<div class="svc-item" onclick="openSvcDetail(${s.id})">
+    <div class="svc-hd">
+      <span class="badge b-${s.prioridad||'normal'}">${(s.prioridad||'normal').toUpperCase()}</span>
+      <span class="badge b-${s.estado}">${estadoLabel(s.estado)}</span>
+    </div>
+    <div class="svc-cli">${s.cliente_nombre||'Sin cliente'}</div>
+    <div class="svc-tipo">${tipoSvcLabel(s.tipo)}</div>
+    ${s.tecnico?`<div style="font-size:.73rem;color:#546e7a;margin-top:.2rem">👷 ${s.tecnico}</div>`:''}
+    ${s.cliente_dir?`<div style="font-size:.73rem;color:#546e7a">📍 ${s.cliente_dir}</div>`:''}
+    ${s.descripcion?`<div style="font-size:.75rem;margin-top:.3rem;color:#333">${s.descripcion.slice(0,80)}${s.descripcion.length>80?'...':''}</div>`:''}
+  </div>`).join('');
+}
+
+async function openSvcDetail(id){
+  const s=allSvcs.find(x=>x.id===id);
+  if(!s) return;
+  document.getElementById('dsvc-title').textContent=tipoSvcLabel(s.tipo);
+  document.getElementById('dsvc-body').innerHTML=`
+    <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.6rem">
+      <span class="badge b-${s.prioridad}">${(s.prioridad||'').toUpperCase()}</span>
+      <span class="badge b-${s.estado}">${estadoLabel(s.estado)}</span>
+      ${s.tiene_costo?`<span class="badge" style="background:#fff9c4;color:#f57f17">💵 $${s.costo}</span>`:''}
+    </div>
+    <div style="font-size:.88rem;margin-bottom:.4rem"><b>Cliente:</b> ${s.cliente_nombre||'—'}</div>
+    ${s.cliente_tel?`<a href="tel:${s.cliente_tel}" style="display:block;padding:.5rem;background:#e3f2fd;color:#1565c0;border-radius:8px;text-align:center;text-decoration:none;font-weight:700;margin-bottom:.4rem">📞 Llamar: ${s.cliente_tel}</a>`:''}
+    ${s.cliente_dir?`<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((s.cliente_dir||'')+' '+(s.cliente_localidad||''))}" target="_blank" style="display:block;padding:.5rem;background:#e8f5e9;color:#2e7d32;border-radius:8px;text-align:center;text-decoration:none;font-weight:700;margin-bottom:.4rem">📍 Ver en Maps: ${s.cliente_dir}</a>`:''}
+    ${s.descripcion?`<div style="background:#f5f7fa;border-radius:8px;padding:.5rem;font-size:.82rem;margin-bottom:.5rem">${s.descripcion}</div>`:''}
+    <hr class="sep">
+    <div style="font-size:.78rem;color:#666;margin-bottom:.6rem">Creado: ${s.fecha_creacion?.slice(0,16)||'—'}</div>
+    <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+      ${s.estado==='pendiente'?`<button class="btn btn-am" onclick="updateSvcEstado(${s.id},'en_proceso')">▶ Iniciar</button>`:''}
+      ${s.estado==='en_proceso'?`<button class="btn btn-vd" onclick="updateSvcEstado(${s.id},'cerrado')">✓ Cerrar</button>`:''}
+    </div>
+  `;
+  document.getElementById('drawer-svc').classList.add('open');
+}
+
+async function updateSvcEstado(id,estado){
+  const s=allSvcs.find(x=>x.id===id);
+  if(!s) return;
+  await api(`/api/servicios/${id}`,'PUT',{...s,estado,tipo:s.tipo||'otro',prioridad:s.prioridad||'normal',tecnico:s.tecnico||'',costo:s.costo||0,tiene_costo:s.tiene_costo||0});
+  closeDrawer();
+  loadSvc();
+}
+
+function closeDrawer(){ document.getElementById('drawer-svc').classList.remove('open'); }
+
+// ── MAPA ──
+function initMobMap(){
+  if(mobMapInited) return;
+  mobMapInited=true;
+  mobMap=L.map('mob-map').setView([-31.73,-60.53],13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM',maxZoom:19}).addTo(mobMap);
+  loadMapData();
+}
+
+async function loadMapData(){
+  const data=await api('/api/clientes/mapa');
+  if(!data) return;
+  const COLOR={activo:'#2e7d32',suspendido:'#e65100',rescision:'#c62828'};
+  data.forEach(c=>{
+    if(!c.lat||!c.lng) return;
+    L.circleMarker([c.lat,c.lng],{radius:7,fillColor:COLOR[c.estado]||'#546e7a',color:'#fff',weight:2,fillOpacity:.85})
+     .bindPopup(`<b>${c.nombre}</b><br>${c.estado} | ${c.tipo_servicio}<br>${c.direccion||''}`)
+     .addTo(mobMap);
+  });
+  const naps=await api('/api/naps');
+  if(naps) naps.forEach(n=>{
+    if(!n.lat||!n.lng) return;
+    const color=n.libre<=0?'#c62828':n.total>=(n.capacidad-2)?'#e65100':'#1565c0';
+    L.circleMarker([n.lat,n.lng],{radius:10,fillColor:color,color:'#fff',weight:2,fillOpacity:.9})
+     .bindPopup(`<b>NAP: ${n.nombre}</b><br>${n.total}/${n.capacidad} puertos`)
+     .addTo(mobMap);
+  });
+}
+
+let mobMapTimer=null;
+async function mobMapSearch(){
+  const q=document.getElementById('mob-map-q').value;
+  const drop=document.getElementById('mob-map-drop');
+  if(q.length<2){drop.style.display='none';return;}
+  clearTimeout(mobMapTimer);
+  mobMapTimer=setTimeout(async()=>{
+    const data=await api(`/api/clientes/buscar?q=${encodeURIComponent(q)}`);
+    if(!data?.length){drop.style.display='none';return;}
+    drop.innerHTML=data.map(c=>`<div onclick="mobGoTo(${c.lat},${c.lng},'${c.nombre.replace(/'/g,"\\'")}','${c.estado}')" style="padding:.5rem .8rem;border-bottom:1px solid #f0f0f0;cursor:pointer">
+      <div style="font-weight:700;font-size:.84rem">${c.nombre}</div>
+      <div style="font-size:.73rem;color:#666">${c.direccion||''} ${c.localidad||''} <span class="badge b-${c.estado}">${c.estado}</span></div>
+    </div>`).join('');
+    drop.style.display='block';
+  },300);
+}
+
+function mobGoTo(lat,lng,nombre,estado){
+  if(!lat||!lng) return;
+  document.getElementById('mob-map-drop').style.display='none';
+  document.getElementById('mob-map-q').value=nombre;
+  mobMap.setView([lat,lng],18);
+  L.popup().setLatLng([lat,lng]).setContent(`<b>${nombre}</b><br>${estado}`).openOn(mobMap);
+}
+
+// ── NAPs ──
+async function loadNaps(){
+  const d=await api('/api/naps');
+  if(!d) return;
+  const list=document.getElementById('mob-nap-list');
+  list.innerHTML=d.map(n=>{
+    const cls=n.libre<=0?'lleno':n.total>=(n.capacidad-2)?'casi':'ok';
+    let dots='';
+    for(let i=0;i<n.capacidad;i++){
+      if(i<(n.activos||0)) dots+=`<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#4caf50;margin:1px"></span>`;
+      else if(i<(n.activos||0)+(n.suspendidos||0)) dots+=`<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#ffb300;margin:1px"></span>`;
+      else if(i<(n.activos||0)+(n.suspendidos||0)+(n.rescision||0)) dots+=`<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#ef5350;margin:1px"></span>`;
+      else dots+=`<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#e0e0e0;margin:1px"></span>`;
+    }
+    return `<div class="nap-item ${cls}">
+      <div style="display:flex;align-items:center;margin-bottom:.3rem">
+        <b style="font-size:.88rem">${n.nombre}</b>
+        <span style="margin-left:auto;font-size:.82rem;font-weight:700;color:${n.libre<=0?'#c62828':n.total>=(n.capacidad-2)?'#e65100':'#2e7d32'}">${n.total}/${n.capacidad}</span>
+      </div>
+      <div style="font-size:.73rem;color:#666;margin-bottom:.3rem">${n.localidad||''}</div>
+      <div style="line-height:1.8">${dots}</div>
+      <div style="font-size:.68rem;color:#666;margin-top:.3rem">🟢 Activos: ${n.activos||0} | 🟡 Suspendidos: ${n.suspendidos||0} | 🔴 Rescisión: ${n.rescision||0}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── INCIDENCIAS ──
+async function loadIncidencias(){
+  const d=await api('/api/incidencias?estado=abierta');
+  if(!d) return;
+  const list=document.getElementById('mob-inc-list');
+  if(!d.length){list.innerHTML='<div class="empty">✅ Sin incidencias abiertas</div>';return;}
+  list.innerHTML=d.map(i=>`<div style="border-radius:8px;border-left:4px solid ${i.prioridad==='critica'?'#c62828':i.prioridad==='alta'?'#e65100':'#ffb300'};background:#fff;padding:.6rem;margin-bottom:.4rem;box-shadow:0 1px 3px rgba(0,0,0,.07)">
+    <div style="font-weight:700;font-size:.84rem">${i.titulo}</div>
+    <div style="font-size:.72rem;color:#666">${i.tipo.replace(/_/g,' ')} | ${i.prioridad.toUpperCase()}</div>
+  </div>`).join('');
+}
+
+async function submitIncidencia(){
+  const data={
+    titulo:document.getElementById('mob-inc-titulo').value,
+    tipo:document.getElementById('mob-inc-tipo').value,
+    prioridad:document.getElementById('mob-inc-prioridad').value,
+    afectados:document.getElementById('mob-inc-afectados').value,
+    descripcion:document.getElementById('mob-inc-desc').value,
+    estado:'abierta'
+  };
+  if(!data.titulo.trim()){alert('El título es obligatorio');return;}
+  const r=await api('/api/incidencias','POST',data);
+  if(r?.ok||r?.id){
+    document.getElementById('mob-inc-ok').style.display='block';
+    document.getElementById('mob-inc-titulo').value='';
+    document.getElementById('mob-inc-afectados').value='';
+    document.getElementById('mob-inc-desc').value='';
+    setTimeout(()=>document.getElementById('mob-inc-ok').style.display='none',3000);
+    loadIncidencias();
+  }
+}
+
+// ── BUSCAR CLIENTE ──
+let cliTimer=null;
+async function searchCliente(){
+  const q=document.getElementById('mob-cli-q').value;
+  if(q.length<2){document.getElementById('mob-cli-list').innerHTML='';return;}
+  clearTimeout(cliTimer);
+  cliTimer=setTimeout(async()=>{
+    const data=await api(`/api/clientes/buscar?q=${encodeURIComponent(q)}`);
+    if(!data) return;
+    const list=document.getElementById('mob-cli-list');
+    if(!data.length){list.innerHTML='<div class="empty">Sin resultados</div>';return;}
+    list.innerHTML=data.map(c=>`<div onclick="showClienteDetail(${c.id})" style="background:#fff;border-radius:10px;padding:.7rem;margin-bottom:.5rem;box-shadow:0 1px 4px rgba(0,0,0,.08)">
+      <div style="font-weight:700;font-size:.88rem">${c.nombre}</div>
+      <div style="font-size:.75rem;color:#666">${c.direccion||''} ${c.localidad||''}</div>
+      <div style="margin-top:.2rem;display:flex;gap:.3rem">
+        <span class="badge b-${c.estado}">${c.estado}</span>
+        <span class="badge b-${c.tipo_servicio}">${c.tipo_servicio}</span>
+      </div>
+    </div>`).join('');
+  },300);
+}
+
+async function showClienteDetail(id){
+  const d=await api(`/api/clientes/${id}`);
+  if(!d) return;
+  const c=d.cliente;
+  document.getElementById('dcli-title').textContent=c.nombre;
+  document.getElementById('dcli-body').innerHTML=`
+    <div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.6rem">
+      <span class="badge b-${c.estado}">${c.estado}</span>
+      <span class="badge b-${c.tipo_servicio}">${c.tipo_servicio}</span>
+    </div>
+    ${c.telefono?`<a href="tel:${c.telefono}" style="display:block;padding:.6rem;background:#e3f2fd;color:#1565c0;border-radius:8px;text-align:center;text-decoration:none;font-weight:700;margin-bottom:.4rem">📞 ${c.telefono}</a>`:''}
+    ${c.direccion?`<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((c.direccion||'')+' '+(c.localidad||''))}" target="_blank" style="display:block;padding:.6rem;background:#e8f5e9;color:#2e7d32;border-radius:8px;text-align:center;text-decoration:none;font-weight:700;margin-bottom:.4rem">📍 ${c.direccion}</a>`:''}
+    <hr class="sep">
+    <div style="font-size:.82rem;display:grid;gap:.3rem">
+      <div><b>Plan:</b> ${c.plan||'—'} ${c.precio?'| $'+c.precio:''}</div>
+      <div><b>NAP:</b> ${c.nap||'—'}</div>
+      <div><b>IP:</b> ${c.ip_asignada||'—'}</div>
+      <div><b>Equipo:</b> ${c.equipo_modelo||'—'} ${c.equipo_marca||''}</div>
+      <div><b>Serie:</b> <span style="font-family:monospace">${c.equipo_serie||'—'}</span></div>
+      ${c.tipo_servicio==='fibra'?`<div><b>OLT:</b> ${c.olt_nombre||'—'} Puerto: ${c.olt_puerto||'—'}</div>`:''}
+      <div><b>Último pago:</b> ${c.ultimo_pago||'—'}</div>
+    </div>
+  `;
+  document.getElementById('drawer-cli').classList.add('open');
+}
+
+function closeDrawerCli(){ document.getElementById('drawer-cli').classList.remove('open'); }
+
+function estadoLabel(e){return{activo:'Activo',suspendido:'Suspendido',rescision:'Pte.Rescisión',baja:'Baja',pendiente:'Pendiente',en_proceso:'En Proceso',cerrado:'Cerrado'}[e]||e||'—';}
+function tipoSvcLabel(t){const m={reparacion_fibra:'🔧 Rep.Fibra',reparacion_inalambrico:'📡 Rep.Inalámbrico',migracion_ftth:'🔄 Migración FTTH',cambio_domicilio:'🏠 Cambio Dom.',instalacion:'🆕 Instalación',retiro_equipo:'📦 Retiro',service_con_costo:'💵 S.c/Costo',otro:'🔩 Otro'};return m[t]||t||'—';}
+
+// INIT
+loadSvc();
+</script>
+</body>
+</html>

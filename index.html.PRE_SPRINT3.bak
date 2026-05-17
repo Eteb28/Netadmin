@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ERLAN ISP — NetAdmin v6</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+
+<!-- ════ NAV ════ -->
+<nav class="nav">
+  <span class="nav-brand">ERLAN <span>ISP v6</span></span>
+
+  <!-- Links desktop — scrollable horizontal -->
+  <div class="nav-links" id="nav-links-desktop">
+    <a onclick="navGo('dashboard',this)" class="active">📊 Dashboard</a>
+    <a onclick="navGo('clientes',this)">👥 Clientes</a>
+    <a onclick="navGo('mapa',this)">🗺️ Mapa</a>
+    <a onclick="navGo('naps',this)">🔌 NAPs</a>
+    <a onclick="navGo('servicios',this)">🔧 Servicios</a>
+    <a onclick="navGo('ftth',this)">💡 FTTH</a>
+    <a onclick="navGo('incidencias',this)">🚨 Incidencias</a>
+    <a onclick="navGo('stock',this)">📦 Stock</a>
+    <a onclick="navGo('bajas',this)">📋 Bajas</a>
+    <a onclick="navGo('torres',this)">🗼 Torres</a>
+    <a onclick="navGo('abonos',this)">💰 Abonos</a>
+    <a onclick="navGo('agenda',this)">📅 Agenda</a>
+    <a onclick="navGo('monitoreo',this)">📡 Monitoreo</a>
+    <a onclick="navGo('historial',this)">📜 Historial</a>
+    <a onclick="navGo('usuarios',this)" id="nav-usuarios" style="display:none">👤 Usuarios</a>
+    <a onclick="navGo('config',this)" id="nav-config" style="display:none">⚙️ Config</a>
+  </div>
+
+  <div class="nav-right">
+    <button class="notif-btn" onclick="toggleNotif()" title="Notificaciones">
+      🔔<span class="notif-badge" id="notif-cnt" style="display:none">0</span>
+    </button>
+    <span class="nav-user" id="nav-nombre"></span>
+    <button class="nav-logout" onclick="location.href='/logout'">Salir</button>
+    <button class="nav-hamburger" onclick="openDrawer()" title="Menú">☰</button>
+  </div>
+</nav>
+
+<!-- ════ MENÚ MÓVIL ════ -->
+<div class="nav-drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+<div class="nav-drawer" id="nav-drawer">
+  <div class="nav-drawer-header">
+    <span class="nav-drawer-brand">☰ ERLAN ISP v6</span>
+    <button class="nav-drawer-close" onclick="closeDrawer()">×</button>
+  </div>
+  <a onclick="navGo('dashboard');closeDrawer()">📊 Dashboard</a>
+  <a onclick="navGo('clientes');closeDrawer()">👥 Clientes</a>
+  <a onclick="navGo('mapa');closeDrawer()">🗺️ Mapa</a>
+  <a onclick="navGo('naps');closeDrawer()">🔌 NAPs</a>
+  <a onclick="navGo('servicios');closeDrawer()">🔧 Servicios</a>
+  <a onclick="navGo('ftth');closeDrawer()">💡 FTTH</a>
+  <a onclick="navGo('incidencias');closeDrawer()">🚨 Incidencias</a>
+  <a onclick="navGo('stock');closeDrawer()">📦 Stock</a>
+  <a onclick="navGo('bajas');closeDrawer()">📋 Bajas</a>
+  <a onclick="navGo('torres');closeDrawer()">🗼 Torres</a>
+  <a onclick="navGo('abonos');closeDrawer()">💰 Abonos</a>
+  <a onclick="navGo('agenda');closeDrawer()">📅 Agenda</a>
+  <a onclick="navGo('monitoreo');closeDrawer()">📡 Monitoreo</a>
+  <a onclick="navGo('historial');closeDrawer()">📜 Historial</a>
+  <a onclick="navGo('usuarios');closeDrawer()" id="drawer-usuarios" style="display:none">👤 Usuarios</a>
+  <a onclick="navGo('config');closeDrawer()" id="drawer-config" style="display:none">⚙️ Config</a>
+  <a onclick="location.href='/logout'" style="color:#ff9999;margin-top:.5rem">🚪 Cerrar sesión</a>
+</div>
+
+<!-- ════ LAYOUT ════ -->
+<div class="layout">
+
+<!-- ══ DASHBOARD ══ -->
+<div class="page active" id="page-dashboard">
+
+  <!-- Carrusel de noticias/incidencias/clima -->
+  <div class="carousel carousel-wide" id="carousel">
+    <span class="carousel-icon">📡</span>
+    <div class="carousel-content" id="carousel-content">
+      <div class="carousel-slide active">
+        <span class="carousel-title">ERLAN ISP v6</span>
+        <span class="carousel-text">Sistema operativo — sin incidencias activas</span>
+        <span class="carousel-badge b-activo" style="background:rgba(76,175,80,.3);color:#fff">OK</span>
+      </div>
+    </div>
+    <div class="carousel-nav">
+      <button onclick="carouselPrev()">‹</button>
+      <button onclick="carouselNext()">›</button>
+      <button onclick="openWeatherModal()" title="Pronóstico extendido" style="margin-left:.4rem">🌤</button>
+    </div>
+  </div>
+
+  <!-- Filtro global -->
+  <div class="global-filter">
+    <label>FILTRAR:</label>
+    <select id="gf-localidad" onchange="reloadDashboard()"><option value="">Todas las localidades</option></select>
+    <select id="gf-tipo" onchange="reloadDashboard()"><option value="">Todos los tipos</option><option value="fibra">Fibra</option><option value="inalambrico">Inalámbrico</option></select>
+    <select id="gf-periodo" onchange="reloadDashboard()">
+      <option value="30">Últimos 30 días</option>
+      <option value="7">Últimos 7 días</option>
+      <option value="90">Últimos 90 días</option>
+      <option value="365">Año actual</option>
+    </select>
+    <div class="live-badge"><span class="live-dot"></span> EN VIVO · <span id="gf-update">recién actualizado</span></div>
+  </div>
+
+  <!-- KPIs principales con sparklines -->
+  <div class="kpi-grid">
+    <div class="kpi green">
+      <div class="kpi-info">
+        <div class="kpi-label">Clientes Activos</div>
+        <div class="kpi-value" id="kpi-activos">—</div>
+        <div class="kpi-trend" id="kpi-trend-altas">—</div>
+      </div>
+      <svg class="kpi-spark" viewBox="0 0 80 50" id="spark-activos"></svg>
+    </div>
+    <div class="kpi orange">
+      <div class="kpi-info">
+        <div class="kpi-label">Suspendidos</div>
+        <div class="kpi-value" id="kpi-suspendidos">—</div>
+        <div class="kpi-trend flat">Requieren gestión</div>
+      </div>
+      <svg class="kpi-spark" viewBox="0 0 80 50" id="spark-susp"></svg>
+    </div>
+    <div class="kpi red">
+      <div class="kpi-info">
+        <div class="kpi-label">Pte. Rescisión</div>
+        <div class="kpi-value" id="kpi-rescision">—</div>
+        <div class="kpi-trend down" id="kpi-trend-bajas">—</div>
+      </div>
+      <svg class="kpi-spark" viewBox="0 0 80 50" id="spark-resc"></svg>
+    </div>
+    <div class="kpi">
+      <div class="kpi-info">
+        <div class="kpi-label">Total Clientes</div>
+        <div class="kpi-value" id="kpi-total">—</div>
+        <div class="kpi-trend up" id="kpi-trend-total">—</div>
+      </div>
+      <svg class="kpi-spark" viewBox="0 0 80 50" id="spark-total"></svg>
+    </div>
+  </div>
+
+  <!-- KPIs secundarios -->
+  <div class="grid-4">
+    <div class="stat"><div class="stat-val" id="ds-fibra">—</div><div class="stat-lbl">Activos Fibra</div></div>
+    <div class="stat"><div class="stat-val" id="ds-inalambrico">—</div><div class="stat-lbl">Activos Inalámbrico</div></div>
+    <div class="stat orange"><div class="stat-val" id="ds-svc-pend">—</div><div class="stat-lbl">Servicios Pendientes</div></div>
+    <div class="stat red"><div class="stat-val" id="ds-inc">—</div><div class="stat-lbl">Incidencias Abiertas</div></div>
+  </div>
+
+  <!-- Incidencias compactas — MOVIDO ARRIBA -->
+  <div class="card">
+    <div class="section-title" style="margin:0 0 .8rem">🚨 Incidencias Activas
+      <button class="btn btn-prim btn-sm" style="margin-left:auto" onclick="navGo('incidencias')">Ver todas</button>
+    </div>
+    <div id="dash-inc-list"></div>
+  </div>
+
+  <!-- Riesgos / Alertas Inteligentes -->
+  <div class="section-title">⚠️ Clientes en Riesgo (gestión proactiva)</div>
+  <div class="grid-4">
+    <div class="risk-card" onclick="filtroRiesgo('suspendidos_30')" style="cursor:pointer">
+      <div class="label">Suspendidos +30 días</div>
+      <div class="num" id="rg-sus-30">—</div>
+      <div style="font-size:.72rem;color:var(--txt2)">Candidatos a rescisión</div>
+    </div>
+    <div class="risk-card warn" onclick="filtroRiesgo('pago_15')" style="cursor:pointer">
+      <div class="label">Pago vencido +15 días</div>
+      <div class="num" id="rg-pago-15">—</div>
+      <div style="font-size:.72rem;color:var(--txt2)" id="rg-deuda">$— en deuda</div>
+    </div>
+    <div class="risk-card warn" onclick="filtroRiesgo('rescision_60')" style="cursor:pointer">
+      <div class="label">Rescisión +60 días con equipo</div>
+      <div class="num" id="rg-resc-60">—</div>
+      <div style="font-size:.72rem;color:var(--txt2)">Generar OT de retiro</div>
+    </div>
+    <div class="risk-card" onclick="filtroRiesgo('sin_tecnico')" style="cursor:pointer">
+      <div class="label">Servicios sin técnico +48hs</div>
+      <div class="num" id="rg-svc-48">—</div>
+      <div style="font-size:.72rem;color:var(--txt2)">Asignar técnico urgente</div>
+    </div>
+  </div>
+
+  <!-- Alerta de revisión -->
+  <div id="rg-revision-alert" style="display:none" class="alert-box info">
+    🚩 Hay <b><span id="rg-revision-count">0</span> clientes</b> marcados para revisión manual desde la limpieza de datos.
+    <button class="btn btn-prim btn-sm" style="margin-left:.4rem" onclick="navGo('clientes')">Revisar →</button>
+  </div>
+
+  <!-- Charts grid 1: Evolución mensual + Donut estados -->
+  <div class="charts-grid">
+    <div class="card">
+      <div class="section-title" style="margin:0 0 .8rem">📈 Evolución Mensual de Altas/Bajas</div>
+      <div id="chart-evolucion" style="position:relative">
+        <svg viewBox="0 0 500 200" style="width:100%;height:180px" id="svg-evolucion"></svg>
+      </div>
+      <div id="evol-legend" style="display:flex;gap:1rem;margin-top:.5rem;font-size:.75rem;flex-wrap:wrap"></div>
+    </div>
+    <div class="card">
+      <div class="section-title" style="margin:0 0 .8rem">🎯 Distribución de Clientes</div>
+      <div class="donut-wrap" id="donut-estados"></div>
+    </div>
+  </div>
+
+  <!-- Charts grid 2: Top NAPs + Heatmap horarios -->
+  <div class="charts-grid">
+    <div class="card">
+      <div class="section-title" style="margin:0 0 .8rem">🚀 Top 5 NAPs por Ocupación</div>
+      <div id="top-naps-list"></div>
+    </div>
+    <div class="card">
+      <div class="section-title" style="margin:0 0 .8rem">🕐 Mapa de Calor — Horario de Servicios</div>
+      <div id="heatmap-horarios"></div>
+      <div id="heatmap-pico" style="font-size:.72rem;color:var(--txt2);margin-top:.5rem"></div>
+    </div>
+  </div>
+
+  <!-- Charts grid 3: Localidades + Tipo servicio -->
+  <div class="charts-grid">
+    <div class="card">
+      <div class="section-title" style="margin:0 0 .8rem">🌍 Top Localidades</div>
+      <div id="bar-localidades"></div>
+    </div>
+    <div class="card">
+      <div class="section-title" style="margin:0 0 .8rem">💎 Distribución por Tipo de Servicio</div>
+      <div class="donut-wrap" id="donut-tipos"></div>
+      <div id="ftth-potencial-msg" style="font-size:.75rem;color:var(--txt2);margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--brd)"></div>
+    </div>
+  </div>
+
+  <!-- NAPs agrupadas -->
+  <div class="card">
+    <div class="section-title" style="margin:0 0 .8rem">🔌 NAPs Agrupadas por Sitio
+      <span class="badge" id="naps-grupos-cnt" style="margin-left:.4rem">—</span>
+    </div>
+    <div id="nap-alerts-bar" style="margin-bottom:.6rem"></div>
+    <div id="naps-grupos-list"></div>
+  </div>
+
+  <!-- Monitoreo de red -->
+  <div class="card">
+    <div class="section-title" style="margin:0 0 .8rem">📡 Monitoreo de Red
+      <span id="mon-resumen-badge" class="badge" style="margin-left:.4rem"></span>
+      <button class="btn btn-gray btn-sm" style="margin-left:auto" onclick="navGo('monitoreo')">Ver todo</button>
+    </div>
+    <div id="dash-mon-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.4rem"></div>
+  </div>
+
+  <!-- Actividad Diaria — solo admin/administrativo, queda al fondo -->
+  <div class="card" id="dash-act-diaria" style="display:none">
+    <div class="section-title" style="margin:0 0 .8rem">📅 Actividad Diaria — últimos 365 días</div>
+    <div style="display:flex;gap:.4rem;margin-bottom:.6rem;font-size:.75rem;align-items:center">
+      <button class="cal-btn active" data-metric="altas" onclick="loadCalendario('altas')">Altas</button>
+      <button class="cal-btn" data-metric="bajas" onclick="loadCalendario('bajas')">Bajas</button>
+      <button class="cal-btn" data-metric="servicios" onclick="loadCalendario('servicios')">Servicios</button>
+      <span style="margin-left:auto;font-size:.72rem;color:var(--txt2)" id="cal-stats">—</span>
+    </div>
+    <div class="heatmap-cal" id="heatmap-cal"></div>
+    <div class="heat-legend">Menos
+      <div class="heat-legend-cells">
+        <div class="heat-cal-cell"></div>
+        <div class="heat-cal-cell l1"></div>
+        <div class="heat-cal-cell l2"></div>
+        <div class="heat-cal-cell l3"></div>
+        <div class="heat-cal-cell l4"></div>
+      </div>
+      Más
+    </div>
+  </div>
+
+</div>
+
+<!-- ══ CLIENTES ══ -->
+<div class="page" id="page-clientes">
+  <div class="card">
+    <div class="stitle">👥 Clientes</div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.7rem">
+      <input type="text" id="cli-q" placeholder="Buscar por nombre, DNI, IP, teléfono..." style="flex:1;min-width:200px" oninput="debouncedLoadClientes()">
+      <select id="cli-estado" onchange="loadClientes()"><option value="">Todos los estados</option><option value="activo">Activo</option><option value="suspendido">Suspendido</option><option value="rescision">Pte. Rescisión</option><option value="baja">Baja</option></select>
+      <select id="cli-tipo" onchange="loadClientes()"><option value="">Todos los tipos</option><option value="fibra">Fibra</option><option value="inalambrico">Inalámbrico</option></select>
+      <select id="cli-loc" onchange="loadClientes()"><option value="">Todas las localidades</option></select>
+      <button class="btn btn-prim" onclick="openModalCliente()">+ Nuevo</button>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>Nombre</th><th>Teléfono</th><th>Localidad</th><th>Tipo</th>
+          <th>Plan</th><th>NAP</th><th>Estado</th><th>Último Pago</th><th>Acciones</th>
+        </tr></thead>
+        <tbody id="cli-tbody"></tbody>
+      </table>
+    </div>
+    <div style="display:flex;align-items:center;gap:.5rem;margin-top:.6rem;font-size:.78rem;color:var(--txt2)">
+      <button class="btn btn-gray btn-sm" id="cli-prev" onclick="cliPage--; loadClientes()">‹ Anterior</button>
+      <span id="cli-pag-info"></span>
+      <button class="btn btn-gray btn-sm" id="cli-next" onclick="cliPage++; loadClientes()">Siguiente ›</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MAPA ══ -->
+<div class="page-map" id="page-mapa">
+  <div id="map-container"></div>
+  <div class="map-toolbar">
+    <div class="map-search-wrap">
+      <input type="text" id="map-q" placeholder="🔍 Buscar cliente..." style="min-width:200px;color:#222 !important" oninput="mapaSearch()" autocomplete="off">
+      <div class="map-search-drop" id="map-drop"></div>
+    </div>
+    <select id="map-estado" onchange="reloadMapaClientes()">
+      <option value="">Todos los estados</option>
+      <option value="activo">Activos</option>
+      <option value="suspendido">Suspendidos</option>
+      <option value="rescision">Pte. Rescisión</option>
+    </select>
+    <select id="map-tipo" onchange="reloadMapaClientes()">
+      <option value="">Todos los tipos</option>
+      <option value="fibra">Fibra</option>
+      <option value="inalambrico">Inalámbrico</option>
+    </select>
+    <div class="chips">
+      <span class="chip" id="chip-naps" onclick="toggleChip('naps')">NAPs</span>
+      <span class="chip active" id="chip-clientes" onclick="toggleChip('clientes')">Clientes</span>
+      <span class="chip" id="chip-torres" onclick="toggleChip('torres')">🗼 Torres</span>
+      <span class="chip" id="chip-heat" onclick="toggleChip('heat')">🌡 Densidad</span>
+      <span class="chip" id="chip-ftth-pot" onclick="toggleChip('ftth_pot')">🔄 Pot.Migración</span>
+      <span class="chip" id="chip-olts" onclick="toggleChip('olts')">OLTs</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ NAPs ══ -->
+<div class="page" id="page-naps">
+  <div class="card">
+    <div class="stitle">🔌 NAPs <button class="btn btn-prim btn-sm" style="margin-left:auto" onclick="openModalNap()" id="btn-nueva-nap">+ Nueva NAP</button></div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.7rem">
+      <input type="text" id="nap-q" placeholder="🔍 Buscar NAP por nombre, localidad, sitio..." style="flex:1;min-width:200px" oninput="debouncedLoadNaps()">
+      <select id="nap-fil-loc" onchange="renderNapsTable()"><option value="">Todas las localidades</option></select>
+      <select id="nap-fil-olt" onchange="renderNapsTable()"><option value="">Todas las OLTs</option></select>
+    </div>
+    <div id="naps-filter-bar" style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.7rem">
+      <!-- los filtros se renderizan dinámicamente desde loadNaps() -->
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Nombre</th><th>Localidad</th><th>Cap.</th><th>Ocupación</th><th>Activos</th><th>Susp.</th><th>Rescisión</th><th>OLT/PON</th><th>Señal</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody id="nap-tbody"></tbody>
+      </table>
+    </div>
+    <div style="margin-top:.5rem;font-size:.78rem;color:var(--txt2)">Mostrando <b id="nap-total">0</b> NAPs</div>
+  </div>
+</div>
+
+<!-- ══ SERVICIOS ══ -->
+<div class="page" id="page-servicios">
+  <div class="card">
+    <div class="stitle">🔧 Órdenes de Servicio</div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.7rem">
+      <select id="svc-estado" onchange="loadServicios()"><option value="">Todos los estados</option><option value="pendiente">Pendiente</option><option value="en_proceso">En proceso</option><option value="cerrado">Cerrado</option><option value="cancelado">Cancelado</option></select>
+      <select id="svc-tipo" onchange="loadServicios()">
+        <option value="">Todos los tipos</option>
+        <option value="reparacion_fibra">Reparación Fibra</option>
+        <option value="reparacion_inalambrico">Reparación Inalámbrico</option>
+        <option value="migracion_ftth">Migración a FTTH</option>
+        <option value="cambio_domicilio">Cambio de Domicilio</option>
+        <option value="instalacion">Nueva Instalación</option>
+        <option value="retiro_equipo">Retiro de Equipo</option>
+        <option value="service_con_costo">Service con Costo</option>
+      </select>
+      <select id="svc-tecnico" onchange="loadServicios()"><option value="">Todos los técnicos</option></select>
+      <select id="svc-prioridad" onchange="loadServicios()"><option value="">Todas las prioridades</option><option value="urgente">Urgente</option><option value="alta">Alta</option><option value="normal">Normal</option><option value="baja">Baja</option></select>
+      <button class="btn btn-prim" onclick="openModalServicio()">+ Nueva Orden</button>
+    </div>
+    <div id="svc-list"></div>
+  </div>
+</div>
+
+<!-- ══ FTTH / OLT ══ -->
+<div class="page" id="page-ftth">
+  <div class="card">
+    <div class="stitle">💡 FTTH — Gestión de OLTs <button class="btn btn-prim btn-sm" style="margin-left:auto" onclick="openModalOlt()">+ Nueva OLT</button></div>
+    <div id="olt-list"></div>
+  </div>
+</div>
+
+<!-- ══ INCIDENCIAS ══ -->
+<div class="page" id="page-incidencias">
+  <div class="card">
+    <div class="stitle">🚨 Incidencias de Red <button class="btn btn-rj btn-sm" style="margin-left:auto" onclick="openModalIncidencia()">+ Nueva Incidencia</button></div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.7rem">
+      <select id="inc-estado" onchange="loadIncidencias()"><option value="">Todas</option><option value="abierta">Abiertas</option><option value="en_proceso">En proceso</option><option value="cerrada">Cerradas</option></select>
+      <select id="inc-tipo" onchange="loadIncidencias()">
+        <option value="">Todos los tipos</option>
+        <option value="torre_sin_servicio">Torre sin servicio</option>
+        <option value="ap_caido">AP Caído</option>
+        <option value="nap_sin_luz">NAP sin luz</option>
+        <option value="corte_fibra">Corte de fibra</option>
+        <option value="olt_offline">OLT offline</option>
+        <option value="masivo">Masivo</option>
+        <option value="otro">Otro</option>
+      </select>
+    </div>
+    <div id="inc-list"></div>
+  </div>
+</div>
+
+<!-- ══ STOCK ══ -->
+<div class="page" id="page-stock">
+  <div class="grid-2" style="align-items:start">
+    <div class="card">
+      <div class="stitle">📦 Equipos Instalados (desde DB)</div>
+      <div style="display:flex;gap:.4rem;margin-bottom:.6rem">
+        <select id="stock-tipo-fil" onchange="filterStockInstalado()">
+          <option value="">Todos</option><option value="fibra">Fibra</option><option value="inalambrico">Inalámbrico</option>
+        </select>
+      </div>
+      <div id="stock-instalado-list"></div>
+    </div>
+    <div class="card">
+      <div class="stitle">🗃️ Stock en Depósito <button class="btn btn-prim btn-sm" style="margin-left:auto" onclick="openModalStock()">+ Agregar</button></div>
+      <div id="stock-manual-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ BAJAS ══ -->
+<div class="page" id="page-bajas">
+  <div class="card">
+    <div class="stitle">📋 Gestión de Bajas</div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.7rem">
+      <select id="baja-loc" onchange="loadBajas()"><option value="">Todas las localidades</option></select>
+      <select id="baja-tipo" onchange="loadBajas()"><option value="">Todos los tipos</option><option value="fibra">Fibra</option><option value="inalambrico">Inalámbrico</option></select>
+      <select id="baja-orden" onchange="loadBajas()"><option value="fecha">Ordenar por fecha</option><option value="localidad">Por localidad</option><option value="nombre">Por nombre</option></select>
+      <button class="btn btn-vd" onclick="exportBajas()">⬇ Exportar CSV</button>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Nombre</th><th>Teléfono</th><th>Localidad</th><th>Tipo</th><th>Equipo / Serie</th><th>NAP</th><th>F. Rescisión</th><th>Días pendiente</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody id="baja-tbody"></tbody>
+      </table>
+    </div>
+    <div style="margin-top:.5rem;font-size:.78rem;color:var(--txt2)">Total: <b id="baja-total">0</b> registros</div>
+  </div>
+</div>
+
+<!-- ══ ABONOS ══ -->
+<div class="page" id="page-abonos">
+  <div class="card">
+    <div class="stitle">💰 Planes y Abonos <button class="btn btn-prim btn-sm" style="margin-left:auto" onclick="openModalAbono()">+ Nuevo Plan</button></div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Nombre</th><th>Tipo</th><th>Precio</th><th>Bajada</th><th>Subida</th><th>Descripción</th><th>Acciones</th></tr></thead>
+        <tbody id="abono-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ HISTORIAL ══ -->
+<div class="page" id="page-historial">
+  <div class="card">
+    <div class="stitle">📜 Historial de Actividad</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Fecha</th><th>Usuario</th><th>Tipo</th><th>Título</th><th>Detalle</th></tr></thead>
+        <tbody id="hist-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ USUARIOS ══ -->
+<div class="page" id="page-usuarios">
+  <div class="card">
+    <div class="stitle">👤 Usuarios del Sistema <button class="btn btn-prim btn-sm" style="margin-left:auto" onclick="openModalUsuario()">+ Nuevo</button></div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody id="usr-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<!-- ══ TORRES ══ -->
+<div class="page" id="page-torres">
+  <div class="card">
+    <div class="stitle">🗼 Torres Repetidoras <button class="btn btn-prim btn-sm" style="margin-left:auto" onclick="openModalTorre()">+ Nueva Torre</button></div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.7rem">
+      <input type="text" id="torre-q" placeholder="🔍 Buscar torre..." style="flex:1;min-width:200px" oninput="debouncedLoadTorres()">
+      <select id="torre-estado-fil" onchange="loadTorres()"><option value="">Todos los estados</option><option value="activa">Activas</option><option value="inactiva">Inactivas</option><option value="mantenimiento">Mantenimiento</option></select>
+    </div>
+    <div id="torres-list"></div>
+  </div>
+</div>
+
+<!-- ══ MONITOREO ══ -->
+<div class="page" id="page-monitoreo">
+  <div class="card">
+    <div class="stitle">📡 Monitoreo de Red
+      <button class="btn btn-vd btn-sm" style="margin-left:auto" onclick="pingTodos()">🔄 Verificar todo</button>
+      <button class="btn btn-prim btn-sm" onclick="openModalMonitoreo()">+ Agregar IP</button>
+    </div>
+    <div id="mon-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;margin-bottom:.8rem"></div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Dispositivo</th><th>Tipo</th><th>IP</th><th>Estado</th><th>Latencia</th><th>Último check</th><th>Acciones</th></tr></thead>
+        <tbody id="mon-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ AGENDA ══ -->
+<div class="page" id="page-agenda">
+  <div class="card">
+    <div class="stitle">📅 Agenda Técnica</div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.7rem;align-items:center">
+      <input type="date" id="ag-desde" onchange="loadAgenda()">
+      <input type="date" id="ag-hasta" onchange="loadAgenda()">
+      <select id="ag-tecnico" onchange="loadAgenda()"><option value="">Todos los técnicos</option></select>
+      <button class="btn btn-vd" onclick="exportarHojaCorte()">📄 Hoja de Corte PDF</button>
+    </div>
+    <div id="agenda-calendar"></div>
+  </div>
+</div>
+
+<!-- ══ CONFIG ══ -->
+<div class="page" id="page-config">
+  <div class="grid-2" style="align-items:start;gap:.8rem">
+    <!-- Telegram -->
+    <div class="card">
+      <div class="stitle">🤖 Alertas Telegram</div>
+      <div class="alert-box info" style="margin-bottom:.7rem">
+        Creá un bot en <b>@BotFather</b>, obtenés el token y el Chat ID del canal donde querés recibir alertas.
+      </div>
+      <div><label>Token del Bot</label><input id="cfg-tg-token" type="password" placeholder="123456:ABC..."></div>
+      <div style="margin-top:.5rem"><label>Chat ID</label><input id="cfg-tg-chatid" placeholder="-100123456789"></div>
+      <div style="margin-top:.7rem;display:flex;gap:.4rem">
+        <button class="btn btn-prim" onclick="saveConfig()">💾 Guardar</button>
+        <button class="btn btn-gray" onclick="testTelegram()">🧪 Probar conexión</button>
+      </div>
+      <div id="cfg-tg-result" style="margin-top:.5rem"></div>
+    </div>
+    <!-- Monitoreo -->
+    <div class="card">
+      <div class="stitle">📡 Configuración de Monitoreo</div>
+      <div><label>Intervalo de monitoreo (segundos)</label><input id="cfg-mon-intervalo" type="number" value="60" min="30" max="3600"></div>
+      <div style="margin-top:.5rem"><label>Umbral alerta NAP (clientes)</label><input id="cfg-nap-umbral" type="number" value="6" min="1" max="32"></div>
+      <div style="margin-top:.5rem"><label>Timeout de ping (segundos)</label><input id="cfg-ping-timeout" type="number" value="2" min="1" max="10"></div>
+      <div style="margin-top:.7rem"><button class="btn btn-prim" onclick="saveConfig()">💾 Guardar</button></div>
+    </div>
+    <!-- UISP -->
+    <div class="card">
+      <div class="stitle">🌐 Integración UISP (Ubiquiti)</div>
+      <div class="alert-box warn" style="margin-bottom:.7rem">Ingresá los datos de tu servidor UISP para sincronizar dispositivos automáticamente.</div>
+      <div><label>URL del servidor UISP</label><input id="cfg-uisp-url" placeholder="https://uisp.tuempresa.com"></div>
+      <div style="margin-top:.5rem"><label>Token API de UISP</label><input id="cfg-uisp-token" type="password" placeholder="Token de acceso UISP"></div>
+      <div style="margin-top:.7rem;display:flex;gap:.4rem">
+        <button class="btn btn-prim" onclick="saveConfig()">💾 Guardar</button>
+        <button class="btn btn-gray" onclick="testUisp()">🧪 Probar</button>
+      </div>
+    </div>
+    <!-- Empresa -->
+    <div class="card">
+      <div class="stitle">🏢 Datos de la Empresa</div>
+      <div class="form-row">
+        <div><label>Razón Social</label><input id="cfg-razon" placeholder="Telecomunicaciones S.A."></div>
+        <div><label>Nombre de Fantasía</label><input id="cfg-fantasia" placeholder="ERLAN"></div>
+      </div>
+      <div class="form-row" style="margin-top:.4rem">
+        <div><label>CUIT</label><input id="cfg-cuit" placeholder="30-00000000-0" style="font-family:monospace"></div>
+        <div><label>Teléfono</label><input id="cfg-tel" placeholder="0343-..."></div>
+      </div>
+      <div style="margin-top:.4rem"><label>Dirección</label><input id="cfg-dir" placeholder="Calle y número, ciudad"></div>
+      <div style="margin-top:.4rem"><label>Email</label><input id="cfg-email" type="email" placeholder="info@erlan.com.ar"></div>
+      <div style="margin-top:.7rem"><button class="btn btn-prim" onclick="saveEmpresa()">💾 Guardar empresa</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ACTIVACIÓN ══ -->
+<div class="page" id="page-activacion">
+  <div class="card">
+    <div class="stitle">⚡ Cálculo y Activación de Cliente</div>
+    <div class="alert-box info" id="act-cliente-info">Seleccioná un cliente para activar</div>
+    <div id="act-body" style="display:none">
+      <input type="hidden" id="act-cli-id">
+      <div class="grid-2" style="margin-bottom:.7rem;gap:.8rem;align-items:start">
+        <!-- Panel izquierdo: datos del cliente -->
+        <div class="card" style="background:#f0f4f8">
+          <div class="stitle" style="font-size:.85rem">📋 Datos del Cliente</div>
+          <div id="act-datos-cli" style="font-size:.83rem;display:grid;gap:.3rem"></div>
+        </div>
+        <!-- Panel derecho: asignación -->
+        <div>
+          <div class="form-row">
+            <div>
+              <label>Nº de Cliente</label>
+              <input id="act-nro-cli" placeholder="032156" style="font-family:monospace">
+            </div>
+            <div>
+              <label>IP de Servicio (169.254.x.x)</label>
+              <div style="display:flex;gap:.3rem">
+                <input id="act-ip" placeholder="169.254.x.x" style="font-family:monospace;flex:1">
+                <button class="btn btn-gray btn-sm" onclick="sugerirIP()">🎲 Sugerir</button>
+              </div>
+            </div>
+          </div>
+          <div class="form-row">
+            <div>
+              <label>Usuario PPPoE (auto = nº cliente)</label>
+              <input id="act-pppoe-user" placeholder="032156" style="font-family:monospace">
+            </div>
+            <div>
+              <label>Clave PPPoE (4 hex)</label>
+              <div style="display:flex;gap:.3rem">
+                <input id="act-pppoe-pass" placeholder="a3f7" style="font-family:monospace;flex:1" maxlength="8">
+                <button class="btn btn-gray btn-sm" onclick="generarPPPoE()">🎲 Generar</button>
+              </div>
+            </div>
+          </div>
+          <div id="act-tipo-fields">
+            <!-- Se completa según tipo -->
+          </div>
+          <div class="form-row">
+            <div>
+              <label>NAP asignada</label>
+              <div style="position:relative">
+                <input id="act-nap-q" placeholder="Buscar NAP..." oninput="buscarNapActivacion()" autocomplete="off" list="nap-datalist">
+                <div id="act-nap-drop" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:1.5px solid var(--brd);border-radius:0 0 8px 8px;box-shadow:0 8px 20px rgba(0,0,0,.15);z-index:600;max-height:180px;overflow-y:auto"></div>
+              </div>
+            </div>
+            <div>
+              <label>Equipo a instalar</label>
+              <input id="act-equipo-modelo" placeholder="Modelo del equipo" list="equipo-datalist">
+              <datalist id="equipo-datalist"></datalist>
+            </div>
+          </div>
+          <div class="form-row">
+            <div><label>Marca</label><input id="act-equipo-marca" placeholder="MikroTik, ZTE..."></div>
+            <div><label>Nº de Serie</label><input id="act-equipo-serie" placeholder="Serial number" style="font-family:monospace"></div>
+          </div>
+          <div id="act-inalambrico-extra" style="display:none">
+            <div class="form-row">
+              <div><label>Torre repetidora más cercana</label>
+                <select id="act-torre-id"><option value="">Seleccionar torre...</option></select>
+              </div>
+              <div><label>Distancia estimada a la torre</label>
+                <div style="display:flex;gap:.3rem">
+                  <input id="act-distancia" placeholder="850" type="number" style="flex:1">
+                  <select id="act-distancia-unidad" style="width:70px"><option>m</option><option>km</option></select>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="act-fibra-extra" style="display:none">
+            <div class="form-row">
+              <div><label>OLT</label><input id="act-olt-nombre" placeholder="OLT-001" list="olt-datalist"></div>
+              <div><label>Puerto PON</label><input id="act-olt-puerto" type="number" placeholder="1" min="1"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Preview PPPoE -->
+      <div id="act-preview" style="display:none;background:#1a3d6b;color:#fff;border-radius:10px;padding:1rem;margin-top:.5rem">
+        <div style="font-size:.8rem;opacity:.75;margin-bottom:.4rem">📋 DATOS DE CONFIGURACIÓN GENERADOS</div>
+        <div class="grid-3" style="gap:.6rem">
+          <div><div style="font-size:.7rem;opacity:.7">USUARIO PPPoE</div><div style="font-family:monospace;font-size:1.1rem;font-weight:700" id="prev-user">—</div></div>
+          <div><div style="font-size:.7rem;opacity:.7">CLAVE PPPoE</div><div style="font-family:monospace;font-size:1.1rem;font-weight:700" id="prev-pass">—</div></div>
+          <div><div style="font-size:.7rem;opacity:.7">IP SERVICIO</div><div style="font-family:monospace;font-size:1.1rem;font-weight:700" id="prev-ip">—</div></div>
+        </div>
+      </div>
+      <div style="margin-top:.8rem;display:flex;gap:.5rem;justify-content:flex-end">
+        <button class="btn btn-gray" onclick="nav('clientes')">← Volver</button>
+        <button class="btn btn-am" onclick="previewActivacion()">👁 Vista Previa</button>
+        <button class="btn btn-vd" onclick="confirmarActivacion()">⚡ Activar Cliente</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end layout -->
+
+<!-- ═══════ MODALES ═══════ -->
+
+<!-- Modal Cliente -->
+<div id="modal-cliente" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-cliente')">
+<div class="modal" style="max-width:700px">
+  <div class="modal-hd"><span id="mcli-title">Nuevo Cliente</span><button class="modal-close" onclick="closeModal('modal-cliente')">×</button></div>
+  <div class="modal-bd" style="max-height:70vh;overflow-y:auto">
+    <input type="hidden" id="mcli-id">
+    <div class="form-row">
+      <div><label>N° de Cliente <span style="color:#888;font-size:.78rem;font-weight:400">(formato 000000)</span></label>
+        <input id="mcli-nro" placeholder="000000" maxlength="6" style="font-family:monospace;letter-spacing:1px"
+               oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+      </div>
+      <div><label>Nombre completo *</label><input id="mcli-nombre" placeholder="Nombre y apellido"></div>
+    </div>
+    <div class="form-row">
+      <div><label>DNI</label><input id="mcli-dni" placeholder="Sin puntos"></div>
+      <div><label>Email</label><input id="mcli-email" type="email" placeholder="correo@..."></div>
+    </div>
+    
+    <!-- Teléfonos múltiples -->
+    <div style="margin:.6rem 0;padding:.5rem .7rem;background:var(--bg2,#f5f5f5);border-radius:6px">
+      <label style="display:flex;align-items:center;gap:.4rem;font-weight:600">
+        📞 Teléfonos
+        <button type="button" class="btn btn-prim btn-xs" style="margin-left:auto" onclick="agregarTelefono()">+ Agregar</button>
+      </label>
+      <div id="mcli-tels-list" style="margin-top:.4rem"></div>
+    </div>
+    
+    <div class="form-row">
+      <div><label>Dirección</label><input id="mcli-dir" placeholder="Calle y número"></div>
+      <div><label>Localidad</label><input id="mcli-loc" placeholder="Localidad" list="loc-datalist"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Latitud</label><input id="mcli-lat" placeholder="-31.7345 o 31°44'04.2&quot;S"></div>
+      <div><label>Longitud</label><input id="mcli-lng" placeholder="-60.5280 o 60°31'41.0&quot;W"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Tipo de servicio</label>
+        <select id="mcli-tipo" onchange="toggleFtthFields()">
+          <option value="inalambrico">Inalámbrico</option>
+          <option value="fibra">Fibra óptica</option>
+        </select>
+      </div>
+      <div><label>Estado</label>
+        <select id="mcli-estado">
+          <option value="activo">Activo</option>
+          <option value="suspendido">Suspendido</option>
+          <option value="rescision">Pte. Rescisión</option>
+          <option value="baja">Baja</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div><label>Plan / Abono</label>
+        <input id="mcli-plan" placeholder="Plan..." list="plan-datalist" onchange="onPlanChange()" oninput="onPlanChange()">
+      </div>
+      <div><label>Precio mensual <span style="color:#888;font-size:.78rem;font-weight:400">(se autocompleta del plan)</span></label>
+        <input id="mcli-precio" type="number" step="0.01" placeholder="0.00">
+      </div>
+    </div>
+    <div class="form-row">
+      <div><label>Agente comercial</label>
+        <select id="mcli-agente">
+          <option value="">— Sin asignar —</option>
+        </select>
+      </div>
+      <div></div>
+    </div>
+    <div class="form-row">
+      <div><label>Modelo equipo</label><input id="mcli-equipo-modelo" placeholder="RouterBoard, ONU..."></div>
+      <div><label>Marca</label><input id="mcli-equipo-marca" placeholder="MikroTik, ZTE..."></div>
+    </div>
+    <div class="form-row">
+      <div><label>Nº de serie</label><input id="mcli-serie" placeholder="Serial number"></div>
+      <div><label>IP asignada</label><input id="mcli-ip" placeholder="192.168.x.x"></div>
+    </div>
+    
+    <!-- Campos FTTH (ocultos para inalámbrico) -->
+    <div id="ftth-fields" style="display:none">
+      <hr class="sep">
+      <div style="font-weight:600;margin-bottom:.4rem">📡 Conectividad FTTH</div>
+      <div class="form-row">
+        <div><label>NAP</label><input id="mcli-nap" placeholder="Nombre de NAP" list="nap-datalist"></div>
+        <div></div>
+      </div>
+      <div class="form-row">
+        <div><label>OLT</label><input id="mcli-olt-nombre" placeholder="Nombre OLT" list="olt-datalist"></div>
+        <div><label>Puerto PON</label><input id="mcli-olt-puerto" placeholder="1, 2, 3..." type="number" min="1"></div>
+      </div>
+      <div class="form-row">
+        <div><label>Señal de instalación (dBm)</label>
+          <input id="mcli-senal-instalacion" placeholder="-23.5" style="font-family:monospace">
+        </div>
+        <div></div>
+      </div>
+    </div>
+    
+    <!-- Campos Inalámbrico -->
+    <div id="inal-fields" style="display:none">
+      <hr class="sep">
+      <div style="font-weight:600;margin-bottom:.4rem">📶 Conectividad Inalámbrica</div>
+      <div class="form-row">
+        <div><label>Torre enlazada</label>
+          <select id="mcli-torre">
+            <option value="">— Sin torre —</option>
+          </select>
+        </div>
+        <div><label>AP del cual toma servicio</label>
+          <input id="mcli-ap" placeholder="ej: AP-Norte-5GHz">
+        </div>
+      </div>
+    </div>
+    
+    <div class="form-row">
+      <div><label>Fecha de alta</label><input id="mcli-fecha-alta" type="date"></div>
+      <div><label>Último pago</label><input id="mcli-ultimo-pago" type="date"></div>
+    </div>
+    <div><label>Observaciones</label><textarea id="mcli-obs" rows="2" placeholder="Notas adicionales..."></textarea></div>
+    
+    <!-- Info migración FTTH -->
+    <div id="ftth-potencial-info" style="display:none;margin-top:.5rem"></div>
+    
+    <!-- Históricos (visibles solo en edición) -->
+    <div id="hist-section" style="display:none;margin-top:1rem;border-top:2px solid var(--brd);padding-top:.7rem">
+      <div style="display:flex;gap:.4rem;margin-bottom:.5rem;flex-wrap:wrap">
+        <button type="button" class="btn btn-gray btn-sm" onclick="showHistTab('equipos')">📦 Histórico Equipos</button>
+        <button type="button" class="btn btn-gray btn-sm" onclick="showHistTab('torre_ap')">🗼 Histórico Torre/AP</button>
+        <button type="button" class="btn btn-gray btn-sm" onclick="showHistTab('senales')">📡 Histórico Señales</button>
+        <button type="button" class="btn btn-prim btn-sm" style="margin-left:auto" onclick="agregarSenalNueva()">+ Registrar señal</button>
+      </div>
+      <div id="hist-tab-content" style="background:var(--bg2,#f5f5f5);border-radius:6px;padding:.6rem;font-size:.85rem;max-height:280px;overflow-y:auto"></div>
+    </div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-gray" onclick="closeModal('modal-cliente')">Cancelar</button>
+    <button class="btn btn-prim" onclick="saveCliente()">💾 Guardar</button>
+  </div>
+</div>
+</div>
+
+<!-- Modal Conflicto Duplicado -->
+<div id="modal-duplicado" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-duplicado')">
+<div class="modal" style="max-width:520px">
+  <div class="modal-hd" style="background:#dc3545;color:#fff">
+    <span>⚠️ Valor duplicado</span>
+    <button class="modal-close" onclick="closeModal('modal-duplicado')" style="color:#fff">×</button>
+  </div>
+  <div class="modal-bd">
+    <p id="dup-mensaje" style="margin:.5rem 0 1rem 0;font-size:.95rem"></p>
+    <div id="dup-conflicto-box" style="background:var(--bg2,#f5f5f5);border-left:4px solid #dc3545;padding:.7rem .9rem;border-radius:4px;margin-bottom:1rem">
+      <div style="font-size:.78rem;color:var(--txt2,#666);margin-bottom:.2rem">Ya asignado a:</div>
+      <div id="dup-conflicto-nombre" style="font-weight:600;font-size:1rem"></div>
+      <div id="dup-conflicto-id" style="font-size:.8rem;color:var(--txt2,#666);margin-top:.15rem"></div>
+    </div>
+    <p style="font-size:.85rem;color:var(--txt2,#666);margin:0">
+      Para continuar, modificá el valor o resolvé el conflicto en la otra ficha.
+    </p>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-gray" onclick="closeModal('modal-duplicado')">Cancelar</button>
+    <button class="btn btn-am" onclick="abrirFichaConflicto()">📋 Ver ficha del cliente</button>
+    <button id="dup-btn-forzar" class="btn btn-rj" style="display:none" onclick="forzarGuardadoCliente()">⚠️ Forzar guardado</button>
+  </div>
+</div>
+</div>
+
+<!-- Modal NAP -->
+<div id="modal-nap" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-nap')">
+<div class="modal" style="max-width:650px">
+  <div class="modal-hd"><span id="mnap-title">Nueva NAP</span><button class="modal-close" onclick="closeModal('modal-nap')">×</button></div>
+  <div class="modal-bd">
+    <input type="hidden" id="mnap-id">
+    <div style="background:#e8f0fe;border:1px solid #b3d4fc;border-radius:8px;padding:.6rem .8rem;margin-bottom:.8rem;font-size:.78rem;color:#1a3d6b">
+      <b>📋 Nomenclatura normalizada:</b> El nombre se genera automáticamente como <code>RED - CDO X - NAP Y</code>
+    </div>
+    <div class="form-row" style="grid-template-columns:1fr 1fr 1fr">
+      <div><label>Red *</label>
+        <div style="display:flex;gap:.3rem">
+          <select id="mnap-red" style="flex:1" onchange="generarNombreNap()">
+            <option value="">— Seleccionar red —</option>
+          </select>
+          <button class="btn btn-gray btn-xs" onclick="promptNuevaRed()" title="Agregar nueva red" style="flex-shrink:0;padding:.3rem .5rem">+</button>
+        </div>
+      </div>
+      <div><label>CDO *</label><input id="mnap-cdo" placeholder="Ej: 1, 2, 3..." oninput="generarNombreNap()"></div>
+      <div><label>NAP (1–8) *</label>
+        <select id="mnap-nap-num" onchange="generarNombreNap()">
+          <option value="">—</option>
+          <option value="1">1</option><option value="2">2</option>
+          <option value="3">3</option><option value="4">4</option>
+          <option value="5">5</option><option value="6">6</option>
+          <option value="7">7</option><option value="8">8</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div><label>Nombre generado</label><input id="mnap-nombre" readonly style="background:#f0f0f0;font-weight:700;font-family:monospace"></div>
+      <div><label>Localidad</label><input id="mnap-loc" placeholder="Localidad" list="loc-datalist"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Capacidad (puertos)</label><input id="mnap-cap" type="number" value="8" min="1" max="8" readonly style="background:#f0f0f0"></div>
+      <div><label>Estado</label>
+        <select id="mnap-estado">
+          <option value="activo">✓ Activo</option>
+          <option value="mantenimiento">🔧 Mantenimiento</option>
+          <option value="alerta">⚠️ Alerta</option>
+          <option value="inactivo">⊘ Inactivo</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div><label>Latitud</label><input id="mnap-lat" placeholder="-31.7345 o 31°44'04.2&quot;S"></div>
+      <div><label>Longitud</label><input id="mnap-lng" placeholder="-60.5280 o 60°31'41.0&quot;W"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Señal de instalación (dBm) <span style="color:#888;font-size:.75rem;font-weight:400">(se registra con timestamp al alta)</span></label>
+        <input id="mnap-senal" placeholder="-23.5" style="font-family:monospace">
+      </div>
+      <div></div>
+    </div>
+    <div><label>Descripción</label><input id="mnap-desc" placeholder="Ubicación, calle..."></div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-gray" onclick="closeModal('modal-nap')">Cancelar</button>
+    <button class="btn btn-prim" onclick="saveNap()">💾 Guardar</button>
+  </div>
+</div>
+</div>
+
+<!-- Modal NAP Duplicado -->
+<div id="modal-nap-duplicado" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-nap-duplicado')">
+<div class="modal" style="max-width:520px">
+  <div class="modal-hd" style="background:#dc3545;color:#fff">
+    <span>⚠️ NAP duplicado</span>
+    <button class="modal-close" onclick="closeModal('modal-nap-duplicado')" style="color:#fff">×</button>
+  </div>
+  <div class="modal-bd">
+    <p id="napdup-mensaje" style="margin:.5rem 0 1rem 0;font-size:.95rem"></p>
+    <div style="background:var(--bg2,#f5f5f5);border-left:4px solid #dc3545;padding:.7rem .9rem;border-radius:4px;margin-bottom:1rem">
+      <div style="font-size:.78rem;color:var(--txt2,#666);margin-bottom:.2rem">Ya cargado:</div>
+      <div id="napdup-conflicto-nombre" style="font-weight:600;font-size:1rem"></div>
+      <div id="napdup-conflicto-id" style="font-size:.8rem;color:var(--txt2,#666);margin-top:.15rem"></div>
+    </div>
+    <p style="font-size:.85rem;color:var(--txt2,#666);margin:0">
+      Para continuar, modificá los datos o editá la NAP existente.
+    </p>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-gray" onclick="closeModal('modal-nap-duplicado')">Cancelar</button>
+    <button class="btn btn-am" onclick="abrirFichaNapConflicto()">📋 Editar NAP existente</button>
+    <button id="napdup-btn-forzar" class="btn btn-rj" style="display:none" onclick="forzarGuardadoNap()">⚠️ Forzar guardado</button>
+  </div>
+</div>
+</div>
+
+<!-- Modal Servicio -->
+<div id="modal-servicio" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-servicio')">
+<div class="modal" style="max-width:650px">
+  <div class="modal-hd"><span id="msvc-title">Nueva Orden de Servicio</span><button class="modal-close" onclick="closeModal('modal-servicio')">×</button></div>
+  <div class="modal-bd">
+    <input type="hidden" id="msvc-id">
+    <div class="form-row">
+      <div>
+        <label>Cliente *</label>
+        <div style="position:relative">
+          <input id="msvc-cli-q" placeholder="Buscar cliente..." oninput="searchClienteForSvc()" autocomplete="off">
+          <div id="msvc-cli-drop" style="display:none;position:absolute;top:100%;left:0;width:100%;background:#fff;border:1.5px solid var(--brd);border-radius:0 0 8px 8px;box-shadow:0 8px 20px rgba(0,0,0,.15);z-index:600;max-height:160px;overflow-y:auto"></div>
+        </div>
+        <input type="hidden" id="msvc-cli-id">
+      </div>
+      <div><label>Tipo de servicio</label>
+        <select id="msvc-tipo" onchange="svcTipoChange()">
+          <option value="reparacion_fibra">Reparación — Fibra</option>
+          <option value="reparacion_inalambrico">Reparación — Inalámbrico</option>
+          <option value="migracion_ftth">Migración a FTTH</option>
+          <option value="cambio_domicilio">Cambio de domicilio</option>
+          <option value="instalacion">Nueva Instalación</option>
+          <option value="retiro_equipo">Retiro de Equipo</option>
+          <option value="service_con_costo">Service con Costo</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div><label>Técnico asignado</label><input id="msvc-tecnico" placeholder="Nombre del técnico" list="tecnico-datalist"></div>
+      <div><label>Prioridad</label>
+        <select id="msvc-prioridad">
+          <option value="normal">Normal</option>
+          <option value="alta">Alta</option>
+          <option value="urgente">Urgente</option>
+          <option value="baja">Baja</option>
+        </select>
+      </div>
+    </div>
+    <div id="svc-costo-row" style="display:none" class="form-row">
+      <div><label>Costo ($)</label><input id="msvc-costo" type="number" step="0.01" value="0" placeholder="0.00"></div>
+      <div></div>
+    </div>
+    <div><label>Descripción del problema</label><textarea id="msvc-desc" rows="3" placeholder="Detallá el servicio a realizar..."></textarea></div>
+    <div class="form-row" style="margin-top:.5rem">
+      <div><label>Estado</label>
+        <select id="msvc-estado">
+          <option value="pendiente">Pendiente</option>
+          <option value="en_proceso">En proceso</option>
+          <option value="cerrado">Cerrado</option>
+          <option value="cancelado">Cancelado</option>
+        </select>
+      </div>
+      <div><label>Observaciones</label><input id="msvc-obs" placeholder="Notas adicionales"></div>
+    </div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-gray" onclick="closeModal('modal-servicio')">Cancelar</button>
+    <button class="btn btn-prim" onclick="saveServicio()">💾 Guardar</button>
+  </div>
+</div>
+</div>
+
+<!-- Modal OLT -->
+<div id="modal-olt" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-olt')">
+<div class="modal">
+  <div class="modal-hd"><span id="molt-title">Nueva OLT</span><button class="modal-close" onclick="closeModal('modal-olt')">×</button></div>
+  <div class="modal-bd">
+    <input type="hidden" id="molt-id">
+    <div class="form-row">
+      <div><label>Nombre *</label><input id="molt-nombre" placeholder="OLT-001"></div>
+      <div><label>Modelo</label><input id="molt-modelo" placeholder="V-SOL V1600G1B..."></div>
+    </div>
+    <div class="form-row">
+      <div><label>IP Acceso Remoto</label><input id="molt-ip-remota" placeholder="200.x.x.x"></div>
+      <div><label>IP Red Local (169.254.x.x)</label><input id="molt-ip-red" placeholder="169.254.x.x"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Puertos PON</label><input id="molt-puertos" type="number" value="4" min="1" max="32"></div>
+      <div><label>Ubicación</label><input id="molt-ubicacion" placeholder="Dirección física"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Latitud</label><input id="molt-lat" placeholder="-31.7345 o 31°44'04.2&quot;S"></div>
+      <div><label>Longitud</label><input id="molt-lng" placeholder="-60.5280 o 60°31'41.0&quot;W"></div>
+    </div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-gray" onclick="closeModal('modal-olt')">Cancelar</button>
+    <button class="btn btn-prim" onclick="saveOlt()">💾 Guardar</button>
+  </div>
+</div>
+</div>
+
+<!-- Modal Incidencia -->
+<div id="modal-incidencia" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-incidencia')">
+<div class="modal">
+  <div class="modal-hd"><span id="minc-title">Nueva Incidencia</span><button class="modal-close" onclick="closeModal('modal-incidencia')">×</button></div>
+  <div class="modal-bd">
+    <input type="hidden" id="minc-id">
+    <div><label>Título *</label><input id="minc-titulo" placeholder="Descripción corta de la incidencia"></div>
+    <div class="form-row" style="margin-top:.5rem">
+      <div><label>Tipo</label>
+        <select id="minc-tipo">
+          <option value="torre_sin_servicio">Torre sin servicio</option>
+          <option value="ap_caido">AP Caído</option>
+          <option value="nap_sin_luz">NAP sin luz</option>
+          <option value="corte_fibra">Corte de fibra</option>
+          <option value="olt_offline">OLT offline</option>
+          <option value="masivo">Masivo</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+      <div><label>Prioridad</label>
+        <select id="minc-prioridad">
+          <option value="media">Media</option>
+          <option value="alta">Alta</option>
+          <option value="critica">Crítica</option>
+          <option value="baja">Baja</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:.5rem">
+      <div><label>Técnico a cargo</label><input id="minc-tecnico" placeholder="Técnico" list="tecnico-datalist"></div>
+      <div><label>Estado</label>
+        <select id="minc-estado">
+          <option value="abierta">Abierta</option>
+          <option value="en_proceso">En proceso</option>
+          <option value="cerrada">Cerrada</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-top:.5rem"><label>Afectados (clientes/zonas)</label><input id="minc-afectados" placeholder="Zona, NAP, cantidad de clientes..."></div>
+    
+    <!-- ── Objeto afectado: torre / nap / cdo / general ── -->
+    <div style="margin-top:.7rem;padding:.7rem;background:var(--bg2,#f5f5f5);border-radius:6px;border-left:3px solid var(--prim,#1976d2)">
+      <label style="font-weight:700;margin-bottom:.4rem;display:block">🎯 Objeto afectado</label>
+      <div class="form-row">
+        <div><label>Tipo de objeto</label>
+          <select id="minc-objeto-tipo" onchange="onIncObjetoTipoChange()">
+            <option value="general">📋 General (sin objeto específico)</option>
+            <option value="torre">🗼 Torre</option>
+            <option value="nap">🔌 NAP (uno o varios)</option>
+            <option value="cdo">📦 CDO completo (afecta todos sus NAPs)</option>
+          </select>
+        </div>
+        <div></div>
+      </div>
+      
+      <!-- Campos para torre (existentes) -->
+      <div id="minc-block-torre" style="display:none;margin-top:.5rem">
+        <label>Torre afectada</label>
+        <select id="minc-torre"><option value="">Sin torre vinculada</option></select>
+      </div>
+      
+      <!-- Campos para NAP/CDO -->
+      <div id="minc-block-naptree" style="display:none;margin-top:.5rem">
+        <div class="form-row">
+          <div><label>Red</label>
+            <select id="minc-red" onchange="onIncRedChange()"><option value="">— Seleccionar —</option></select>
+          </div>
+          <div><label>OLT</label>
+            <select id="minc-olt" onchange="onIncOltChange()"><option value="">— Todas —</option></select>
+          </div>
+        </div>
+        <!-- Selector específico según objeto_tipo -->
+        <div id="minc-block-cdo" style="display:none;margin-top:.5rem">
+          <label>CDO afectado</label>
+          <select id="minc-cdo" onchange="onIncCdoChange()"><option value="">— Seleccionar CDO —</option></select>
+          <div id="minc-cdo-preview" style="margin-top:.4rem;font-size:.82rem;color:var(--txt2)"></div>
+        </div>
+        <div id="minc-block-naps" style="display:none;margin-top:.5rem">
+          <label>NAP(s) afectados <span style="color:#888;font-weight:400;font-size:.78rem">(Ctrl/Cmd+click para múltiples)</span></label>
+          <input type="text" id="minc-naps-q" placeholder="🔍 Filtrar lista por nombre, localidad..." oninput="filtrarNapsIncidencia()" style="margin-bottom:.3rem;width:100%">
+          <select id="minc-naps" multiple size="8" style="height:auto;width:100%"></select>
+          <div id="minc-naps-count" style="font-size:.72rem;color:var(--txt2);margin-top:.2rem"></div>
+        </div>
+      </div>
+    </div>
+    
+    <div style="margin-top:.5rem"><label>Descripción</label><textarea id="minc-desc" rows="3" placeholder="Detalle de la incidencia..."></textarea></div>
+    <div style="margin-top:.5rem" id="minc-resolucion-wrap"><label>Resolución</label><textarea id="minc-resolucion" rows="2" placeholder="Cómo se resolvió..."></textarea></div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-gray" onclick="closeModal('modal-incidencia')">Cancelar</button>
+    <button class="btn btn-prim" onclick="saveIncidencia()">💾 Guardar</button>
+  </div>
+</div>
+</div>
+
+<!-- Modal Abono -->
+<div id="modal-abono" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-abono')">
+<div class="modal">
+  <div class="modal-hd"><span id="mabo-title">Nuevo Plan</span><button class="modal-close" onclick="closeModal('modal-abono')">×</button></div>
+  <div class="modal-bd">
+    <input type="hidden" id="mabo-id">
+    <div class="form-row">
+      <div><label>Nombre *</label><input id="mabo-nombre" placeholder="Plan Fibra 100M..."></div>
+      <div><label>Tipo</label>
+        <select id="mabo-tipo">
+          <option value="fibra">Fibra óptica</option>
+          <option value="inalambrico">Inalámbrico</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div><label>Precio ($)</label><input id="mabo-precio" type="number" step="0.01" placeholder="0.00"></div>
+      <div><label>Velocidad Bajada (Mbps)</label><input id="mabo-bajada" type="number" placeholder="100"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Velocidad Subida (Mbps)</label><input id="mabo-subida" type="number" placeholder="50"></div>
+      <div></div>
+    </div>
+    <div><label>Descripción</label><input id="mabo-desc" placeholder="Detalles adicionales"></div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-gray" onclick="closeModal('modal-abono')">Cancelar</button>
+    <button class="btn btn-prim" onclick="saveAbono()">💾 Guardar</button>
+  </div>
+</div>
+</div>
+
+<!-- Modal Stock -->
+<div id="modal-stock" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-stock')">
+<div class="modal">
+  <div class="modal-hd"><span>Agregar Stock</span><button class="modal-close" onclick="closeModal('modal-stock')">×</button></div>
+  <div class="modal-bd">
+    <input type="hidden" id="mstock-id">
+    <div class="form-row">
+      <div><label>Modelo *</label><input id="mstock-modelo" placeholder="RouterBoard 941..."></div>
+      <div><label>Marca</label><input id="mstock-marca" placeholder="MikroTik, ZTE..."></div>
+    </div>
+    <div class="form-row">
+      <div><label>Tipo</label>
+        <select id="mstock-tipo"><option value="inalambrico">Inalámbrico</option><option value="fibra">Fibra / FTTH</option><option value="accesorio">Accesorio</option></select>
+      </div>
+      <div><label>Cantidad</label><input id="mstock-cant" type="number" value="0" min="0"></div>
+    </div>
+    <div><label>Descripción</label><input id="mstock-desc" placeholder="Notas..."></div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-gray" onclick="closeModal('modal-stock')">Cancelar</button>
+    <button class="btn btn-prim" onclick="saveStock()">💾 Guardar</button>
+  </div>
+</div>
+</div>
+
+<!-- Modal Usuario -->
+<div id="modal-usuario" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-usuario')">
+<div class="modal">
+  <div class="modal-hd"><span id="musr-title">Nuevo Usuario</span><button class="modal-close" onclick="closeModal('modal-usuario')">×</button></div>
+  <div class="modal-bd">
+    <input type="hidden" id="musr-id">
+    <div class="form-row">
+      <div><label>Username *</label><input id="musr-username" placeholder="usuario"></div>
+      <div><label>Nombre completo</label><input id="musr-nombre" placeholder="Nombre y apellido"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Contraseña</label><input id="musr-pass" type="password" placeholder="Dejar vacío para no cambiar"></div>
+      <div><label>Rol</label><select id="musr-rol"><option value="operador">Operador</option><option value="tecnico">Técnico</option><option value="admin">Admin</option></select></div>
+    </div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-gray" onclick="closeModal('modal-usuario')">Cancelar</button>
+    <button class="btn btn-prim" onclick="saveUsuario()">💾 Guardar</button>
+  </div>
+</div>
+</div>
+
+<!-- Modal Torre -->
+<div id="modal-torre" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-torre')">
+<div class="modal" style="max-width:650px">
+  <div class="modal-hd"><span id="mtorre-title">Nueva Torre</span><button class="modal-close" onclick="closeModal('modal-torre')">×</button></div>
+  <div class="modal-bd">
+    <input type="hidden" id="mtorre-id">
+    <div class="form-row">
+      <div><label>Nombre *</label><input id="mtorre-nombre" placeholder="Paraná - Torre Norte"></div>
+      <div><label>Tipo</label>
+        <select id="mtorre-tipo" onchange="torreTypoChange()">
+          <option value="repetidora">Repetidora</option>
+          <option value="principal">Principal / Backbone</option>
+          <option value="ap">AP (Access Point)</option>
+          <option value="nodo">Nodo de distribución</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row" id="mtorre-prov-row" style="display:none">
+      <div><label>Proveedor de conectividad</label>
+        <select id="mtorre-proveedor">
+          <option value="">Sin proveedor asignado</option>
+          <option value="ARSAT">ARSAT</option>
+          <option value="Gigared">Gigared</option>
+          <option value="Telecom">Telecom</option>
+          <option value="Support">Support</option>
+          <option value="ENERSA">ENERSA</option>
+          <option value="LEVEL3">LEVEL3</option>
+        </select>
+      </div>
+      <div></div>
+    </div>
+    <div class="form-row">
+      <div><label>Localidad</label><input id="mtorre-localidad" placeholder="Paraná" list="loc-datalist"></div>
+      <div><label>Dirección</label><input id="mtorre-direccion" placeholder="Calle y número / lugar"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Latitud</label><input id="mtorre-lat" placeholder="-31.7345 o 31°44'04.2&quot;S"></div>
+      <div><label>Longitud</label><input id="mtorre-lng" placeholder="-60.5280 o 60°31'41.0&quot;W"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Altura (mts)</label><input id="mtorre-altura" type="number" placeholder="35"></div>
+      <div><label>Estado</label>
+        <select id="mtorre-estado">
+          <option value="activa">Activa</option>
+          <option value="inactiva">Inactiva</option>
+          <option value="mantenimiento">En mantenimiento</option>
+        </select>
+      </div>
+    </div>
+    <div><label>IPs de equipos (separadas por coma)</label><input id="mtorre-ips" placeholder="192.168.1.1, 192.168.1.2..." style="font-family:monospace"></div>
+    <div style="margin-top:.5rem"><label>Orientaciones / sectores</label><input id="mtorre-orient" placeholder="Sector Norte 0°, Sector Sur 180°..."></div>
+    <div style="margin-top:.5rem"><label>Torre padre (de la que depende esta torre)</label>
+      <select id="mtorre-padre"><option value="">Ninguna (torre principal)</option></select>
+    </div>
+    <div style="margin-top:.5rem"><label>Observaciones</label><textarea id="mtorre-obs" rows="2" placeholder="Notas técnicas..."></textarea></div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-gray" onclick="closeModal('modal-torre')">Cancelar</button>
+    <button class="btn btn-prim" onclick="saveTorre()">💾 Guardar</button>
+  </div>
+</div>
+</div>
+
+<!-- Modal Asignar OLT a NAP -->
+<div id="modal-nap-olt" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-nap-olt')">
+<div class="modal" style="max-width:420px">
+  <div class="modal-hd"><span id="mnolt-title">Asignar OLT/PON a NAP</span><button class="modal-close" onclick="closeModal('modal-nap-olt')">×</button></div>
+  <div class="modal-bd">
+    <input type="hidden" id="mnolt-nap-id">
+    <div class="alert-box info" id="mnolt-info" style="margin-bottom:.6rem"></div>
+    <div>
+      <label>OLT</label>
+      <select id="mnolt-olt">
+        <option value="">Sin OLT asignada</option>
+      </select>
+    </div>
+    <div style="margin-top:.5rem">
+      <label>Puerto PON</label>
+      <input id="mnolt-pon" type="number" min="1" max="32" placeholder="Nº de puerto">
+    </div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-gray" onclick="closeModal('modal-nap-olt')">Cancelar</button>
+    <button class="btn btn-prim" onclick="saveNapOlt()">💾 Asignar</button>
+  </div>
+</div>
+</div>
+
+<!-- Modal detalle NAP (existente, se mantiene) -->
+<div id="modal-nap-detail" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-nap-detail')">
+<div class="modal" style="max-width:550px">
+  <div class="modal-hd"><span id="mnapd-title">Detalle NAP</span><button class="modal-close" onclick="closeModal('modal-nap-detail')">×</button></div>
+  <div class="modal-bd" id="mnapd-body"></div>
+</div>
+</div>
+
+<!-- Modal Monitoreo IP -->
+<div id="modal-monitoreo" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-monitoreo')">
+<div class="modal" style="max-width:400px">
+  <div class="modal-hd"><span>Agregar dispositivo a monitorear</span><button class="modal-close" onclick="closeModal('modal-monitoreo')">×</button></div>
+  <div class="modal-bd">
+    <div><label>Nombre</label><input id="mmon-nombre" placeholder="Torre Norte — MikroTik"></div>
+    <div style="margin-top:.5rem"><label>Tipo</label>
+      <select id="mmon-tipo"><option value="torre">Torre</option><option value="olt">OLT</option><option value="router">Router</option><option value="switch">Switch</option><option value="otro">Otro</option></select>
+    </div>
+    <div style="margin-top:.5rem"><label>IP</label><input id="mmon-ip" placeholder="192.168.x.x" style="font-family:monospace"></div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-gray" onclick="closeModal('modal-monitoreo')">Cancelar</button>
+    <button class="btn btn-prim" onclick="saveMonitoreo()">➕ Agregar</button>
+  </div>
+</div>
+</div>
+
+<!-- Modal Historial Señal NAP -->
+<div id="modal-senal" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-senal')">
+<div class="modal" style="max-width:550px">
+  <div class="modal-hd"><span id="msenal-title">Historial de Señal</span><button class="modal-close" onclick="closeModal('modal-senal')">×</button></div>
+  <div class="modal-bd">
+    <input type="hidden" id="msenal-nap">
+    <div style="display:flex;gap:.5rem;margin-bottom:.6rem">
+      <input id="msenal-dbm" type="number" step="0.1" placeholder="-20.5" style="width:120px;font-family:monospace">
+      <span style="line-height:2;font-size:.8rem">dBm</span>
+      <input id="msenal-obs" placeholder="Observaciones (opcional)" style="flex:1">
+      <button class="btn btn-prim btn-sm" onclick="registrarSenal()">📝 Registrar</button>
+    </div>
+    <div id="msenal-history" style="max-height:300px;overflow-y:auto"></div>
+  </div>
+</div>
+</div>
+
+<!-- Weather Modal -->
+<div id="modal-weather" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-weather')">
+<div class="modal" style="max-width:680px">
+  <div class="modal-hd"><span>🌤 Pronóstico Extendido — 7 días</span><button class="modal-close" onclick="closeModal('modal-weather')">×</button></div>
+  <div class="modal-bd" id="weather-body"><div class="empty">Cargando pronóstico...</div></div>
+</div>
+</div>
+
+<!-- Datalists -->
+<datalist id="loc-datalist"></datalist>
+<datalist id="plan-datalist"></datalist>
+<datalist id="nap-datalist"></datalist>
+<datalist id="olt-datalist"></datalist>
+<datalist id="tecnico-datalist"></datalist>
+
+<!-- ═══════ SCRIPTS ═══════ -->
+<script src="{{ url_for('static', filename='js/core.js') }}"></script>
+<script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+<script src="{{ url_for('static', filename='js/nav.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script src="{{ url_for('static', filename='js/clientes.js') }}"></script>
+<script src="{{ url_for('static', filename='js/torres.js') }}"></script>
+<script src="{{ url_for('static', filename='js/naps.js') }}"></script>
+<script src="{{ url_for('static', filename='js/incidencias.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tecnicos.js') }}"></script>
+<script src="{{ url_for('static', filename='js/planes.js') }}"></script>
+<script src="{{ url_for('static', filename='js/mapa.js') }}"></script>
+<script src="{{ url_for('static', filename='js/monitoreo.js') }}"></script>
+<script src="{{ url_for('static', filename='js/weather.js') }}"></script>
+<script src="{{ url_for('static', filename='js/logs.js') }}"></script>
+<script src="{{ url_for('static', filename='js/config.js') }}"></script>
+<script src="{{ url_for('static', filename='js/init.js') }}"></script>
+</body>
+</html>

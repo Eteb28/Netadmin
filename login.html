@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ERLAN ISP — Acceso</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <h1>ERLAN</h1>
+    <p>Sistema Integral de Gestión ISP — v6</p>
+  </div>
+  <div class="err" id="err"></div>
+  <label>Usuario</label>
+  <input type="text" id="user" autocomplete="username" placeholder="usuario">
+  <label>Contraseña</label>
+  <input type="password" id="pass" autocomplete="current-password" placeholder="••••••••">
+  <button onclick="doLogin()">Ingresar</button>
+  <div class="ver">ERLAN Telecomunicaciones S.A. © 2025</div>
+</div>
+<script>
+document.getElementById('pass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+async function doLogin(){
+  const btn = document.querySelector('button');
+  btn.textContent='Ingresando...'; btn.disabled=true;
+  const err = document.getElementById('err');
+  err.style.display='none';
+  try {
+    const r = await fetch('/login',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({username:document.getElementById('user').value,
+                           password:document.getElementById('pass').value})});
+    const d = await r.json();
+    if(d.ok) window.location.href='/';
+    else { err.textContent=d.error||'Error'; err.style.display='block'; }
+  } catch(e){ err.textContent='Error de conexión'; err.style.display='block'; }
+  btn.textContent='Ingresar'; btn.disabled=false;
+}
+</script>
+</body>
+</html>
