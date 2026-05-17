@@ -1,0 +1,547 @@
+/* ========================================================
+   clientes.js — ERLAN NetAdmin v7
+   Refactor etapa 2: separación de JS por dominio
+   ======================================================== */
+
+function debouncedLoadClientes(){
+  clearTimeout(searchTimeout);
+  searchTimeout=setTimeout(loadClientes,300);
+}
+
+async function loadClientes(){
+  const q=document.getElementById('cli-q').value;
+  const estado=document.getElementById('cli-estado').value;
+  const tipo=document.getElementById('cli-tipo').value;
+  const loc=document.getElementById('cli-loc').value;
+  const d=await api(`/api/clientes?q=${encodeURIComponent(q)}&estado=${estado}&tipo=${tipo}&localidad=${encodeURIComponent(loc)}&page=${cliPage}&per_page=50`);
+  if(!d) return;
+  cliTotal=d.total;
+  document.getElementById('cli-pag-info').textContent=`Mostrando ${d.clientes.length} de ${d.total}`;
+  document.getElementById('cli-prev').disabled=cliPage<=1;
+  document.getElementById('cli-next').disabled=d.clientes.length<50;
+  const tbody=document.getElementById('cli-tbody');
+  tbody.innerHTML=d.clientes.map(c=>{
+    const nro = c.nro_cliente
+      ? `<span style="font-family:monospace;font-weight:700;color:var(--prim2,#1976d2);font-size:.78rem">#${c.nro_cliente}</span><br>`
+      : '';
+    return `<tr>
+    <td>${nro}<b>${c.nombre}</b><br><small style="color:var(--txt2)">${c.direccion||''}</small></td>
+    <td>${c.telefono||'—'}</td>
+    <td>${c.localidad||'—'}</td>
+    <td><span class="badge b-${c.tipo_servicio}">${c.tipo_servicio}</span></td>
+    <td>${c.plan||'—'}</td>
+    <td>${c.nap||'—'}</td>
+    <td><span class="badge b-${c.estado}">${estadoLabel(c.estado)}</span></td>
+    <td>${c.ultimo_pago||'—'}</td>
+    <td>
+      <button class="btn btn-gray btn-xs" onclick="openModalCliente(${c.id})">✏️</button>
+      <button class="btn btn-am btn-xs" onclick="openModalServicio(null,${c.id},'${(c.nombre||'').replace(/'/g,"\\'")}')">🔧</button>
+    </td>
+  </tr>`;}).join('');
+}
+
+// ── MODAL CLIENTE ──
+
+let _abonosCache = null;  // cache de abonos para autocompletar precio
+
+async function _loadAbonosCache(){
+  if(!_abonosCache){
+    _abonosCache = await api('/api/abonos') || [];
+  }
+  return _abonosCache;
+}
+
+function onPlanChange(){
+  // Autocompletar precio cuando cambia el plan, sólo si el campo precio está vacío o = 0
+  const plan = document.getElementById('mcli-plan').value.trim();
+  if(!plan) return;
+  const precioInput = document.getElementById('mcli-precio');
+  // Detectar si fue editado manualmente: si el input tiene un flag data-manual=true, NO sobrescribir
+  if(precioInput.dataset.manual === '1') return;
+  if(!_abonosCache) return; // todavía no cargó (se carga en openModalCliente)
+  const a = _abonosCache.find(x => (x.nombre||'').toUpperCase() === plan.toUpperCase());
+  if(a){
+    precioInput.value = a.precio;
+  }
+}
+
+// Marcar precio como editado manualmente cuando el usuario lo modifica
+document.addEventListener('input', (e) => {
+  if(e.target && e.target.id === 'mcli-precio'){
+    e.target.dataset.manual = '1';
+  }
+});
+
+async function openModalCliente(id=null){
+  clearModalCliente();
+  document.getElementById('ftth-potencial-info').style.display='none';
+  document.getElementById('hist-section').style.display = id ? 'block' : 'none';
+  
+  // Pre-cargar combos
+  await _loadAbonosCache();
+  await _poblarCombosCliente();
+  
+  if(id){
+    document.getElementById('mcli-title').textContent='Editar Cliente';
+    const d=await api(`/api/clientes/${id}`);
+    if(!d) return;
+    const c=d.cliente;
+    document.getElementById('mcli-id').value=c.id;
+    document.getElementById('mcli-nro').value=c.nro_cliente||'';
+    document.getElementById('mcli-nombre').value=c.nombre||'';
+    document.getElementById('mcli-dni').value=c.dni||'';
+    document.getElementById('mcli-email').value=c.email||'';
+    document.getElementById('mcli-dir').value=c.direccion||'';
+    document.getElementById('mcli-loc').value=c.localidad||'';
+    document.getElementById('mcli-lat').value=c.lat||'';
+    document.getElementById('mcli-lng').value=c.lng||'';
+    document.getElementById('mcli-tipo').value=c.tipo_servicio||'inalambrico';
+    document.getElementById('mcli-estado').value=c.estado||'activo';
+    document.getElementById('mcli-plan').value=c.plan||'';
+    document.getElementById('mcli-precio').value=c.precio||'';
+    document.getElementById('mcli-precio').dataset.manual = '1'; // ya tiene un valor; no sobrescribir
+    document.getElementById('mcli-nap').value=c.nap||'';
+    document.getElementById('mcli-agente').value=c.agente||'';
+    document.getElementById('mcli-equipo-modelo').value=c.equipo_modelo||'';
+    document.getElementById('mcli-equipo-marca').value=c.equipo_marca||'';
+    document.getElementById('mcli-serie').value=c.equipo_serie||'';
+    document.getElementById('mcli-ip').value=c.ip_asignada||'';
+    document.getElementById('mcli-olt-nombre').value=c.olt_nombre||'';
+    document.getElementById('mcli-olt-puerto').value=c.olt_puerto||'';
+    if(document.getElementById('mcli-torre')) document.getElementById('mcli-torre').value = c.torre_id||'';
+    if(document.getElementById('mcli-ap'))    document.getElementById('mcli-ap').value    = c.ap_nombre||'';
+    document.getElementById('mcli-fecha-alta').value=c.fecha_alta||'';
+    document.getElementById('mcli-ultimo-pago').value=c.ultimo_pago||'';
+    document.getElementById('mcli-obs').value=c.observaciones||'';
+    
+    // Cargar teléfonos
+    _renderTelefonos(d.telefonos || []);
+    
+    toggleFtthFields();
+    
+    // Cargar tab por defecto de histórico
+    showHistTab('equipos');
+    
+    // Migración FTTH potencial
+    if(c.tipo_servicio!=='fibra' && c.lat){
+      const pot=await api(`/api/clientes/${id}/ftth_potencial`);
+      if(pot && pot.puede_migrar){
+        document.getElementById('ftth-potencial-info').innerHTML=`
+          <div class="alert-box ok">🔄 <b>¡Potencial de migración a FTTH!</b>
+          Hay ${pot.vecinos_fibra} cliente(s) de fibra y ${pot.naps_cercanos?.length||0} NAP(s) cercanos.
+          <button class="btn btn-vd btn-xs" style="margin-left:.5rem" onclick="openModalServicio(null,${id},'${(c.nombre||'').replace(/'/g,'\\\'')}','migracion_ftth')">Crear Servicio de Migración</button>
+          </div>`;
+        document.getElementById('ftth-potencial-info').style.display='block';
+      }
+    }
+  } else {
+    document.getElementById('mcli-title').textContent='Nuevo Cliente';
+    document.getElementById('mcli-fecha-alta').value=new Date().toISOString().slice(0,10);
+    // Inicializar con 2 inputs de teléfono vacíos
+    _renderTelefonos([{telefono:'',tipo:'movil'},{telefono:'',tipo:'movil'}]);
+    document.getElementById('mcli-precio').dataset.manual = '0';
+    toggleFtthFields();
+  }
+  document.getElementById('modal-cliente').style.display='flex';
+  // Mostrar botón "Crear como venta nueva" solo en alta (no edición)
+  const btnVenta = document.getElementById('btn-cli-venta');
+  if(btnVenta) btnVenta.style.display = id ? 'none' : 'inline-block';
+}
+
+async function _poblarCombosCliente(){
+  // Combo agentes
+  const agentes = await api('/api/usuarios/agentes');
+  const sel = document.getElementById('mcli-agente');
+  if(sel && agentes){
+    const currentVal = sel.value;
+    sel.innerHTML = '<option value="">— Sin asignar —</option>' +
+      agentes.map(a => `<option value="${a.nombre}">${a.nombre} (${a.username})</option>`).join('');
+    if(currentVal) sel.value = currentVal;
+  }
+  // Combo torres
+  const torres = await api('/api/torres');
+  const tSel = document.getElementById('mcli-torre');
+  if(tSel && torres){
+    const currentVal = tSel.value;
+    tSel.innerHTML = '<option value="">— Sin torre —</option>' +
+      torres.map(t => `<option value="${t.id}">${t.nombre}${t.localidad?' · '+t.localidad:''}</option>`).join('');
+    if(currentVal) tSel.value = currentVal;
+  }
+}
+
+function clearModalCliente(){
+  ['mcli-id','mcli-nro','mcli-nombre','mcli-dni','mcli-email','mcli-dir','mcli-loc',
+   'mcli-lat','mcli-lng','mcli-plan','mcli-precio','mcli-nap','mcli-agente',
+   'mcli-equipo-modelo','mcli-equipo-marca','mcli-serie','mcli-ip',
+   'mcli-olt-nombre','mcli-olt-puerto','mcli-fecha-alta','mcli-ultimo-pago','mcli-obs',
+   'mcli-torre','mcli-ap','mcli-senal-instalacion']
+  .forEach(id=>{const el=document.getElementById(id);if(el){el.value='';if(el.dataset)el.dataset.manual='0';}});
+  document.getElementById('mcli-tipo').value='inalambrico';
+  document.getElementById('mcli-estado').value='activo';
+  // Reset teléfonos
+  const tList = document.getElementById('mcli-tels-list');
+  if(tList) tList.innerHTML = '';
+  toggleFtthFields();
+}
+
+function toggleFtthFields(){
+  const tipo=document.getElementById('mcli-tipo').value;
+  const ftth = document.getElementById('ftth-fields');
+  const inal = document.getElementById('inal-fields');
+  if(ftth) ftth.style.display = tipo==='fibra' ? 'block' : 'none';
+  if(inal) inal.style.display = tipo==='inalambrico' ? 'block' : 'none';
+}
+
+// ── Teléfonos múltiples ──
+function _renderTelefonos(tels){
+  const list = document.getElementById('mcli-tels-list');
+  if(!list) return;
+  // Si vienen 0, mostrar 2 vacíos por defecto
+  if(!tels || tels.length === 0) tels = [{telefono:'',tipo:'movil'},{telefono:'',tipo:'movil'}];
+  // Si viene 1, agregar otro vacío
+  if(tels.length === 1) tels.push({telefono:'',tipo:'movil'});
+  list.innerHTML = '';
+  tels.forEach((t,i) => _appendTelefonoRow(t, i));
+}
+
+function _appendTelefonoRow(t, idx){
+  const list = document.getElementById('mcli-tels-list');
+  if(!list) return;
+  const row = document.createElement('div');
+  row.className = 'tel-row';
+  row.style.cssText = 'display:flex;gap:.4rem;margin-bottom:.3rem;align-items:center';
+  const isPrincipal = idx === 0;
+  row.innerHTML = `
+    <input type="text" class="tel-input" placeholder="${isPrincipal?'Principal':'Adicional'}" value="${(t?.telefono||'').replace(/"/g,'&quot;')}" style="flex:1">
+    <select class="tel-tipo" style="width:auto">
+      <option value="movil"${(t?.tipo==='movil')?' selected':''}>📱 Móvil</option>
+      <option value="fijo"${(t?.tipo==='fijo')?' selected':''}>☎️ Fijo</option>
+      <option value="laboral"${(t?.tipo==='laboral')?' selected':''}>💼 Laboral</option>
+      <option value="otro"${(t?.tipo==='otro')?' selected':''}>📞 Otro</option>
+    </select>
+    ${idx>=2?'<button type="button" class="btn btn-rj btn-xs" onclick="this.parentElement.remove()" title="Quitar">−</button>':'<span style="width:24px"></span>'}
+  `;
+  list.appendChild(row);
+}
+
+function agregarTelefono(){
+  const list = document.getElementById('mcli-tels-list');
+  const idx = list.children.length;
+  _appendTelefonoRow({telefono:'',tipo:'movil'}, idx);
+}
+
+function _readTelefonos(){
+  const rows = document.querySelectorAll('#mcli-tels-list .tel-row');
+  const out = [];
+  rows.forEach(r => {
+    const num = r.querySelector('.tel-input')?.value.trim();
+    const tipo = r.querySelector('.tel-tipo')?.value || 'movil';
+    if(num) out.push({telefono:num, tipo:tipo});
+  });
+  return out;
+}
+
+// ── Históricos ──
+let _histTabActual = 'equipos';
+
+async function showHistTab(tab){
+  _histTabActual = tab;
+  const id = document.getElementById('mcli-id').value;
+  if(!id) return;
+  const cont = document.getElementById('hist-tab-content');
+  cont.innerHTML = '<div style="color:#888;padding:.4rem">Cargando...</div>';
+  if(tab === 'equipos'){
+    const rows = await api(`/api/clientes/${id}/equipos_historico`);
+    if(!rows?.length){ cont.innerHTML = '<div style="color:#888">Sin histórico de equipos</div>'; return; }
+    cont.innerHTML = `<table style="width:100%;font-size:.78rem;border-collapse:collapse">
+      <thead><tr style="background:#fff"><th style="text-align:left;padding:.3rem">Serie</th><th style="text-align:left;padding:.3rem">Modelo</th><th style="text-align:left;padding:.3rem">IP</th><th style="text-align:left;padding:.3rem">Asignación</th><th style="text-align:left;padding:.3rem">Liberación</th><th style="text-align:left;padding:.3rem">Motivo</th></tr></thead>
+      <tbody>${rows.map(r=>`<tr ${r.fecha_liberacion?'':'style="background:#e8f5e9"'}>
+        <td style="padding:.3rem;font-family:monospace">${r.equipo_serie||'—'}</td>
+        <td style="padding:.3rem">${r.equipo_modelo||'—'}</td>
+        <td style="padding:.3rem;font-family:monospace">${r.ip_asignada||'—'}</td>
+        <td style="padding:.3rem">${r.fecha_asignacion||''}</td>
+        <td style="padding:.3rem">${r.fecha_liberacion||'<span style="color:#2e7d32;font-weight:700">ACTIVO</span>'}</td>
+        <td style="padding:.3rem">${r.motivo_liberacion||'—'}</td>
+      </tr>`).join('')}</tbody></table>`;
+  } else if(tab === 'torre_ap'){
+    const rows = await api(`/api/clientes/${id}/torre_ap_historico`);
+    if(!rows?.length){ cont.innerHTML = '<div style="color:#888">Sin histórico de torre/AP</div>'; return; }
+    cont.innerHTML = `<table style="width:100%;font-size:.78rem;border-collapse:collapse">
+      <thead><tr style="background:#fff"><th style="text-align:left;padding:.3rem">Torre</th><th style="text-align:left;padding:.3rem">AP</th><th style="text-align:left;padding:.3rem">Asignación</th><th style="text-align:left;padding:.3rem">Liberación</th><th style="text-align:left;padding:.3rem">Motivo</th></tr></thead>
+      <tbody>${rows.map(r=>`<tr ${r.fecha_liberacion?'':'style="background:#e8f5e9"'}>
+        <td style="padding:.3rem">${r.torre_nombre||'—'}</td>
+        <td style="padding:.3rem">${r.ap_nombre||'—'}</td>
+        <td style="padding:.3rem">${r.fecha_asignacion||''}</td>
+        <td style="padding:.3rem">${r.fecha_liberacion||'<span style="color:#2e7d32;font-weight:700">ACTIVO</span>'}</td>
+        <td style="padding:.3rem">${r.motivo||'—'}</td>
+      </tr>`).join('')}</tbody></table>`;
+  } else if(tab === 'senales'){
+    const rows = await api(`/api/clientes/${id}/senales`);
+    if(!rows?.length){ cont.innerHTML = '<div style="color:#888">Sin registros de señal</div>'; return; }
+    // Mini-gráfico ASCII + tabla
+    const vals = rows.slice().reverse().map(r => parseFloat(r.valor_dbm));
+    const min = Math.min(...vals), max = Math.max(...vals);
+    const range = max - min || 1;
+    const bars = vals.map(v => {
+      const norm = (v - min) / range;
+      const h = Math.round(norm * 30) + 4;
+      const color = v < -28 ? '#dc3545' : v < -25 ? '#ff9800' : '#2e7d32';
+      return `<div style="display:inline-block;width:14px;margin:0 1px;background:${color};height:${h}px;vertical-align:bottom" title="${v} dBm"></div>`;
+    }).join('');
+    cont.innerHTML = `
+      <div style="background:#fff;padding:.5rem;border-radius:4px;margin-bottom:.5rem">
+        <div style="font-size:.72rem;color:#666;margin-bottom:.3rem">Evolución (más vieja → más reciente)</div>
+        <div style="height:40px;display:flex;align-items:flex-end;gap:0">${bars}</div>
+        <div style="font-size:.7rem;color:#888;margin-top:.2rem">Rango: ${min.toFixed(1)} a ${max.toFixed(1)} dBm</div>
+      </div>
+      <table style="width:100%;font-size:.78rem;border-collapse:collapse">
+        <thead><tr style="background:#fff"><th style="text-align:left;padding:.3rem">Fecha</th><th style="text-align:left;padding:.3rem">Valor (dBm)</th><th style="text-align:left;padding:.3rem">Tipo</th><th style="text-align:left;padding:.3rem">Usuario</th><th style="text-align:left;padding:.3rem">Notas</th></tr></thead>
+        <tbody>${rows.map(r=>{
+          const v = parseFloat(r.valor_dbm);
+          const cls = v < -28 ? 'color:#dc3545;font-weight:700' : v < -25 ? 'color:#ff9800;font-weight:700' : 'color:#2e7d32';
+          return `<tr><td style="padding:.3rem">${r.fecha||''}</td><td style="padding:.3rem;font-family:monospace;${cls}">${r.valor_dbm}</td><td style="padding:.3rem">${r.tipo||'—'}</td><td style="padding:.3rem">${r.usuario||'—'}</td><td style="padding:.3rem">${r.observaciones||''}</td></tr>`;
+        }).join('')}</tbody>
+      </table>`;
+  }
+}
+
+async function agregarSenalNueva(){
+  const id = document.getElementById('mcli-id').value;
+  if(!id){alert('Primero guardá el cliente'); return;}
+  const valor = prompt('Valor de señal en dBm (ej: -23.5):');
+  if(!valor) return;
+  const tipo = prompt('Tipo de medición:\n- rutina (default)\n- queja\n- instalacion\n- mantenimiento','rutina') || 'rutina';
+  const obs = prompt('Observaciones (opcional):','') || '';
+  const r = await api(`/api/clientes/${id}/senales`, 'POST', {valor_dbm:valor, tipo, observaciones:obs});
+  if(r?.ok){
+    showHistTab('senales');
+  } else {
+    alert('Error: ' + (r?.error || 'no se pudo registrar'));
+  }
+}
+
+async function saveCliente(_force, comoVenta){
+  const id=document.getElementById('mcli-id').value;
+  const tipoSvc = document.getElementById('mcli-tipo').value;
+  const data={
+    nro_cliente:document.getElementById('mcli-nro').value.trim(),
+    nombre:document.getElementById('mcli-nombre').value,
+    dni:document.getElementById('mcli-dni').value,
+    email:document.getElementById('mcli-email').value,
+    direccion:document.getElementById('mcli-dir').value,
+    localidad:document.getElementById('mcli-loc').value,
+    lat:parseDMS(document.getElementById('mcli-lat').value),
+    lng:parseDMS(document.getElementById('mcli-lng').value),
+    tipo_servicio:tipoSvc,
+    estado:document.getElementById('mcli-estado').value,
+    plan:document.getElementById('mcli-plan').value,
+    precio:parseFloat(document.getElementById('mcli-precio').value)||0,
+    agente:document.getElementById('mcli-agente').value,
+    equipo_modelo:document.getElementById('mcli-equipo-modelo').value,
+    equipo_marca:document.getElementById('mcli-equipo-marca').value,
+    equipo_serie:document.getElementById('mcli-serie').value,
+    ip_asignada:document.getElementById('mcli-ip').value,
+    fecha_alta:document.getElementById('mcli-fecha-alta').value,
+    ultimo_pago:document.getElementById('mcli-ultimo-pago').value,
+    observaciones:document.getElementById('mcli-obs').value,
+    telefonos: _readTelefonos()
+  };
+  // Si se pidió "Crear como venta nueva", forzar estado=venta
+  // y dispara workflow de instalaciones automáticamente
+  if(comoVenta && !id){
+    data.estado = 'venta';
+  }
+  // Campos según tipo
+  if(tipoSvc === 'fibra'){
+    data.nap = document.getElementById('mcli-nap').value;
+    data.olt_nombre = document.getElementById('mcli-olt-nombre').value;
+    data.olt_puerto = document.getElementById('mcli-olt-puerto').value;
+    data.torre_id = null;
+    data.ap_nombre = '';
+  } else {
+    data.torre_id = document.getElementById('mcli-torre')?.value || null;
+    data.ap_nombre = document.getElementById('mcli-ap')?.value || '';
+    data.nap = '';
+    data.olt_nombre = '';
+    data.olt_puerto = '';
+  }
+  // Campo legacy telefono: poner el primer teléfono ahí también para compat
+  data.telefono = (data.telefonos[0]?.telefono) || '';
+  
+  if(_force) data.force=true;
+  if(!data.nombre.trim()){alert('El nombre es obligatorio');return;}
+  const url=id?`/api/clientes/${id}`:'/api/clientes';
+  const method=id?'PUT':'POST';
+  const r=await api(url,method,data);
+  if(r?.ok||r?.id){
+    // Si en alta de FTTH se ingresó señal, registrarla
+    const cid = id || r.id;
+    const senal = document.getElementById('mcli-senal-instalacion')?.value.trim();
+    if(!id && senal && tipoSvc === 'fibra'){
+      await api(`/api/clientes/${cid}/senales`, 'POST', {
+        valor_dbm: senal, tipo: 'instalacion', observaciones: 'Señal al alta'
+      });
+    }
+    closeModal('modal-cliente');
+    loadClientes();
+    loadLocalidades();
+    // Si fue "Crear como venta nueva", llevar al usuario al módulo de Activación Pendiente
+    if(comoVenta && !id){
+      setTimeout(() => {
+        if(typeof navGo === 'function') navGo('activacion-pendiente');
+      }, 200);
+    }
+    return;
+  }
+  if(r?.error==='duplicado'){
+    mostrarConflictoDuplicado(r);
+    return;
+  }
+  alert('Error al guardar' + (r?.error?': '+r.error:''));
+}
+
+// ── Manejo de conflicto por duplicado (MAC/IP) ──
+
+let _conflictoActual=null;
+
+function mostrarConflictoDuplicado(info){
+  _conflictoActual=info;
+  const labels = {
+    'equipo_serie':'MAC/Número de serie',
+    'ip_asignada':'IP',
+    'nro_cliente':'N° de Cliente'
+  };
+  const campoLabel = labels[info.campo] || info.campo;
+  document.getElementById('dup-mensaje').innerHTML =
+    `El <b>${campoLabel}</b> <code style="background:#fff3cd;padding:.1rem .35rem;border-radius:3px">${info.valor}</code> ya está asignado a otro cliente.`;
+  document.getElementById('dup-conflicto-nombre').textContent = info.conflicto_nombre || '(sin nombre)';
+  document.getElementById('dup-conflicto-id').textContent = `ID #${info.conflicto_id}`;
+  const btnForzar=document.getElementById('dup-btn-forzar');
+  btnForzar.style.display = info.puede_forzar ? 'inline-block' : 'none';
+  document.getElementById('modal-duplicado').style.display='flex';
+}
+
+function abrirFichaConflicto(){
+  if(!_conflictoActual) return;
+  const id=_conflictoActual.conflicto_id;
+  closeModal('modal-duplicado');
+  closeModal('modal-cliente');
+  openModalCliente(id);
+}
+
+async function forzarGuardadoCliente(){
+  if(!_conflictoActual) return;
+  if(!confirm(`¿Confirmás forzar el guardado a pesar del duplicado con "${_conflictoActual.conflicto_nombre}"?\n\nEsta acción quedará registrada en el historial.`)) return;
+  closeModal('modal-duplicado');
+  await saveCliente(true);
+}
+
+// ── MAPA ──
+// Coordenadas: DMS → Decimal
+
+const COLOR_CLI={
+  activo:'#2e7d32',
+  suspendido:'#e65100',
+  rescision:'#c62828',
+  baja:'#9e9e9e',
+  // Workflow v8
+  venta:'#9c27b0',                  // violeta
+  activacion_pendiente:'#1976d2',   // azul
+  instalacion_pendiente:'#ff9800',  // naranja
+};
+
+const COLOR_TIPO={fibra:'#1565c0',inalambrico:'#6a1b9a'};
+
+async function reloadMapaClientes(){
+  if(!mapaInited) return;
+  removeLayer('clientes');
+  removeLayer('heat');
+  const estado=document.getElementById('map-estado').value;
+  const tipo=document.getElementById('map-tipo').value;
+  const data=await api(`/api/clientes/mapa?estado=${estado}&tipo=${tipo}`);
+  if(!data) return;
+  mapaCliData=data;
+  if(mapaChips.clientes) renderMapaClientes(data);
+  if(mapaChips.heat) showHeatMap();
+}
+
+function _esWorkflowEstado(estado){
+  return estado === 'venta' || estado === 'activacion_pendiente' || estado === 'instalacion_pendiente';
+}
+
+function renderMapaClientes(data){
+  removeLayer('clientes');
+  const markers=[];
+  data.forEach(c=>{
+    if(!c.lat||!c.lng) return;
+    const color=COLOR_CLI[c.estado]||'#546e7a';
+    const tipoColor=c.tipo_servicio==='fibra'?'#1565c0':'#6a1b9a';
+    let marker;
+    if(_esWorkflowEstado(c.estado)){
+      // Icono especial para workflow: cuadrado con símbolo según etapa
+      const sym = c.estado === 'venta' ? '🆕'
+                : c.estado === 'activacion_pendiente' ? '⚙️'
+                : '🛠️';
+      const labelEstado = c.estado === 'venta' ? 'En venta'
+                        : c.estado === 'activacion_pendiente' ? 'Activación pendiente'
+                        : 'Instalación pendiente';
+      const icon = L.divIcon({
+        className:'',
+        html:`<div style="background:${color};color:#fff;border:3px solid #fff;border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:.85rem;box-shadow:0 2px 6px rgba(0,0,0,.4)">${sym}</div>`,
+        iconSize:[28,28], iconAnchor:[14,14]
+      });
+      const accionBtn = c.estado==='instalacion_pendiente'
+        ? `<button class="btn btn-vd btn-xs" style="margin-top:.4rem" onclick="abrirMarcarInstalado(${c.id})">✅ Marcar instalado</button>`
+        : `<button class="btn btn-prim btn-xs" style="margin-top:.4rem" onclick="abrirActivacion(${c.id})">⚙️ Continuar workflow</button>`;
+      marker = L.marker([c.lat, c.lng], {icon}).bindPopup(`
+        <b>${c.nombre}</b><br>
+        <span style="background:${color};color:#fff;padding:.1rem .35rem;border-radius:3px;font-size:.72rem">${labelEstado}</span>
+        ${c.tipo_servicio?` · ${c.tipo_servicio}`:''}<br>
+        ${c.plan?`Plan: ${c.plan}<br>`:''}
+        ${c.direccion?`${c.direccion}, ${c.localidad||''}<br>`:''}
+        ${accionBtn}
+      `);
+    } else {
+      marker=L.circleMarker([c.lat,c.lng],{
+        radius:7,fillColor:color,color:tipoColor,weight:2,opacity:1,fillOpacity:.85
+      }).bindPopup(`<b>${c.nombre}</b><br>
+        <span style="color:${color}">${estadoLabel(c.estado)}</span> | ${c.tipo_servicio}<br>
+        ${c.nap?`NAP: ${c.nap}<br>`:''}
+        ${c.plan?`Plan: ${c.plan}<br>`:''}
+        ${c.direccion?`${c.direccion}, ${c.localidad||''}`:''}`);
+    }
+    markers.push(marker);
+  });
+  mapaLayers.clientes=L.layerGroup(markers).addTo(map);
+}
+
+async function showFtthPotenciales(){
+  removeLayer('ftth_pot');
+  const data=await api('/api/clientes/migracion_ftth');
+  if(!data) return;
+  const markers=data.map(c=>{
+    if(!c.lat||!c.lng) return null;
+    const icon=L.divIcon({className:'',html:`<div style="background:#ff6f00;color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:.7rem;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3)">🔄</div>`,iconSize:[20,20],iconAnchor:[10,10]});
+    return L.marker([c.lat,c.lng],{icon}).bindPopup(`<b>${c.nombre}</b><br>Potencial migración a FTTH<br>${c.vecinos_fibra} vecino(s) de fibra`);
+  }).filter(Boolean);
+  mapaLayers.ftth_pot=L.layerGroup(markers).addTo(map);
+}
+
+async function searchClienteForSvc(){
+  const q=document.getElementById('msvc-cli-q').value;
+  const drop=document.getElementById('msvc-cli-drop');
+  if(q.length<2){drop.style.display='none';return;}
+  const data=await api(`/api/clientes/buscar?q=${encodeURIComponent(q)}`);
+  if(!data?.length){drop.style.display='none';return;}
+  drop.innerHTML=data.map(c=>`<div class="item" style="padding:.4rem .7rem;cursor:pointer;border-bottom:1px solid #f5f5f5" onclick="selectSvcCliente(${c.id},'${c.nombre.replace(/'/g,"\\'")}')">
+    <div style="font-weight:600;font-size:.82rem">${c.nombre}</div>
+    <div style="font-size:.72rem;color:var(--txt2)">${c.direccion||''} ${c.localidad||''}</div>
+  </div>`).join('');
+  drop.style.display='block';
+}
+
+function selectSvcCliente(id,nombre){
+  document.getElementById('msvc-cli-id').value=id;
+  document.getElementById('msvc-cli-q').value=nombre;
+  document.getElementById('msvc-cli-drop').style.display='none';
+}
