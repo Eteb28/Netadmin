@@ -1,0 +1,14 @@
+# Dependencias del módulo GPON.
+#
+# Deliberadamente mínimas: el núcleo, la base SQLite, el driver simulado y toda
+# la batería de tests funcionan sólo con la biblioteca estándar más esta línea.
+# 'cryptography' no es opcional: existe para no guardar las credenciales de las
+# OLT en texto plano.
+#
+# Las dependencias de cada fase están en pyproject.toml como extras y se
+# instalan cuando esa fase llega:
+#   pip install -e ".[equipos]"     Fase 2: pysnmp, paramiko
+#   pip install -e ".[web]"         Fase 3: flask
+#   pip install -e ".[postgres]"    Fase 4: psycopg2
+#   pip install -e ".[desarrollo]"  pytest, ruff, mypy
+cryptography>=41

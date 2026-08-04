@@ -1,0 +1,28 @@
+"""Capa de servicios: la lógica de negocio del módulo.
+
+Es la fachada del módulo. La API y la interfaz web consumen estos servicios;
+nunca un driver ni un repositorio directamente. Cuando llegue la integración,
+Pucará importará exactamente desde acá::
+
+    from gpon_module.services import ServicioONU
+
+Los servicios no conocen fabricantes: piden drivers a la fábrica, que los
+resuelve por el registro.
+"""
+
+from .contenedor import Contenedor, crear_contenedor
+from .descubrimiento import ResultadoDescubrimiento, ServicioDescubrimiento
+from .fabrica import FabricaDrivers
+from .olt import ServicioOLT
+from .onu import PotenciaONU, ServicioONU
+
+__all__ = [
+    "Contenedor",
+    "FabricaDrivers",
+    "PotenciaONU",
+    "ResultadoDescubrimiento",
+    "ServicioDescubrimiento",
+    "ServicioOLT",
+    "ServicioONU",
+    "crear_contenedor",
+]
