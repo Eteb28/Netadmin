@@ -10,6 +10,8 @@ Comandos disponibles::
     generar-clave     clave de cifrado para GPON_CLAVE_CIFRADO
     init-db           crea el esquema
     demo              corre un ciclo completo contra la OLT simulada
+    alta-olt          registra una OLT
+    probar <id>       verifica la conexión con el equipo
     listar-olts       OLT registradas
     descubrir <id>    descubre e inventaría una OLT
     onus <id>         inventario de ONU de una OLT
@@ -19,8 +21,10 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 from collections import Counter
+from getpass import getpass
 
 from .config import Configuracion
 from .core.cifrado import CifradorFernet
@@ -28,6 +32,7 @@ from .core.enums import Capacidad, EstadoONU, Fabricante, MotivoCaida
 from .core.errors import ErrorGPON
 from .core.models import CredencialesOLT, SolicitudAutorizacion
 from .core.optica import clasificar
+from .core.registry import fabricantes_registrados
 from .drivers.mock.parque import generar_parque
 from .services import Contenedor, crear_contenedor
 
@@ -65,6 +70,50 @@ def comando_init_db(args: argparse.Namespace) -> int:
     with crear_contenedor(configuracion) as sistema:
         print(f"Esquema creado en {sistema.configuracion.url_base_datos}")
     return 0
+
+
+def comando_alta_olt(args: argparse.Namespace) -> int:
+    """Registra una OLT en la base. No se conecta al equipo: eso es 'probar'."""
+    fabricantes = {str(f): f for f in fabricantes_registrados()}
+    if args.fabricante not in fabricantes:
+        print(
+            f"Fabricante '{args.fabricante}' sin driver. "
+            f"Disponibles: {', '.join(sorted(fabricantes))}",
+            file=sys.stderr,
+        )
+        return 1
+
+    # La contraseña nunca se pide por parámetro: quedaría en el historial del
+    # shell y en la lista de procesos. Se toma del entorno o se pregunta.
+    password = os.environ.get("GPON_OLT_PASSWORD") or getpass("Contraseña de la OLT: ")
+    comunidad = os.environ.get("GPON_OLT_COMUNIDAD") or args.comunidad
+
+    with _sistema(args) as sistema:
+        olt = sistema.servicio_olt.registrar(
+            nombre=args.nombre,
+            host=args.host,
+            fabricante=fabricantes[args.fabricante],
+            credenciales=CredencialesOLT(
+                usuario=args.usuario,
+                password=password,
+                comunidad_snmp_lectura=comunidad,
+                puerto_snmp=args.puerto_snmp,
+                puerto_telnet=args.puerto_telnet,
+                puerto_ssh=args.puerto_ssh,
+            ),
+            descripcion=args.descripcion,
+        )
+        print(f"OLT #{olt.id} registrada: {olt.nombre} ({olt.host}, {olt.fabricante})")
+        print(f"Siguiente paso:  gpon descubrir {olt.id}")
+    return 0
+
+
+def comando_probar(args: argparse.Namespace) -> int:
+    """Verifica que se puede hablar con el equipo y actualiza su estado."""
+    with _sistema(args) as sistema:
+        ok, detalle = sistema.servicio_olt.probar_conexion(args.olt_id)
+        print(f"{'OK' if ok else 'FALLÓ'} — {detalle}")
+    return 0 if ok else 1
 
 
 def comando_listar_olts(args: argparse.Namespace) -> int:
@@ -263,6 +312,26 @@ def construir_parser() -> argparse.ArgumentParser:
     sub.add_parser("listar-olts", help="lista las OLT registradas").set_defaults(
         funcion=comando_listar_olts
     )
+
+    alta = sub.add_parser("alta-olt", help="registra una OLT")
+    alta.add_argument("--nombre", required=True)
+    alta.add_argument("--host", required=True, help="dirección IP o nombre del equipo")
+    alta.add_argument(
+        "--fabricante",
+        required=True,
+        choices=sorted(str(f) for f in fabricantes_registrados()),
+    )
+    alta.add_argument("--usuario", default="admin")
+    alta.add_argument("--comunidad", default="public", help="community SNMP de lectura")
+    alta.add_argument("--descripcion", default="")
+    alta.add_argument("--puerto-snmp", type=int, default=161)
+    alta.add_argument("--puerto-telnet", type=int, default=23)
+    alta.add_argument("--puerto-ssh", type=int, default=22)
+    alta.set_defaults(funcion=comando_alta_olt)
+
+    probar = sub.add_parser("probar", help="verifica la conexión con una OLT")
+    probar.add_argument("olt_id", type=int)
+    probar.set_defaults(funcion=comando_probar)
 
     demo = sub.add_parser("demo", help="ciclo completo contra la OLT simulada")
     demo.add_argument("--onus", type=int, default=473, help="cantidad de ONU a simular")

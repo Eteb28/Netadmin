@@ -42,6 +42,27 @@ export GPON_BASE_DATOS="sqlite:///gpon.db"
 python -m gpon_module.cli init-db
 ```
 
+Guardá la clave donde no se pierda (gestor de secretos, o el `.env` del servidor con
+permisos `600`). Si se pierde, las credenciales guardadas quedan irrecuperables y hay que
+volver a cargarlas.
+
+## Con base persistente
+
+```bash
+gpon alta-olt --nombre "OLT Centro" --host 192.168.1.10 --fabricante simulado
+gpon probar 1          # verifica la conexión y toma modelo y firmware
+gpon descubrir 1       # inventaría: puertos, ONU, perfiles, VLAN
+gpon onus 1 --pon 2    # inventario de un puerto PON
+gpon listar-olts
+```
+
+La contraseña no se pasa por parámetro: `alta-olt` la pide por teclado, o la toma de
+`GPON_OLT_PASSWORD` si está definida. Un parámetro queda en el historial del shell y en la
+lista de procesos.
+
+`--fabricante` sólo acepta fabricantes con driver registrado. Hoy es `simulado`; `vsol`
+aparece con la Fase 2 y `zte` con la Fase 6.
+
 | Variable | Por defecto | Para qué |
 |---|---|---|
 | `GPON_CLAVE_CIFRADO` | — | Cifra las credenciales de OLT. **Obligatoria** salvo que se pida lo contrario |
