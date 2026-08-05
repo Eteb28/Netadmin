@@ -250,6 +250,19 @@ class DriverVSOL(DriverBase):
             )
 
         motivos = self._snmp.walk(oids.ONU_MOTIVO_CAIDA)
+        if not motivos and Capacidad.MOTIVO_CAIDA in self.CAPACIDADES:
+            # Verificado en una V1600G1 con firmware V2.3.1R: la rama existe en
+            # el árbol pero viene vacía para las 283 ONU. La capacidad se retira
+            # en esta instancia, y la interfaz deja de ofrecer un dato que este
+            # equipo no da — en vez de mostrar "0 cortes de luz", que se leería
+            # como "no hay ninguno".
+            log.warning(
+                "%s no publica el motivo de caída de las ONU. Se retira la capacidad "
+                "MOTIVO_CAIDA para este equipo.",
+                self.olt.host,
+            )
+            self.CAPACIDADES = self.CAPACIDADES - {Capacidad.MOTIVO_CAIDA}
+
         subidas = self._snmp.walk(oids.ONU_ULTIMA_SUBIDA)
         bajadas = self._snmp.walk(oids.ONU_ULTIMA_BAJADA)
         tiempos = self._snmp.walk(oids.ONU_TIEMPO_EN_ESTADO)

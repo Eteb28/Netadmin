@@ -23,13 +23,17 @@ from ..core.enums import Capacidad, Fabricante, TipoOperacion
 from ..core.errors import CapacidadNoSoportada, ErrorGPON
 from ..core.models import (
     OLT,
+    ONU,
     ClienteConectado,
     ConfigWiFi,
     CredencialesOLT,
     CredencialPPPoE,
+    LecturaOptica,
     LecturaTrafico,
+    ONUNoAutorizada,
     Perfiles,
     PuertoLAN,
+    PuertoPON,
     RefONU,
     RespaldoConfiguracion,
     ResultadoOperacion,
@@ -252,6 +256,45 @@ class DriverBase:
     def get_profiles(self) -> Perfiles:
         self._exigir(Capacidad.DESCUBRIR_PERFILES)
         return Perfiles()
+
+    # --- lecturas que no todo driver implementa ---------------------------
+    #
+    # Un driver que todavía no sabe leer algo hereda estas versiones y falla con
+    # CapacidadNoSoportada, que el resto del sistema sabe manejar. Sin ellas el
+    # error es AttributeError en mitad de un descubrimiento: parece un error de
+    # programación y aborta la corrida entera.
+
+    def discover_unauthorized_onus(self) -> list[ONUNoAutorizada]:
+        self._exigir(Capacidad.DESCUBRIR_NO_AUTORIZADAS)
+        raise NotImplementedError(
+            f"{type(self).__name__} no implementa discover_unauthorized_onus"
+        )
+
+    def discover_ports(self) -> list[PuertoPON]:
+        self._exigir(Capacidad.DESCUBRIR_PUERTOS)
+        raise NotImplementedError(f"{type(self).__name__} no implementa discover_ports")
+
+    def discover_onus(self) -> list[ONU]:
+        self._exigir(Capacidad.DESCUBRIR_ONUS)
+        raise NotImplementedError(f"{type(self).__name__} no implementa discover_onus")
+
+    def get_signal(self, ref: RefONU) -> LecturaOptica:
+        self._exigir(Capacidad.POTENCIA_OPTICA)
+        raise NotImplementedError(f"{type(self).__name__} no implementa get_signal")
+
+    def get_signals(self) -> list[LecturaOptica]:
+        self._exigir(Capacidad.POTENCIA_MASIVA)
+        raise NotImplementedError(f"{type(self).__name__} no implementa get_signals")
+
+    def get_uptime(self) -> int | None:
+        self._exigir(Capacidad.UPTIME)
+        return None
+
+    def generate_running_config(self) -> str:
+        self._exigir(Capacidad.RESPALDO_CONFIGURACION)
+        raise NotImplementedError(
+            f"{type(self).__name__} no implementa generate_running_config"
+        )
 
     # --- escrituras no implementadas --------------------------------------
     #

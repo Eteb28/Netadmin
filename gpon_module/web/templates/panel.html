@@ -17,6 +17,12 @@
 
 <div class="row g-3 mb-4" id="cifras"></div>
 
+<div id="sin-motivo" class="alert alert-secondary small d-none">
+  Este equipo <strong>no publica el motivo de caída</strong> de las ONU, así que no se puede
+  separar un corte de luz en el domicilio de una fibra cortada. Es una limitación del
+  firmware, no un dato en cero.
+</div>
+
 <div class="row g-3">
   <div class="col-lg-5">
     <div class="card h-100">
@@ -86,6 +92,7 @@ async function cargarPanel() {
 
   // Las cifras del panel se acumulan sobre todas las OLT.
   let total = 0, enLinea = 0, fueraDeLinea = 0, cortesDeLuz = 0, fibraCortada = 0;
+  let informaMotivo = false;
   for (const olt of olts) {
     try {
       const resumen = await api(`/olts/${olt.id}/resumen`);
@@ -94,6 +101,9 @@ async function cargarPanel() {
       fueraDeLinea += resumen.por_estado.fuera_de_linea || 0;
       cortesDeLuz += resumen.por_motivo_caida.apagado || 0;
       fibraCortada += resumen.por_motivo_caida.perdida_senal || 0;
+      // El equipo informa el motivo sólo si publica alguno distinto de "desconocido".
+      informaMotivo = informaMotivo ||
+        Object.keys(resumen.por_motivo_caida).some((m) => m !== 'desconocido');
     } catch (error) {
       avisar(`OLT ${olt.nombre}: ${error.message}`, 'warning');
     }
@@ -105,9 +115,15 @@ async function cargarPanel() {
     ${tarjeta('ONU totales', total, 'info')}
     ${tarjeta('En línea', `${enLinea} <small class="fs-6 text-secondary">${porcentaje}%</small>`, 'success')}
     ${tarjeta('Fuera de línea', fueraDeLinea, 'danger')}
-    ${tarjeta('Cortes de luz', cortesDeLuz, 'secondary', 'Dying gasp: no hay nada que hacer en la red')}
-    ${tarjeta('Fibra cortada', fibraCortada, 'warning', 'Pérdida de señal: requiere cuadrilla')}
+    ${informaMotivo
+        ? tarjeta('Cortes de luz', cortesDeLuz, 'secondary', 'Dying gasp: no hay nada que hacer en la red') +
+          tarjeta('Fibra cortada', fibraCortada, 'warning', 'Pérdida de señal: requiere cuadrilla')
+        : ''}
   `;
+
+  // Mostrar "0 cortes de luz" cuando el equipo no publica el motivo se leería
+  // como "no hay ninguno". Si no lo informa, no se muestra la cifra.
+  document.getElementById('sin-motivo').classList.toggle('d-none', informaMotivo || !fueraDeLinea);
 
   dibujarEstados(enLinea, fueraDeLinea, total - enLinea - fueraDeLinea);
 

@@ -270,6 +270,11 @@ class ServicioDescubrimiento:
     def _descubrir_no_autorizadas(
         self, driver: OLTDriver, advertencias: list[str], fallas: list[str]
     ) -> list[ONUNoAutorizada]:
+        if not driver.soporta(Capacidad.DESCUBRIR_NO_AUTORIZADAS):
+            advertencias.append(
+                "Este equipo no expone las ONU sin autorizar por el canal disponible"
+            )
+            return []
         try:
             return driver.discover_unauthorized_onus()
         except CapacidadNoSoportada:

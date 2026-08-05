@@ -63,13 +63,19 @@ async function cargar() {
   const resumen = await api(`/olts/${OLT_ID}/resumen`);
   const enLinea = resumen.por_estado.en_linea || 0;
   const fuera = resumen.por_estado.fuera_de_linea || 0;
+  // Sin motivo publicado no se muestran las cifras: un cero se leería como
+  // "no hay cortes", y lo cierto es que el equipo no lo informa.
+  const informaMotivo = Object.keys(resumen.por_motivo_caida)
+    .some((m) => m !== 'desconocido');
   document.getElementById('cifras').innerHTML = `
     ${tarjeta('Estado', insigniaEstado(olt.estado), 'info')}
     ${tarjeta('ONU', resumen.total_onus, 'info')}
     ${tarjeta('En línea', enLinea, 'success')}
     ${tarjeta('Fuera de línea', fuera, 'danger')}
-    ${tarjeta('Cortes de luz', resumen.por_motivo_caida.apagado || 0, 'secondary', 'No hay nada que hacer en la red')}
-    ${tarjeta('Fibra cortada', resumen.por_motivo_caida.perdida_senal || 0, 'warning', 'Requiere cuadrilla')}
+    ${informaMotivo
+        ? tarjeta('Cortes de luz', resumen.por_motivo_caida.apagado || 0, 'secondary', 'No hay nada que hacer en la red') +
+          tarjeta('Fibra cortada', resumen.por_motivo_caida.perdida_senal || 0, 'warning', 'Requiere cuadrilla')
+        : ''}
   `;
 
   const puertos = await api(`/olts/${OLT_ID}/puertos`);
