@@ -30,7 +30,16 @@ panel, listado de OLT y ONU con filtros, potencias con histograma, eventos y aud
 ## Instalación
 
 ```bash
-pip install -e ".[desarrollo]"        # núcleo + herramientas de prueba
+pip install -e ".[desarrollo,web]"    # núcleo, interfaz web y herramientas de prueba
+```
+
+El comando `gpon` queda disponible **dentro del entorno virtual**. Si el entorno no está
+activado, `gpon` no existe y la terminal responde *"Orden «gpon» no encontrada"*. Para
+evitar ese paso hay un atajo que resuelve el entorno solo:
+
+```bash
+./gpon_module/gpon web --simulada     # desde el repositorio
+./gpon web --simulada                 # desde el paquete distribuido
 ```
 
 Sólo hay una dependencia obligatoria: `cryptography`, para no guardar las credenciales de
