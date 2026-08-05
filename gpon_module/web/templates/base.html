@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="es" data-bs-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}GPON{% endblock %} · Módulo GPON</title>
+  <!-- Bootstrap y Chart.js van servidos localmente, no por CDN: un servidor de
+       NOC suele estar en una VLAN de gestión sin salida a internet, y con CDN
+       la interfaz se vería rota justo donde tiene que funcionar. -->
+  <link href="{{ url_for('static', filename='vendor/bootstrap.min.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='estilos.css') }}" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>◈</text></svg>">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg bg-body-tertiary border-bottom">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-semibold" href="/">
+      <span class="text-info">◈</span> Módulo GPON
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="menu">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item"><a class="nav-link {% if seccion == 'panel' %}active{% endif %}" href="/">Panel</a></li>
+        <li class="nav-item"><a class="nav-link {% if seccion == 'olts' %}active{% endif %}" href="/olts">OLT</a></li>
+        <li class="nav-item"><a class="nav-link {% if seccion == 'eventos' %}active{% endif %}" href="/eventos">Eventos</a></li>
+        <li class="nav-item"><a class="nav-link {% if seccion == 'operaciones' %}active{% endif %}" href="/operaciones">Auditoría</a></li>
+        <li class="nav-item"><a class="nav-link {% if seccion == 'capacidades' %}active{% endif %}" href="/capacidades">Drivers</a></li>
+      </ul>
+      <span class="navbar-text small" id="estado-modulo"></span>
+    </div>
+  </div>
+</nav>
+
+<main class="container-fluid px-4 py-4">
+  {% block contenido %}{% endblock %}
+</main>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3" id="avisos"></div>
+
+<script src="{{ url_for('static', filename='vendor/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+{% block guion %}{% endblock %}
+</body>
+</html>

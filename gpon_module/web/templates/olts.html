@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block titulo %}OLT{% endblock %}
+
+{% block contenido %}
+<h1 class="h4 mb-4">OLT administradas</h1>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 tabla-compacta">
+      <thead><tr>
+        <th>Nombre</th><th>Dirección</th><th>Fabricante</th><th>Modelo</th>
+        <th>Firmware</th><th>Estado</th><th class="text-end">PON</th>
+        <th class="text-end">ONU</th><th>Uptime</th><th>Última lectura</th><th></th>
+      </tr></thead>
+      <tbody id="filas"></tbody>
+    </table>
+  </div>
+</div>
+
+<p class="text-secondary small mt-3 mb-0">
+  El alta de OLT se hace por línea de comandos, para que la contraseña no viaje
+  por un formulario web ni quede en el historial del navegador:
+  <code class="text-info">gpon alta-olt --nombre "…" --host … --fabricante …</code>
+</p>
+{% endblock %}
+
+{% block guion %}
+<script>
+async function cargar() {
+  const olts = await api('/olts');
+  document.getElementById('filas').innerHTML = olts.map((olt) => `
+    <tr>
+      <td><a href="/olts/${olt.id}" class="link-info text-decoration-none">${escapar(olt.nombre)}</a></td>
+      <td class="monoespaciada">${escapar(olt.host)}</td>
+      <td>${escapar(olt.fabricante)}</td>
+      <td>${valor(olt.modelo)}</td>
+      <td>${valor(olt.firmware)}</td>
+      <td>${insigniaEstado(olt.estado)}</td>
+      <td class="text-end">${olt.cantidad_pon}</td>
+      <td class="text-end">${olt.cantidad_onus}</td>
+      <td>${duracion(olt.uptime_segundos)}</td>
+      <td class="text-nowrap">${fecha(olt.ultima_sincronizacion)}</td>
+      <td class="text-end text-nowrap">
+        <button class="btn btn-sm btn-outline-secondary" onclick="probar(${olt.id})">Probar</button>
+        <button class="btn btn-sm btn-outline-info" onclick="descubrir(${olt.id})">Descubrir</button>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="11" class="text-center text-secondary py-4">Sin OLT registradas</td></tr>';
+}
+
+async function probar(id) {
+  try {
+    const resultado = await api(`/olts/${id}/probar`, { method: 'POST' });
+    avisar(resultado.detalle, resultado.ok ? 'success' : 'danger');
+  } catch (error) {
+    avisar(error.message, 'danger');
+  }
+  cargar();
+}
+
+async function descubrir(id) {
+  avisar('Descubriendo… puede tardar en un parque grande.', 'secondary');
+  try {
+    const r = await api(`/olts/${id}/descubrir`, { method: 'POST' });
+    if (r.completo) {
+      avisar(`Lectura completa: ${r.onus_leidas} ONU (${r.onus_nuevas} nuevas).`, 'success');
+    } else {
+      // Una lectura incompleta se avisa como tal: lo que no se leyó no se da
+      // por inexistente, y ninguna ONU se dio de baja.
+      avisar(
+        `Lectura ${r.resultado.toUpperCase()}: ${r.onus_leidas} ONU. ` +
+        `No se dio de baja ninguna. ${r.advertencias.join(' · ')}`,
+        'warning');
+    }
+  } catch (error) {
+    avisar(error.message, 'danger');
+  }
+  cargar();
+}
+
+cargar();
+</script>
+{% endblock %}

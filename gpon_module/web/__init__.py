@@ -1,12 +1,14 @@
-"""Interfaz web (Fase 3).
+"""Interfaz web del módulo GPON (Bootstrap 5).
 
-Aplicación independiente con Bootstrap 5: panel, listados de OLT, PON y ONU,
-clientes, potencias, gráficos, históricos, alarmas, registros y configuración.
+Aplicación independiente: no comparte base de datos, sesión ni plantillas con
+Pucará. Se levanta con ``gpon web``.
 
-Consume exclusivamente la API de ``api/``. La regla es la del diseño: la web
-nunca habla con un driver.
-
-Un detalle que ordena toda la interfaz: cada pantalla consulta primero las
-capacidades del equipo y **oculta** lo que ese modelo no soporta, en vez de
-mostrar un botón que va a fallar.
+Las páginas son cáscaras HTML que consumen la API por ``fetch``; ninguna
+importa un servicio ni un driver. Un detalle que ordena toda la interfaz: cada
+pantalla consulta primero las capacidades del equipo y **oculta** lo que ese
+modelo no soporta, en vez de mostrar un botón que va a fallar.
 """
+
+from .aplicacion import crear_app
+
+__all__ = ["crear_app"]

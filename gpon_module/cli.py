@@ -12,9 +12,11 @@ Comandos disponibles::
     demo              corre un ciclo completo contra la OLT simulada
     alta-olt          registra una OLT
     probar <id>       verifica la conexión con el equipo
+    sondear <id>      valores crudos del equipo, para verificar la lectura
     listar-olts       OLT registradas
     descubrir <id>    descubre e inventaría una OLT
     onus <id>         inventario de ONU de una OLT
+    web               levanta la interfaz web
 """
 
 from __future__ import annotations
@@ -116,6 +118,39 @@ def comando_probar(args: argparse.Namespace) -> int:
     return 0 if ok else 1
 
 
+def comando_sondear(args: argparse.Namespace) -> int:
+    """Muestra los valores crudos del equipo junto a su interpretación.
+
+    Es la herramienta para confirmar, contra un equipo real, la única cosa que
+    el driver VSOL deduce en vez de saber: la escala con la que la OLT publica
+    potencias, temperatura y voltaje.
+    """
+    with _sistema(args) as sistema:
+        with sistema.fabrica_drivers.sesion(args.olt_id) as driver:
+            if not hasattr(driver, "sondear"):
+                print(
+                    f"El driver de {driver.fabricante} no tiene sondeo de diagnóstico.",
+                    file=sys.stderr,
+                )
+                return 1
+            muestras = driver.sondear()
+
+        _titulo(f"Sondeo de la OLT {args.olt_id}")
+        for muestra in muestras:
+            print(f"\n{muestra.descripcion}")
+            print(f"  OID           {muestra.oid}")
+            print(f"  crudo         {muestra.crudo!r}")
+            print(f"  interpretado  {muestra.interpretado!r}")
+            if muestra.nota:
+                print(f"  · {muestra.nota}")
+        print(
+            "\nCompará 'interpretado' con lo que muestra la web del equipo. "
+            "Si alguna potencia o temperatura no coincide, pasame estos valores "
+            "y ajusto la escala del parser."
+        )
+    return 0
+
+
 def comando_listar_olts(args: argparse.Namespace) -> int:
     with _sistema(args) as sistema:
         olts = sistema.servicio_olt.listar()
@@ -171,6 +206,47 @@ def comando_onus(args: argparse.Namespace) -> int:
 
         estados = Counter(str(o.estado) for o in onus)
         print("\nResumen:", ", ".join(f"{k}={v}" for k, v in sorted(estados.items())))
+    return 0
+
+
+def comando_web(args: argparse.Namespace) -> int:
+    """Levanta la interfaz web.
+
+    Con ``--simulada`` arranca contra la OLT simulada y una base en memoria:
+    sirve para recorrer la interfaz sin tener ningún equipo ni base configurada.
+    """
+    try:
+        from .web import crear_app
+    except ImportError:
+        print(
+            "Falta Flask. Instalalo con:  pip install 'gpon-module[web]'",
+            file=sys.stderr,
+        )
+        return 1
+
+    if args.simulada:
+        configuracion = Configuracion(
+            url_base_datos="sqlite:///:memory:",
+            permitir_cifrado_nulo=True,
+            dry_run_por_defecto=True,
+        )
+        parque = generar_parque(cantidad_onus=args.onus)
+        sistema = crear_contenedor(configuracion, extras_driver={"parque": parque})
+        olt = sistema.servicio_olt.registrar(
+            nombre="OLT simulada",
+            host="10.255.0.1",
+            fabricante=Fabricante.SIMULADO,
+            credenciales=CredencialesOLT(usuario="admin", password="simulada"),
+            descripcion="Equipo de demostración, no existe",
+        )
+        sistema.servicio_descubrimiento.descubrir(olt.id)
+        print(f"OLT simulada lista con {args.onus} ONU. Nada de esto es un equipo real.")
+    else:
+        sistema = _sistema(args)
+
+    app = crear_app(sistema, modo_debug=args.debug)
+    print(f"\n  Interfaz web en  http://{args.host}:{args.puerto}\n")
+    app.run(host=args.host, port=args.puerto, debug=args.debug, use_reloader=False)
     return 0
 
 
@@ -332,6 +408,22 @@ def construir_parser() -> argparse.ArgumentParser:
     probar = sub.add_parser("probar", help="verifica la conexión con una OLT")
     probar.add_argument("olt_id", type=int)
     probar.set_defaults(funcion=comando_probar)
+
+    sondear = sub.add_parser("sondear", help="valores crudos del equipo, para verificar")
+    sondear.add_argument("olt_id", type=int)
+    sondear.set_defaults(funcion=comando_sondear)
+
+    servidor = sub.add_parser("web", help="levanta la interfaz web")
+    servidor.add_argument("--host", default="127.0.0.1", help="dirección de escucha")
+    servidor.add_argument("--puerto", type=int, default=8070)
+    servidor.add_argument(
+        "--simulada",
+        action="store_true",
+        help="arranca con una OLT simulada y base en memoria, sin configurar nada",
+    )
+    servidor.add_argument("--onus", type=int, default=473, help="ONU a simular")
+    servidor.add_argument("--debug", action="store_true")
+    servidor.set_defaults(funcion=comando_web)
 
     demo = sub.add_parser("demo", help="ciclo completo contra la OLT simulada")
     demo.add_argument("--onus", type=int, default=473, help="cantidad de ONU a simular")

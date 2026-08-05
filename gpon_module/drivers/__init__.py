@@ -7,10 +7,10 @@ sistema nunca importa un driver concreto: los pide por fabricante a
 Estado de los drivers:
 
 * ``mock``  — completo, es lo que permite correr el módulo sin una OLT real.
-* ``vsol``  — Fase 2 (lectura) y Fase 5 (escritura).
+* ``vsol``  — lectura por SNMP (Fase 2). La escritura llega en la Fase 5.
 * ``zte``   — Fase 6.
 """
 
-from . import mock
+from . import mock, vsol
 
-__all__ = ["mock"]
+__all__ = ["mock", "vsol"]

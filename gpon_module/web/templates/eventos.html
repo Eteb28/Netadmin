@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block titulo %}Eventos{% endblock %}
+
+{% block contenido %}
+<h1 class="h4 mb-1">Eventos</h1>
+<p class="text-secondary small">
+  Cambios detectados en el inventario: ONU nuevas, bajas, cambios de estado, de
+  firmware y de perfil. Es el histórico que permite responder "¿desde cuándo?".
+</p>
+
+<div class="row g-2 align-items-end mb-3">
+  <div class="col-md-3">
+    <label class="form-label small text-secondary mb-1">OLT</label>
+    <select class="form-select form-select-sm" id="olt"><option value="">Todas</option></select>
+  </div>
+  <div class="col-6 col-md-2">
+    <label class="form-label small text-secondary mb-1">Cantidad</label>
+    <select class="form-select form-select-sm" id="limite">
+      <option>100</option><option>250</option><option>500</option>
+    </select>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-sm mb-0 tabla-compacta">
+      <thead><tr>
+        <th>Cuándo</th><th>Tipo</th><th>OLT</th><th>ONU</th>
+        <th>Descripción</th><th>Antes</th><th>Después</th>
+      </tr></thead>
+      <tbody id="filas"></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block guion %}
+<script>
+let nombresOlt = {};
+
+async function iniciar() {
+  const olts = await api('/olts');
+  nombresOlt = Object.fromEntries(olts.map((o) => [o.id, o.nombre]));
+  const selector = document.getElementById('olt');
+  olts.forEach((o) => selector.add(new Option(o.nombre, o.id)));
+  ['olt', 'limite'].forEach((id) =>
+    document.getElementById(id).addEventListener('change', cargar));
+  cargar();
+}
+
+async function cargar() {
+  const olt = document.getElementById('olt').value;
+  const limite = document.getElementById('limite').value;
+  const consulta = new URLSearchParams({ limite });
+  if (olt) consulta.set('olt_id', olt);
+
+  const eventos = await api(`/eventos?${consulta}`);
+  document.getElementById('filas').innerHTML = eventos.map((e) => `
+    <tr>
+      <td class="text-nowrap">${fecha(e.ocurrido_en)}</td>
+      <td><span class="badge text-bg-secondary">${escapar(e.tipo)}</span></td>
+      <td>${escapar(nombresOlt[e.olt_id] || e.olt_id || '')}</td>
+      <td class="monoespaciada">${valor(e.ref)}</td>
+      <td>${escapar(e.descripcion)}</td>
+      <td class="monoespaciada">${valor(e.valor_anterior)}</td>
+      <td class="monoespaciada">${valor(e.valor_nuevo)}</td>
+    </tr>`).join('') || '<tr><td colspan="7" class="text-center text-secondary py-4">Sin eventos</td></tr>';
+}
+
+iniciar().catch((error) => avisar(error.message, 'danger'));
+</script>
+{% endblock %}

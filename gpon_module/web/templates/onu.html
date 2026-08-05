@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block titulo %}ONU {{ pon }}:{{ numero }}{% endblock %}
+
+{% block contenido %}
+<nav aria-label="ruta"><ol class="breadcrumb small">
+  <li class="breadcrumb-item"><a href="/olts" class="link-secondary">OLT</a></li>
+  <li class="breadcrumb-item"><a href="/olts/{{ olt_id }}" class="link-secondary" id="miga-olt">…</a></li>
+  <li class="breadcrumb-item"><a href="/olts/{{ olt_id }}/onus" class="link-secondary">ONU</a></li>
+  <li class="breadcrumb-item active">{{ pon }}:{{ numero }}</li>
+</ol></nav>
+
+<div class="d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <h1 class="h4 mb-1" id="titulo">ONU {{ pon }}:{{ numero }}</h1>
+    <div class="text-secondary small" id="subtitulo"></div>
+  </div>
+  <div id="acciones" class="text-nowrap"></div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header">Inventario</div>
+      <div class="card-body"><dl class="row mb-0 small" id="datos"></dl></div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Óptica</span>
+        <button class="btn btn-sm btn-outline-secondary" onclick="cargarPotencia()">Leer del equipo</button>
+      </div>
+      <div class="card-body"><dl class="row mb-0 small" id="optica"></dl></div>
+    </div>
+  </div>
+</div>
+
+<div class="card mt-3">
+  <div class="card-header">Operaciones sobre esta ONU</div>
+  <div class="table-responsive">
+    <table class="table table-sm mb-0 tabla-compacta">
+      <thead><tr><th>Cuándo</th><th>Tipo</th><th>Usuario</th><th>Modo</th><th>Resultado</th></tr></thead>
+      <tbody id="filas-operaciones"></tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block guion %}
+<script>
+const OLT_ID = {{ olt_id }};
+const PON = {{ pon }};
+const NUMERO = {{ numero }};
+
+async function cargar() {
+  const olt = await api(`/olts/${OLT_ID}`);
+  document.getElementById('miga-olt').textContent = olt.nombre;
+
+  const onu = await api(`/olts/${OLT_ID}/onus/${PON}/${NUMERO}`);
+  document.getElementById('titulo').textContent = onu.nombre || `ONU ${onu.ref}`;
+  document.getElementById('subtitulo').innerHTML =
+    `${insigniaEstado(onu.estado)} ${insigniaMotivo(onu.motivo_caida)} · ${escapar(olt.nombre)} · puerto ${onu.pon}`;
+
+  document.getElementById('datos').innerHTML = [
+    ['Posición', `<span class="monoespaciada">${escapar(onu.ref)}</span>`],
+    ['Número de serie', onu.numero_serie
+      ? `<span class="monoespaciada">${escapar(onu.numero_serie)}</span>`
+      : '<span class="sin-dato">— este modelo no lo publica por SNMP</span>'],
+    ['Modelo', valor(onu.modelo)],
+    ['Firmware', valor(onu.firmware)],
+    ['Modo', valor(onu.modo_servicio)],
+    ['VLAN', valor(onu.vlan)],
+    ['Distancia', onu.distancia_metros !== null ? `${onu.distancia_metros} m` : '<span class="sin-dato">—</span>'],
+    ['Tiempo en estado', valor(onu.tiempo_en_estado)],
+    ['Última subida', fecha(onu.ultima_subida)],
+    ['Última bajada', fecha(onu.ultima_bajada)],
+    ['Vista por primera vez', fecha(onu.primera_vez_vista)],
+    ['Vista por última vez', fecha(onu.ultima_vez_vista)],
+  ].map(([etiqueta, dato]) =>
+    `<dt class="col-5 text-secondary fw-normal">${etiqueta}</dt><dd class="col-7">${dato}</dd>`).join('');
+
+  await dibujarAcciones();
+  await cargarOperaciones();
+}
+
+async function dibujarAcciones() {
+  const capacidades = await api(`/olts/${OLT_ID}/capacidades`);
+  const puede = (nombre) => capacidades.soportadas.includes(nombre);
+  // Cada botón existe sólo si el equipo puede hacerlo. Mostrar uno que falla
+  // delante de un cliente esperando servicio es peor que no mostrarlo.
+  const botones = [];
+  if (puede('REINICIAR_ONU')) {
+    botones.push('<button class="btn btn-sm btn-outline-warning" onclick="reiniciar()">Reiniciar</button>');
+  }
+  document.getElementById('acciones').innerHTML = botones.join(' ') ||
+    '<span class="text-secondary small">Este equipo no admite operaciones de escritura todavía.</span>';
+}
+
+async function cargarPotencia() {
+  const destino = document.getElementById('optica');
+  destino.classList.add('cargando');
+  try {
+    const p = await api(`/olts/${OLT_ID}/onus/${PON}/${NUMERO}/potencia`);
+    destino.innerHTML = [
+      ['RX de la ONU', potencia(p.rx_onu_dbm, p.clasificacion)],
+      ['TX de la ONU', p.tx_onu_dbm !== null ? `${p.tx_onu_dbm.toFixed(2)} dBm` : '<span class="sin-dato">—</span>'],
+      ['Atenuación', p.perdida_optica_db !== null ? `${p.perdida_optica_db.toFixed(2)} dB` : '<span class="sin-dato">—</span>'],
+      ['Clasificación', `<span class="${claseOptica(p.clasificacion)}">${escapar(p.clasificacion)}</span>`],
+      ['Temperatura', p.temperatura_celsius !== null ? `${p.temperatura_celsius.toFixed(1)} °C` : '<span class="sin-dato">—</span>'],
+      ['Voltaje', p.voltaje_voltios !== null ? `${p.voltaje_voltios.toFixed(2)} V` : '<span class="sin-dato">—</span>'],
+      ['Leído', fecha(p.leido_en)],
+    ].map(([etiqueta, dato]) =>
+      `<dt class="col-5 text-secondary fw-normal">${etiqueta}</dt><dd class="col-7">${dato}</dd>`).join('');
+
+    if (p.clasificacion === 'saturada') {
+      destino.insertAdjacentHTML('beforeend',
+        '<div class="alert alert-danger mt-3 mb-0 py-2 small">' +
+        'Potencia <strong>saturada</strong>: llega demasiada luz. No es un valor bueno — ' +
+        'satura el receptor y lo daña con el tiempo. Suele resolverse con un atenuador.</div>');
+    }
+  } catch (error) {
+    destino.innerHTML = `<div class="alert alert-warning mb-0 py-2 small">${escapar(error.message)}</div>`;
+  }
+  destino.classList.remove('cargando');
+}
+
+async function reiniciar() {
+  if (!confirm('¿Reiniciar esta ONU?\n\nSale en modo simulación: se arman los comandos y no se envían.')) return;
+  try {
+    const r = await api(`/olts/${OLT_ID}/onus/${PON}/${NUMERO}/reiniciar`, { method: 'POST', body: '{}' });
+    avisar(
+      r.simulado
+        ? `Simulado. Comandos que se habrían enviado: ${r.comandos.join(' | ')}`
+        : (r.ok ? 'Reinicio enviado al equipo.' : `Falló: ${r.error}`),
+      r.ok ? (r.simulado ? 'info' : 'success') : 'danger');
+  } catch (error) {
+    avisar(error.message, 'danger');
+  }
+  cargarOperaciones();
+}
+
+async function cargarOperaciones() {
+  const operaciones = await api(`/operaciones?olt_id=${OLT_ID}&limite=50`);
+  const propias = operaciones.filter((o) => o.ref === `${PON}:${NUMERO}`);
+  document.getElementById('filas-operaciones').innerHTML = propias.map((o) => `
+    <tr>
+      <td class="text-nowrap">${fecha(o.ejecutada_en)}</td>
+      <td>${escapar(o.tipo)}</td>
+      <td>${escapar(o.usuario)}</td>
+      <td>${o.simulado
+            ? '<span class="badge text-bg-info">simulada</span>'
+            : '<span class="badge text-bg-danger">real</span>'}</td>
+      <td>${o.ok ? '<span class="text-success">ok</span>' : `<span class="text-danger">${escapar(o.error)}</span>`}</td>
+    </tr>`).join('') || '<tr><td colspan="5" class="text-center text-secondary py-3">Sin operaciones</td></tr>';
+}
+
+cargar().then(cargarPotencia).catch((error) => avisar(error.message, 'danger'));
+</script>
+{% endblock %}

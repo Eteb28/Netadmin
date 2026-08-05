@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block titulo %}Potencias{% endblock %}
+
+{% block contenido %}
+<nav aria-label="ruta"><ol class="breadcrumb small">
+  <li class="breadcrumb-item"><a href="/olts" class="link-secondary">OLT</a></li>
+  <li class="breadcrumb-item"><a href="/olts/{{ olt_id }}" class="link-secondary" id="miga-olt">…</a></li>
+  <li class="breadcrumb-item active">Potencias</li>
+</ol></nav>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0">Potencias ópticas</h1>
+  <button class="btn btn-sm btn-outline-secondary" onclick="cargar()">Leer del equipo</button>
+</div>
+
+<div class="row g-3 mb-3" id="cifras"></div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card h-100">
+      <div class="card-header">Distribución de RX</div>
+      <div class="card-body"><canvas id="histograma" height="200"></canvas></div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-header">Las que requieren atención</div>
+      <div class="table-responsive" style="max-height: 22rem">
+        <table class="table table-sm mb-0 tabla-compacta">
+          <thead class="sticky-top"><tr><th>ONU</th><th class="text-end">RX</th><th>Clasificación</th></tr></thead>
+          <tbody id="filas-problema"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="alert alert-secondary small mt-3 mb-0">
+  <strong>Sobre la saturación.</strong> Una potencia por encima de −8 dBm no es
+  "muy buena": es <em>demasiada luz</em>, satura el receptor de la ONU y lo
+  degrada con el tiempo. Se cuenta como problema, igual que una señal débil.
+</div>
+{% endblock %}
+
+{% block guion %}
+<script>
+const OLT_ID = {{ olt_id }};
+let histograma = null;
+
+async function cargar() {
+  const olt = await api(`/olts/${OLT_ID}`);
+  document.getElementById('miga-olt').textContent = olt.nombre;
+
+  let datos;
+  try {
+    datos = await api(`/olts/${OLT_ID}/potencias`);
+  } catch (error) {
+    avisar(`No se pudieron leer las potencias: ${error.message}`, 'danger');
+    return;
+  }
+
+  const orden = ['saturada', 'optima', 'aceptable', 'baja', 'critica', 'sin_lectura'];
+  const tonos = {
+    saturada: 'danger', optima: 'success', aceptable: 'success',
+    baja: 'warning', critica: 'danger', sin_lectura: 'secondary',
+  };
+  document.getElementById('cifras').innerHTML = orden.map((clase) => `
+    <div class="col-4 col-md-2">
+      <div class="card tarjeta-cifra h-100" style="border-left-color: var(--optica-${clase})">
+        <div class="card-body py-3">
+          <div class="etiqueta text-secondary">${escapar(clase.replace('_', ' '))}</div>
+          <div class="cifra ${claseOptica(clase)}">${datos.resumen[clase] || 0}</div>
+        </div>
+      </div>
+    </div>`).join('');
+
+  const conLectura = datos.lecturas.filter((l) => l.rx_onu_dbm !== null);
+  dibujarHistograma(conLectura);
+
+  // Orden por urgencia, no por valor: una saturada está dañando el receptor
+  // ahora mismo, así que va arriba aunque su número sea el más alto de todos.
+  const urgencia = { saturada: 0, critica: 1, baja: 2 };
+  const problema = datos.lecturas
+    .filter((l) => l.clasificacion in urgencia)
+    .sort((a, b) =>
+      urgencia[a.clasificacion] - urgencia[b.clasificacion] ||
+      (a.rx_onu_dbm ?? 0) - (b.rx_onu_dbm ?? 0));
+
+  document.getElementById('filas-problema').innerHTML = problema.map((l) => `
+    <tr onclick="location.href='/olts/${OLT_ID}/onus/${l.pon}/${l.onu_id}'">
+      <td class="monoespaciada">${escapar(l.ref)}</td>
+      <td class="text-end">${potencia(l.rx_onu_dbm, l.clasificacion)}</td>
+      <td><span class="${claseOptica(l.clasificacion)}">${escapar(l.clasificacion)}</span></td>
+    </tr>`).join('') ||
+    '<tr><td colspan="3" class="text-center text-secondary py-3">Ninguna requiere atención</td></tr>';
+}
+
+function dibujarHistograma(lecturas) {
+  // Barras de 2 dB entre −34 y −2: el rango donde vive un parque real.
+  const desde = -34, hasta = -2, ancho = 2;
+  const etiquetas = [];
+  const cuentas = [];
+  const colores = [];
+  for (let inicio = desde; inicio < hasta; inicio += ancho) {
+    etiquetas.push(`${inicio}`);
+    cuentas.push(lecturas.filter((l) => l.rx_onu_dbm >= inicio && l.rx_onu_dbm < inicio + ancho).length);
+    const medio = inicio + ancho / 2;
+    colores.push(medio > -8 ? '#e35d6a' : medio >= -25 ? '#4ade80' : medio >= -27 ? '#a3e635'
+                 : medio >= -29 ? '#fbbf24' : '#f87171');
+  }
+  if (histograma) histograma.destroy();
+  histograma = new Chart(document.getElementById('histograma'), {
+    type: 'bar',
+    data: { labels: etiquetas, datasets: [{ data: cuentas, backgroundColor: colores, borderWidth: 0 }] },
+    options: {
+      plugins: { legend: { display: false }, tooltip: { callbacks: {
+        title: (i) => `${i[0].label} a ${Number(i[0].label) + ancho} dBm` } } },
+      scales: {
+        x: { title: { display: true, text: 'RX (dBm)', color: '#adb5bd' }, ticks: { color: '#adb5bd' }, grid: { display: false } },
+        y: { title: { display: true, text: 'ONU', color: '#adb5bd' }, ticks: { color: '#adb5bd' }, grid: { color: 'rgba(255,255,255,.06)' } },
+      },
+      maintainAspectRatio: false,
+    },
+  });
+}
+
+cargar();
+</script>
+{% endblock %}

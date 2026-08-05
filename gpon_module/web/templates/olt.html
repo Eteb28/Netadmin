@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block titulo %}OLT{% endblock %}
+
+{% block contenido %}
+<nav aria-label="ruta"><ol class="breadcrumb small">
+  <li class="breadcrumb-item"><a href="/olts" class="link-secondary">OLT</a></li>
+  <li class="breadcrumb-item active" id="miga">…</li>
+</ol></nav>
+
+<div class="d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <h1 class="h4 mb-1" id="titulo">…</h1>
+    <div class="text-secondary small monoespaciada" id="subtitulo"></div>
+  </div>
+  <div class="text-nowrap">
+    <a class="btn btn-sm btn-outline-info" href="/olts/{{ olt_id }}/onus">Ver ONU</a>
+    <a class="btn btn-sm btn-outline-info" href="/olts/{{ olt_id }}/potencias">Potencias</a>
+    <button class="btn btn-sm btn-outline-secondary" onclick="descubrir()">Descubrir</button>
+  </div>
+</div>
+
+<div class="row g-3 mb-4" id="cifras"></div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card h-100">
+      <div class="card-header">Puertos PON</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0 tabla-compacta">
+          <thead><tr>
+            <th>Puerto</th><th class="text-end">ONU</th><th class="text-end">En línea</th>
+            <th class="text-end">Temp.</th><th class="text-end">Voltaje</th>
+          </tr></thead>
+          <tbody id="filas-pon"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card mb-3">
+      <div class="card-header">Última lectura</div>
+      <div class="card-body small" id="ultima-corrida"></div>
+    </div>
+    <div class="card">
+      <div class="card-header">Qué puede este equipo</div>
+      <div class="card-body small" id="capacidades"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block guion %}
+<script>
+const OLT_ID = {{ olt_id }};
+
+async function cargar() {
+  const olt = await api(`/olts/${OLT_ID}`);
+  document.getElementById('miga').textContent = olt.nombre;
+  document.getElementById('titulo').textContent = olt.nombre;
+  document.getElementById('subtitulo').innerHTML =
+    `${escapar(olt.host)} · ${escapar(olt.fabricante)} ${valor(olt.modelo)} · firmware ${valor(olt.firmware)}`;
+
+  const resumen = await api(`/olts/${OLT_ID}/resumen`);
+  const enLinea = resumen.por_estado.en_linea || 0;
+  const fuera = resumen.por_estado.fuera_de_linea || 0;
+  document.getElementById('cifras').innerHTML = `
+    ${tarjeta('Estado', insigniaEstado(olt.estado), 'info')}
+    ${tarjeta('ONU', resumen.total_onus, 'info')}
+    ${tarjeta('En línea', enLinea, 'success')}
+    ${tarjeta('Fuera de línea', fuera, 'danger')}
+    ${tarjeta('Cortes de luz', resumen.por_motivo_caida.apagado || 0, 'secondary', 'No hay nada que hacer en la red')}
+    ${tarjeta('Fibra cortada', resumen.por_motivo_caida.perdida_senal || 0, 'warning', 'Requiere cuadrilla')}
+  `;
+
+  const puertos = await api(`/olts/${OLT_ID}/puertos`);
+  document.getElementById('filas-pon').innerHTML = puertos.map((p) => `
+    <tr onclick="location.href='/olts/${OLT_ID}/onus?pon=${p.indice}'">
+      <td class="monoespaciada">${escapar(p.nombre)}</td>
+      <td class="text-end">${p.cantidad_onus}</td>
+      <td class="text-end text-success">${p.cantidad_onus_en_linea}</td>
+      <td class="text-end">${p.temperatura_celsius !== null ? p.temperatura_celsius.toFixed(1) + ' °C' : '<span class="sin-dato">—</span>'}</td>
+      <td class="text-end">${p.voltaje_voltios !== null ? p.voltaje_voltios.toFixed(2) + ' V' : '<span class="sin-dato">—</span>'}</td>
+    </tr>`).join('') || '<tr><td colspan="5" class="text-center text-secondary py-3">Sin puertos. Corré "Descubrir".</td></tr>';
+
+  const corrida = olt.ultima_corrida;
+  document.getElementById('ultima-corrida').innerHTML = corrida ? `
+    <div class="d-flex justify-content-between"><span class="text-secondary">Resultado</span>
+      <span>${insigniaResultado(corrida.resultado)}</span></div>
+    <div class="d-flex justify-content-between"><span class="text-secondary">ONU leídas</span>
+      <span>${corrida.onus_leidas}${corrida.onus_esperadas ? ' de ' + corrida.onus_esperadas : ''}</span></div>
+    <div class="d-flex justify-content-between"><span class="text-secondary">Eventos</span>
+      <span>${corrida.eventos_generados}</span></div>
+    <div class="d-flex justify-content-between"><span class="text-secondary">Duración</span>
+      <span>${corrida.duracion_ms} ms</span></div>
+    <div class="d-flex justify-content-between"><span class="text-secondary">Cuándo</span>
+      <span>${fecha(corrida.iniciada_en)}</span></div>
+    ${corrida.detalle ? `<div class="alert alert-warning mt-2 mb-0 py-2 small">${escapar(corrida.detalle)}</div>` : ''}
+  ` : '<span class="text-secondary">Todavía no se leyó este equipo.</span>';
+
+  const capacidades = await api(`/olts/${OLT_ID}/capacidades`);
+  document.getElementById('capacidades').innerHTML = `
+    <div class="mb-2">${capacidades.soportadas.map((c) =>
+      `<span class="badge text-bg-success me-1 mb-1">${escapar(c)}</span>`).join('')}</div>
+    <div>${capacidades.no_soportadas.map((c) =>
+      `<span class="badge text-bg-secondary me-1 mb-1 capacidad-ausente">${escapar(c)}</span>`).join('')}</div>
+    <p class="text-secondary mt-2 mb-0">
+      Lo tachado es lo que <strong>este modelo no puede hacer</strong>, verificado
+      contra el equipo. La interfaz lo oculta en vez de ofrecerlo y fallar.
+    </p>`;
+}
+
+function insigniaResultado(resultado) {
+  const tonos = { completa: 'success', parcial: 'warning', fallida: 'danger' };
+  return `<span class="badge text-bg-${tonos[resultado] || 'secondary'}">${escapar(resultado)}</span>`;
+}
+
+function tarjeta(etiqueta, cifra, tono, ayuda = '') {
+  return `
+    <div class="col-6 col-md-4 col-xl-2">
+      <div class="card tarjeta-cifra h-100" style="border-left-color: var(--bs-${tono})" ${ayuda ? `title="${escapar(ayuda)}"` : ''}>
+        <div class="card-body py-3">
+          <div class="etiqueta text-secondary">${escapar(etiqueta)}</div>
+          <div class="cifra text-${tono}">${cifra}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function descubrir() {
+  avisar('Descubriendo…', 'secondary');
+  try {
+    const r = await api(`/olts/${OLT_ID}/descubrir`, { method: 'POST' });
+    avisar(
+      r.completo
+        ? `Lectura completa: ${r.onus_leidas} ONU (${r.onus_nuevas} nuevas).`
+        : `Lectura ${r.resultado.toUpperCase()}: ${r.onus_leidas} ONU. No se dio de baja ninguna.`,
+      r.completo ? 'success' : 'warning');
+  } catch (error) {
+    avisar(error.message, 'danger');
+  }
+  cargar();
+}
+
+cargar().catch((error) => avisar(error.message, 'danger'));
+</script>
+{% endblock %}

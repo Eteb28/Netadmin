@@ -59,6 +59,7 @@ packages = [
 
 [tool.setuptools.package-data]
 "gpon_module.database" = ["*.sql"]
+"gpon_module.web" = ["templates/*.html", "static/*.css", "static/*.js", "static/vendor/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

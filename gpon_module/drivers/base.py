@@ -24,12 +24,16 @@ from ..core.errors import CapacidadNoSoportada, ErrorGPON
 from ..core.models import (
     OLT,
     ClienteConectado,
+    ConfigWiFi,
     CredencialesOLT,
+    CredencialPPPoE,
     LecturaTrafico,
     Perfiles,
     PuertoLAN,
     RefONU,
+    RespaldoConfiguracion,
     ResultadoOperacion,
+    SolicitudAutorizacion,
 )
 from ..core.reloj import RelojSistema
 
@@ -248,6 +252,60 @@ class DriverBase:
     def get_profiles(self) -> Perfiles:
         self._exigir(Capacidad.DESCUBRIR_PERFILES)
         return Perfiles()
+
+    # --- escrituras no implementadas --------------------------------------
+    #
+    # Un driver que todavía no sabe escribir —el de VSOL en la fase de lectura,
+    # por ejemplo— hereda estas versiones. Fallan con CapacidadNoSoportada, que
+    # explica qué pasa, en vez de con AttributeError, que parece un error de
+    # programación. La capacidad declarada ya evitó la llamada; esto es la
+    # segunda barrera, para quien use el driver directamente.
+
+    def authorize_onu(self, solicitud: SolicitudAutorizacion) -> ResultadoOperacion:
+        self._exigir(Capacidad.AUTORIZAR_ONU)
+        raise NotImplementedError(f"{type(self).__name__} no implementa authorize_onu")
+
+    def delete_onu(self, ref: RefONU) -> ResultadoOperacion:
+        self._exigir(Capacidad.ELIMINAR_ONU)
+        raise NotImplementedError(f"{type(self).__name__} no implementa delete_onu")
+
+    def reboot_onu(self, ref: RefONU) -> ResultadoOperacion:
+        self._exigir(Capacidad.REINICIAR_ONU)
+        raise NotImplementedError(f"{type(self).__name__} no implementa reboot_onu")
+
+    def factory_reset(self, ref: RefONU) -> ResultadoOperacion:
+        self._exigir(Capacidad.RESTAURAR_FABRICA)
+        raise NotImplementedError(f"{type(self).__name__} no implementa factory_reset")
+
+    def set_wifi(self, ref: RefONU, config: ConfigWiFi) -> ResultadoOperacion:
+        self._exigir(Capacidad.WIFI_POR_OMCI)
+        raise NotImplementedError(f"{type(self).__name__} no implementa set_wifi")
+
+    def change_wifi_password(self, ref: RefONU, password: str) -> ResultadoOperacion:
+        self._exigir(Capacidad.WIFI_POR_OMCI)
+        raise NotImplementedError(f"{type(self).__name__} no implementa change_wifi_password")
+
+    def change_pppoe(self, ref: RefONU, credencial: CredencialPPPoE) -> ResultadoOperacion:
+        self._exigir(Capacidad.PPPOE_POR_OMCI)
+        raise NotImplementedError(f"{type(self).__name__} no implementa change_pppoe")
+
+    def set_bridge(self, ref: RefONU, vlan: int | None = None) -> ResultadoOperacion:
+        self._exigir(Capacidad.MODO_BRIDGE_ROUTER)
+        raise NotImplementedError(f"{type(self).__name__} no implementa set_bridge")
+
+    def set_router(
+        self, ref: RefONU, credencial: CredencialPPPoE, vlan: int | None = None
+    ) -> ResultadoOperacion:
+        self._exigir(Capacidad.MODO_BRIDGE_ROUTER)
+        raise NotImplementedError(f"{type(self).__name__} no implementa set_router")
+
+    def backup_configuration(self) -> RespaldoConfiguracion:
+        self._exigir(Capacidad.RESPALDO_CONFIGURACION)
+        raise NotImplementedError(f"{type(self).__name__} no implementa backup_configuration")
+
+    def restore_configuration(self, respaldo: RespaldoConfiguracion) -> ResultadoOperacion:
+        self._exigir(Capacidad.RESTAURACION_CONFIGURACION)
+        raise NotImplementedError(f"{type(self).__name__} no implementa restore_configuration")
 
     def __repr__(self) -> str:
         modo = "simulación" if self._dry_run else "REAL"
