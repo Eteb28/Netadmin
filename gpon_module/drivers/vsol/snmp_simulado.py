@@ -25,6 +25,7 @@ class SNMPSimuladoVSOL:
         sin_respuesta: bool = False,
         tabla_onu_vacia: bool = False,
         escala_potencia: int = 100,
+        con_unidades: bool = False,
     ) -> None:
         self.cantidad_pon = cantidad_pon
         self.onus_por_pon = onus_por_pon
@@ -34,6 +35,9 @@ class SNMPSimuladoVSOL:
         #: Divisor con el que el equipo publica las potencias. Cambiarlo es la
         #: forma de comprobar que el parser infiere bien la escala.
         self.escala_potencia = escala_potencia
+        #: Reproduce el formato de la V1600G1 con firmware V2.3.1R, que publica
+        #: "-25.378(dBm)" en vez de un entero escalado.
+        self.con_unidades = con_unidades
         self.consultas: list[str] = []
         self.cerrado = False
 
@@ -59,6 +63,8 @@ class SNMPSimuladoVSOL:
 
     def _rx(self, pon: int, onu: int) -> str:
         dbm = -18.0 - (pon + onu) % 12
+        if self.con_unidades:
+            return f"{dbm:.3f}(dBm)"
         return str(int(dbm * self.escala_potencia))
 
     # --- interfaz de transporte ---

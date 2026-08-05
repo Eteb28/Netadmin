@@ -326,6 +326,21 @@ CREATE TABLE IF NOT EXISTS usuarios (
 );
 
 -- --------------------------------------------------------------------------
+-- Configuración interna del módulo
+-- --------------------------------------------------------------------------
+--
+-- Guarda un verificador cifrado con GPON_CLAVE_CIFRADO. Si alguien cambia la
+-- clave, las credenciales guardadas quedan ilegibles; sin este verificador el
+-- módulo sólo se entera al intentar conectarse a una OLT, con un error que no
+-- explica la causa. Con él, avisa al arrancar y dice exactamente qué pasó.
+
+CREATE TABLE IF NOT EXISTS configuracion_modulo (
+    clave       TEXT PRIMARY KEY,
+    valor       TEXT NOT NULL,
+    creada_en   TEXT NOT NULL
+);
+
+-- --------------------------------------------------------------------------
 -- Versión del esquema
 -- --------------------------------------------------------------------------
 

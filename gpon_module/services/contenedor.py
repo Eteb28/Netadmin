@@ -14,13 +14,15 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 
 from ..config import Configuracion
 from ..core.cifrado import CifradorFernet, CifradorNulo
+from ..core.errors import ErrorCifrado, ErrorConfiguracion
 from ..core.interfaces import Cifrador, Reloj
 from ..core.reloj import RelojSistema
-from ..database.conexion import Conexion, crear_conexion
+from ..database.conexion import Conexion, a_texto, crear_conexion
 from ..database.repositories import (
     RepositorioAlarmaSQL,
     RepositorioEventoSQL,
@@ -97,6 +99,7 @@ def crear_contenedor(
     conexion = conexion or crear_conexion(configuracion.url_base_datos)
     if inicializar_esquema:
         conexion.inicializar_esquema()
+        _verificar_clave_de_cifrado(conexion, cifrador)
 
     repositorio_olt = RepositorioOLTSQL(conexion, cifrador)
     repositorio_onu = RepositorioONUSQL(conexion)
@@ -148,6 +151,57 @@ def crear_contenedor(
             reloj=reloj,
         ),
     )
+
+
+#: Texto que se guarda cifrado para poder detectar un cambio de clave.
+_TEXTO_VERIFICADOR = "gpon-verificacion"
+_CLAVE_VERIFICADOR = "verificador_cifrado"
+
+
+def _verificar_clave_de_cifrado(conexion: Conexion, cifrador: Cifrador) -> None:
+    """Comprueba que la clave actual sea la que cifró esta base.
+
+    Sin esto, cambiar ``GPON_CLAVE_CIFRADO`` no da error hasta que alguien
+    intenta conectarse a una OLT, y el mensaje que aparece —"la clave no
+    corresponde o el dato está corrupto"— no dice qué hacer. Acá el módulo se
+    entera al arrancar y explica las dos salidas posibles.
+    """
+    fila = conexion.consultar_uno(
+        "SELECT valor FROM configuracion_modulo WHERE clave = ?", (_CLAVE_VERIFICADOR,)
+    )
+
+    if fila is None:
+        # Base nueva, o creada antes de que existiera el verificador: se graba
+        # con la clave actual y queda establecida desde ahora.
+        conexion.ejecutar(
+            "INSERT INTO configuracion_modulo (clave, valor, creada_en) VALUES (?, ?, ?)",
+            (
+                _CLAVE_VERIFICADOR,
+                cifrador.cifrar(_TEXTO_VERIFICADOR),
+                a_texto(datetime.now(UTC)),
+            ),
+        )
+        return
+
+    try:
+        descifrado = cifrador.descifrar(fila["valor"])
+    except ErrorCifrado as exc:
+        raise ErrorConfiguracion(
+            "La clave de cifrado no es la que se usó para crear esta base de datos.\n"
+            "\n"
+            "Las credenciales guardadas están cifradas con otra clave, así que no se\n"
+            "pueden leer. Hay dos salidas:\n"
+            "\n"
+            "  1. Recuperar la clave original y exportarla en GPON_CLAVE_CIFRADO.\n"
+            "  2. Si la clave se perdió, empezar de cero: borrar el archivo de base\n"
+            "     de datos y volver a dar de alta las OLT.\n"
+            "\n"
+            "Generar una clave nueva con 'gpon generar-clave' NO recupera las\n"
+            "credenciales: sólo agrava el problema si se pisa la que todavía sirve."
+        ) from exc
+
+    if descifrado != _TEXTO_VERIFICADOR:  # pragma: no cover - defensa extra
+        raise ErrorConfiguracion("El verificador de cifrado de la base está corrupto.")
 
 
 def _elegir_cifrador(configuracion: Configuracion) -> Cifrador:

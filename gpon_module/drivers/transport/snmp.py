@@ -62,6 +62,39 @@ def _limpiar(valor: str) -> str:
     return valor.strip()
 
 
+_HEX = re.compile(r"^(?:[0-9A-Fa-f]{2}[ :]?)+$")
+
+
+def decodificar(tipo: str, crudo: str) -> str:
+    """Convierte a texto legible el valor que devolvió la herramienta SNMP.
+
+    Cuando una cadena trae bytes no imprimibles, net-snmp la publica como
+    ``Hex-STRING: 56 31 36 30 30 47 31 00`` en vez de como texto. Pasa siempre
+    que el equipo rellena con ceros o usa acentos: una V1600G1 devuelve así su
+    modelo y el nombre del equipo. Sin decodificar, la interfaz muestra la
+    tirada de hexadecimales en lugar de "V1600G1".
+    """
+    tipo = tipo.strip().lower()
+    texto = crudo.strip()
+
+    if tipo in ("hex-string", "hex") or (tipo == "" and _HEX.match(texto) and " " in texto):
+        return _desde_hex(texto)
+    # pysnmp publica lo mismo como 0x5631...
+    if texto.lower().startswith("0x") and _HEX.match(texto[2:]):
+        return _desde_hex(texto[2:])
+    return texto
+
+
+def _desde_hex(texto: str) -> str:
+    limpio = texto.replace(" ", "").replace(":", "")
+    try:
+        crudo = bytes.fromhex(limpio)
+    except ValueError:
+        return texto
+    # El relleno con ceros es del equipo, no parte del nombre.
+    return crudo.decode("utf-8", errors="replace").rstrip("\x00").strip()
+
+
 class TransporteSNMPNetSNMP:
     """Implementación sobre las herramientas ``net-snmp`` del sistema.
 
@@ -143,9 +176,11 @@ class TransporteSNMPNetSNMP:
         _, _, valor = lineas[0].partition("=")
         if not valor:
             return None
-        # El formato es "<tipo>: <valor>"; el tipo no nos interesa.
-        _, _, crudo = valor.partition(":")
-        crudo = _limpiar(crudo or valor)
+        # El formato es "<tipo>: <valor>". El tipo importa: dice si el valor
+        # viene en hexadecimal.
+        tipo, separador, crudo = valor.partition(":")
+        crudo = _limpiar(crudo if separador else valor)
+        crudo = decodificar(tipo if separador else "", crudo)
         return None if _es_ausencia(crudo) or crudo == "" else crudo
 
     def walk(self, oid_base: str) -> dict[str, str]:
@@ -156,8 +191,9 @@ class TransporteSNMPNetSNMP:
             oid = oid.strip().lstrip(".")
             if not valor:
                 continue
-            _, _, crudo = valor.partition(":")
-            crudo = _limpiar(crudo or valor)
+            tipo, separador, crudo = valor.partition(":")
+            crudo = _limpiar(crudo if separador else valor)
+            crudo = decodificar(tipo if separador else "", crudo)
             if _es_ausencia(crudo):
                 continue
             resultado[oid] = crudo
@@ -227,7 +263,7 @@ class TransporteSNMPPysnmp:
         if error_estado:
             raise ErrorTransporte(f"SNMP falló contra {self.host}: {error_estado.prettyPrint()}")
         for _, valor in enlaces:
-            texto = _limpiar(valor.prettyPrint())
+            texto = decodificar("", _limpiar(valor.prettyPrint()))
             return None if _es_ausencia(texto) or texto == "" else texto
         return None
 
@@ -250,7 +286,7 @@ class TransporteSNMPPysnmp:
                     f"SNMP falló contra {self.host}: {error_estado.prettyPrint()}"
                 )
             for oid, valor in enlaces:
-                texto = _limpiar(valor.prettyPrint())
+                texto = decodificar("", _limpiar(valor.prettyPrint()))
                 if _es_ausencia(texto):
                     continue
                 resultado[str(oid).lstrip(".")] = texto

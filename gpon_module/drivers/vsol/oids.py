@@ -63,11 +63,18 @@ IF_DESCR = "1.3.6.1.2.1.2.2.1.2"
 IF_OPER_STATUS = "1.3.6.1.2.1.2.2.1.8"
 IF_ALIAS = "1.3.6.1.2.1.31.1.1.1.18"
 
-# --- Ramas comprobadamente ausentes ---------------------------------------
+# --- Serial de ONU: depende del modelo y del firmware ---------------------
 
-#: El `olt_poller` de Pucará consulta esta rama como número de serie de ONU.
-#: **No existe en la V1600G1-B**: el walk devuelve 0 resultados, y la
-#: verificación "el serial coincide con el equipo registrado" queda
-#: silenciosamente inactiva. Coincide con un reporte independiente de LibreNMS.
-#: Se deja acá documentado para que no se vuelva a intentar.
-ONU_SERIE_INEXISTENTE = f"{BASE}.6.1.2.1.1.3"
+#: Rama del número de serie de la ONU. **Su disponibilidad varía**:
+#:
+#: * en la V1600G1-B de ERLAN el walk devolvió 0 resultados — coincide con un
+#:   reporte independiente de la comunidad LibreNMS;
+#: * en una V1600G1 con firmware V2.3.1R **sí** devuelve datos.
+#:
+#: Por eso el driver no la usa para el inventario y declara SERIAL_POR_SNMP como
+#: no soportada: es la única postura que no miente en ninguno de los dos
+#: equipos. `gpon sondear` informa cuántas ONU cubre en cada OLT concreta.
+ONU_SERIE = f"{BASE}.6.1.2.1.1.3"
+
+#: Nombre anterior, cuando se creía que la rama no existía en ningún modelo.
+ONU_SERIE_INEXISTENTE = ONU_SERIE

@@ -96,17 +96,15 @@ def parsear_motivo(crudo: str | None) -> MotivoCaida:
 
 # --- Magnitudes analógicas ------------------------------------------------
 #
-# ATENCIÓN — [POR CONFIRMAR]: la escala exacta con la que la V1600G1-B publica
-# potencias, temperatura y voltaje no está documentada por el fabricante, y los
-# walks capturados no bastan para deducirla con certeza. Las funciones de abajo
-# infieren la escala por el orden de magnitud y devuelven None cuando el valor
-# cae fuera de todo rango físicamente posible.
+# [VERIFICADO contra una V1600G1, firmware V2.3.1R]: este equipo publica las
+# magnitudes **con la unidad puesta y ya convertida** — "-25.378(dBm)",
+# "34.801(C)", "3.44(V)". No hay ninguna escala que aplicar, y por eso cuando
+# la unidad viene explícita el parser usa el número tal cual.
 #
-# Es una inferencia, no un hecho verificado. Para confirmarla contra un equipo:
-#
-#     gpon sondear <id-olt> --crudo
-#
-# muestra los valores tal como llegan, junto a la interpretación aplicada.
+# La inferencia por orden de magnitud queda igual como respaldo, para firmwares
+# que publiquen enteros sin unidad. Se apoya en el lote completo y no en el
+# valor suelto: "-157" puede ser −15,7 o −1,57 dBm, y con una sola lectura no
+# hay forma de decidir.
 
 _NUMERO = re.compile(r"-?\d+(?:\.\d+)?")
 
@@ -138,6 +136,20 @@ ESCALAS_POSIBLES = (1, 10, 100, 1000)
 CENTINELAS = (0, 65535, -65535, 2147483647, -2147483648)
 
 
+#: Unidades que el equipo agrega al valor. Cuando están, no hay nada que
+#: inferir: la V1600G1 con firmware V2.3.1R publica "-25.378(dBm)" y "34.801(C)",
+#: es decir, el número ya viene en la unidad final.
+_UNIDADES_EXPLICITAS = ("dbm", "(c)", "(v)", "celsius")
+
+
+def trae_unidad(crudo: str | None) -> bool:
+    """¿El equipo publicó la unidad junto al número?"""
+    if not crudo:
+        return False
+    minuscula = crudo.lower()
+    return any(unidad in minuscula for unidad in _UNIDADES_EXPLICITAS)
+
+
 def inferir_escala_dbm(valores) -> int:
     """Deduce el divisor con el que el equipo publica las potencias.
 
@@ -147,6 +159,12 @@ def inferir_escala_dbm(valores) -> int:
     parque real. Por eso la escala se infiere una vez sobre el conjunto y se
     aplica pareja, en vez de adivinarla valor por valor.
     """
+    valores = list(valores)
+    # Si el equipo publica la unidad, el número ya está en dBm: dividirlo sería
+    # inventar una escala donde no la hay.
+    if any(trae_unidad(v) for v in valores):
+        return 1
+
     numeros = [n for n in (_numero(v) for v in valores) if n is not None and n not in CENTINELAS]
     if not numeros:
         return 100
@@ -171,6 +189,9 @@ def parsear_dbm(crudo: str | None, escala: int | None = None) -> float | None:
     if valor is None or valor in CENTINELAS:
         return None
     minimo, maximo = RANGO_FISICO_DBM
+    if trae_unidad(crudo):
+        # El equipo ya dijo la unidad: se respeta y no se aplica ninguna escala.
+        return round(valor, 2) if minimo <= valor <= maximo else None
     if escala:
         candidato = valor / escala
         return round(candidato, 2) if minimo <= candidato <= maximo else None
@@ -186,6 +207,8 @@ def parsear_temperatura(crudo: str | None) -> float | None:
     valor = _numero(crudo)
     if valor is None:
         return None
+    if trae_unidad(crudo):
+        return round(valor, 1) if -20.0 <= valor <= 120.0 else None
     for divisor in (1, 10, 100, 256):
         candidato = valor / divisor
         if -20.0 <= candidato <= 120.0:
@@ -198,6 +221,8 @@ def parsear_voltaje(crudo: str | None) -> float | None:
     valor = _numero(crudo)
     if valor is None:
         return None
+    if trae_unidad(crudo):
+        return round(valor, 2) if 0.5 <= valor <= 6.0 else None
     for divisor in (1, 10, 100, 1000, 10000):
         candidato = valor / divisor
         if 0.5 <= candidato <= 6.0:

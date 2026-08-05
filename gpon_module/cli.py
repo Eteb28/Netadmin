@@ -11,6 +11,8 @@ Comandos disponibles::
     init-db           crea el esquema
     demo              corre un ciclo completo contra la OLT simulada
     alta-olt          registra una OLT
+    eliminar-olt <id> da de baja una OLT del módulo (no toca el equipo)
+    credenciales <id> cambia usuario, contraseña o community de una OLT
     probar <id>       verifica la conexión con el equipo
     sondear <id>      valores crudos del equipo, para verificar la lectura
     listar-olts       OLT registradas
@@ -57,11 +59,20 @@ def _titulo(texto: str) -> None:
 
 def comando_generar_clave(_args: argparse.Namespace) -> int:
     print(CifradorFernet.generar_clave())
-    print(
+
+    aviso = (
         "\nGuardala en la variable de entorno GPON_CLAVE_CIFRADO.\n"
-        "Si se pierde, las credenciales guardadas quedan irrecuperables.",
-        file=sys.stderr,
+        "Si se pierde, las credenciales guardadas quedan irrecuperables."
     )
+    if os.environ.get("GPON_CLAVE_CIFRADO"):
+        # Genera una clave distinta cada vez. Pisar la que ya está en uso deja
+        # ilegibles las credenciales de las OLT ya registradas.
+        aviso += (
+            "\n\nATENCIÓN: ya hay una GPON_CLAVE_CIFRADO definida en este entorno.\n"
+            "Si la reemplazás por ésta, las credenciales guardadas con la anterior\n"
+            "dejan de poder leerse. Generá una clave nueva sólo para una base nueva."
+        )
+    print(aviso, file=sys.stderr)
     return 0
 
 
@@ -107,6 +118,49 @@ def comando_alta_olt(args: argparse.Namespace) -> int:
         )
         print(f"OLT #{olt.id} registrada: {olt.nombre} ({olt.host}, {olt.fabricante})")
         print(f"Siguiente paso:  gpon descubrir {olt.id}")
+    return 0
+
+
+def comando_eliminar_olt(args: argparse.Namespace) -> int:
+    """Borra una OLT del módulo. **No toca el equipo**, sólo la base local."""
+    with _sistema(args) as sistema:
+        olt = sistema.servicio_olt.obtener(args.olt_id)
+        cantidad = sistema.repositorio_onu.contar_de_olt(args.olt_id)
+
+        if not args.si:
+            print(f"Se va a borrar del módulo la OLT #{olt.id}: {olt.nombre} ({olt.host})")
+            print(f"Junto con su inventario: {cantidad} ONU, puertos, perfiles y eventos.")
+            print("El equipo NO se toca: no se envía ningún comando ni se da de baja nada.")
+            respuesta = input("Escribí 'si' para confirmar: ").strip().lower()
+            if respuesta not in ("si", "sí"):
+                print("Cancelado.")
+                return 1
+
+        sistema.servicio_olt.eliminar(args.olt_id)
+        print(f"OLT #{olt.id} eliminada del módulo. El equipo quedó intacto.")
+    return 0
+
+
+def comando_credenciales(args: argparse.Namespace) -> int:
+    """Reemplaza las credenciales de una OLT ya registrada."""
+    password = os.environ.get("GPON_OLT_PASSWORD") or getpass("Contraseña de la OLT: ")
+    comunidad = os.environ.get("GPON_OLT_COMUNIDAD") or args.comunidad
+
+    with _sistema(args) as sistema:
+        olt = sistema.servicio_olt.obtener(args.olt_id)
+        sistema.servicio_olt.actualizar_credenciales(
+            args.olt_id,
+            CredencialesOLT(
+                usuario=args.usuario,
+                password=password,
+                comunidad_snmp_lectura=comunidad,
+                puerto_snmp=args.puerto_snmp,
+                puerto_telnet=args.puerto_telnet,
+                puerto_ssh=args.puerto_ssh,
+            ),
+        )
+        print(f"Credenciales actualizadas para #{olt.id} {olt.nombre} ({olt.host}).")
+        print(f"Verificá con:  gpon probar {olt.id}")
     return 0
 
 
@@ -404,6 +458,20 @@ def construir_parser() -> argparse.ArgumentParser:
     alta.add_argument("--puerto-telnet", type=int, default=23)
     alta.add_argument("--puerto-ssh", type=int, default=22)
     alta.set_defaults(funcion=comando_alta_olt)
+
+    baja = sub.add_parser("eliminar-olt", help="borra una OLT del módulo (no toca el equipo)")
+    baja.add_argument("olt_id", type=int)
+    baja.add_argument("--si", action="store_true", help="no preguntar confirmación")
+    baja.set_defaults(funcion=comando_eliminar_olt)
+
+    credenciales = sub.add_parser("credenciales", help="cambia las credenciales de una OLT")
+    credenciales.add_argument("olt_id", type=int)
+    credenciales.add_argument("--usuario", default="admin")
+    credenciales.add_argument("--comunidad", default="public")
+    credenciales.add_argument("--puerto-snmp", type=int, default=161)
+    credenciales.add_argument("--puerto-telnet", type=int, default=23)
+    credenciales.add_argument("--puerto-ssh", type=int, default=22)
+    credenciales.set_defaults(funcion=comando_credenciales)
 
     probar = sub.add_parser("probar", help="verifica la conexión con una OLT")
     probar.add_argument("olt_id", type=int)

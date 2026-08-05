@@ -457,18 +457,73 @@ class DriverVSOL(DriverBase):
                 nota_escala,
             )
 
-        # Comprobación de la ausencia documentada: debe dar vacío.
-        serie = self._snmp.walk(oids.ONU_SERIE_INEXISTENTE)
+        # Una ONU caída: es la única forma de ver el motivo de caída, porque
+        # una ONU en línea no lo publica.
+        caida = next(
+            (
+                indice_doble(oid)
+                for oid, valor in sorted(estados.items())
+                if indice_doble(oid) is not None
+                and parsers.parsear_estado(valor) is not EstadoONU.EN_LINEA
+            ),
+            None,
+        )
+        if caida is not None:
+            pon, numero = caida
+            sufijo = f".{pon}.{numero}"
+            agregar(
+                f"ONU CAÍDA {pon}:{numero} — estado",
+                oids.ONU_ESTADO + sufijo,
+                parsers.parsear_estado,
+            )
+            agregar(
+                f"ONU CAÍDA {pon}:{numero} — motivo de caída",
+                oids.ONU_MOTIVO_CAIDA + sufijo,
+                parsers.parsear_motivo,
+                "Acá se ve si el equipo distingue corte de luz de fibra cortada",
+            )
+            agregar(
+                f"ONU CAÍDA {pon}:{numero} — RX (dBm)",
+                oids.ONU_POTENCIA_RX + sufijo,
+                parsers.parsear_dbm,
+                "Se espera vacío o un centinela: una ONU caída no reporta potencia",
+            )
+        else:
+            muestras.append(
+                MuestraSondeo(
+                    descripcion="ONU caída para inspeccionar",
+                    oid=oids.ONU_ESTADO,
+                    crudo="ninguna",
+                    interpretado=None,
+                    nota="Todas las ONU están en línea: no se puede ver el motivo de caída.",
+                )
+            )
+
+        # Cobertura de la tabla de motivos sobre el parque completo.
+        motivos = self._snmp.walk(oids.ONU_MOTIVO_CAIDA)
         muestras.append(
             MuestraSondeo(
-                descripcion="Serial de ONU (rama que usa el poller de Pucará)",
-                oid=oids.ONU_SERIE_INEXISTENTE,
-                crudo=f"{len(serie)} resultados",
-                interpretado=len(serie),
+                descripcion="Motivos de caída publicados (sobre el total de ONU)",
+                oid=oids.ONU_MOTIVO_CAIDA,
+                crudo=f"{len(motivos)} de {len(estados)}",
+                interpretado=sorted({v for v in motivos.values()})[:8],
+                nota="Los valores distintos que devuelve el equipo, hasta 8",
+            )
+        )
+
+        # La rama de seriales: ausente en la G1-B, presente en algunas G1.
+        serie = self._snmp.walk(oids.ONU_SERIE)
+        ejemplos = [f"{o.rsplit('.', 2)[-2]}.{o.rsplit('.', 1)[-1]} = {v}" for o, v in
+                    list(sorted(serie.items()))[:5]]
+        muestras.append(
+            MuestraSondeo(
+                descripcion="Serial de ONU por SNMP",
+                oid=oids.ONU_SERIE,
+                crudo=f"{len(serie)} de {len(estados)} ONU",
+                interpretado=ejemplos or "(rama vacía)",
                 nota=(
-                    "Se espera 0: esta rama no existe en la G1-B. Si diera resultados, "
-                    "el driver puede declarar SERIAL_POR_SNMP y ganar el descubrimiento "
-                    "de ONU sin autorizar."
+                    "Si cubre todas las ONU, el driver puede declarar SERIAL_POR_SNMP "
+                    "y el inventario deja de tener el serial vacío."
                 ),
             )
         )

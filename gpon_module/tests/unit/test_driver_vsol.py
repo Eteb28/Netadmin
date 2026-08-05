@@ -263,6 +263,65 @@ class TestParsers:
         assert p.ref_desde_descripcion(descripcion) == esperado
 
 
+class TestFormatoDelEquipoReal:
+    """Formatos capturados de una V1600G1 con firmware V2.3.1R.
+
+    Son datos de primera mano, no supuestos. Cada uno corrigió algo que el
+    driver hacía mal contra el equipo de verdad.
+    """
+
+    def test_el_modelo_llega_en_hexadecimal_y_se_decodifica(self) -> None:
+        """net-snmp publica en hex toda cadena con bytes no imprimibles.
+
+        La V1600G1 rellena el modelo con un cero final, así que su nombre viaja
+        como "56 31 36 30 30 47 31 00". Sin decodificar, la interfaz mostraba
+        esa tirada de hexadecimales en vez de "V1600G1".
+        """
+        from gpon_module.drivers.transport.snmp import decodificar
+
+        assert decodificar("Hex-STRING", "56 31 36 30 30 47 31 00") == "V1600G1"
+
+    def test_los_acentos_del_nombre_sobreviven(self) -> None:
+        from gpon_module.drivers.transport.snmp import decodificar
+
+        crudo = "5A 6F 6E 61 5F 42 C2 BA 5F 42 65 6C 67 72 61 6E"
+        assert decodificar("Hex-STRING", crudo) == "Zona_Bº_Belgran"
+
+    def test_una_cadena_normal_no_se_toca(self) -> None:
+        from gpon_module.drivers.transport.snmp import decodificar
+
+        assert decodificar("STRING", "V2.3.1R") == "V2.3.1R"
+
+    @pytest.mark.parametrize(
+        ("crudo", "esperado"),
+        [("-25.378(dBm)", -25.38), ("1.914(dBm)", 1.91)],
+    )
+    def test_las_potencias_vienen_con_la_unidad_puesta(self, crudo, esperado) -> None:
+        """Este firmware ya publica dBm: aplicarle una escala sería arruinarlo."""
+        assert p.parsear_dbm(crudo) == pytest.approx(esperado, abs=0.01)
+
+    def test_temperatura_y_voltaje_con_unidad(self) -> None:
+        assert p.parsear_temperatura("34.801(C)") == 34.8
+        assert p.parsear_voltaje("3.44(V)") == 3.44
+
+    def test_con_unidad_explicita_no_se_infiere_ninguna_escala(self) -> None:
+        assert p.inferir_escala_dbm(["-25.378(dBm)", "-22.100(dBm)"]) == 1
+
+    def test_la_escala_pasada_no_pisa_a_la_unidad_explicita(self) -> None:
+        """Aunque alguien pase una escala, la unidad del equipo manda."""
+        assert p.parsear_dbm("-25.378(dBm)", 100) == pytest.approx(-25.38, abs=0.01)
+
+    def test_el_uptime_real_del_equipo(self) -> None:
+        assert p.parsear_uptime("(1122823048) 129 days, 22:57:10.48") == 11228230
+
+    def test_inventario_completo_con_el_formato_real(self) -> None:
+        driver = _driver(cantidad_pon=8, onus_por_pon=4, con_unidades=True)
+        lecturas = driver.get_signals()
+        con_lectura = [le for le in lecturas if le.rx_onu_dbm is not None]
+        assert con_lectura
+        assert all(-40 <= le.rx_onu_dbm <= 10 for le in con_lectura)
+
+
 class TestSondeo:
     def test_devuelve_crudo_e_interpretado_para_poder_verificar(self) -> None:
         muestras = _driver().sondear()
@@ -274,7 +333,13 @@ class TestSondeo:
         enganoso = next(m for m in muestras if "engañoso" in m.descripcion)
         assert "NO" in enganoso.descripcion or "no lo usa" in enganoso.nota
 
-    def test_confirma_que_la_rama_de_seriales_esta_vacia(self) -> None:
+    def test_informa_la_cobertura_de_la_rama_de_seriales(self) -> None:
+        """Su disponibilidad varía entre modelos y firmwares: el sondeo la mide."""
         muestras = _driver().sondear()
         serial = next(m for m in muestras if "Serial" in m.descripcion)
-        assert serial.interpretado == 0
+        assert "de" in (serial.crudo or "")
+
+    def test_muestra_una_onu_caida_para_ver_el_motivo(self) -> None:
+        """Una ONU en línea no publica motivo de caída: hay que mirar una caída."""
+        muestras = _driver(cantidad_pon=8, onus_por_pon=6).sondear()
+        assert any("CAÍDA" in m.descripcion and "motivo" in m.descripcion for m in muestras)

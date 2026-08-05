@@ -52,8 +52,17 @@ class ServicioOLT:
                 f"No hay driver para el fabricante '{fabricante}'. "
                 f"Disponibles: {', '.join(str(f) for f in fabricantes_registrados())}"
             )
-        if self._olts.obtener_por_host(host) is not None:
-            raise ErrorValidacion(f"Ya hay una OLT registrada en {host}")
+        existente = self._olts.obtener_por_host(host.strip())
+        if existente is not None:
+            # El mensaje dice qué hacer: sin esto se entra en un callejón sin
+            # salida — el alta rebota y no hay forma obvia de corregir la que ya
+            # está registrada.
+            raise ErrorValidacion(
+                f"Ya hay una OLT registrada en {host}: #{existente.id} "
+                f"'{existente.nombre}' ({existente.fabricante}).\n"
+                f"  Para cambiarle las credenciales:  gpon credenciales {existente.id}\n"
+                f"  Para borrarla y empezar de nuevo: gpon eliminar-olt {existente.id}"
+            )
 
         olt = OLT(
             nombre=nombre.strip(),

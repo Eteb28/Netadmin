@@ -25,7 +25,7 @@ from ..core.errors import ErrorConfiguracion, ErrorRepositorio
 RUTA_ESQUEMA_SQLITE = Path(__file__).parent / "schema_sqlite.sql"
 RUTA_ESQUEMA_POSTGRES = Path(__file__).parent / "schema_postgres.sql"
 
-VERSION_ESQUEMA = 1
+VERSION_ESQUEMA = 2
 
 
 # --- Conversión de tipos --------------------------------------------------
