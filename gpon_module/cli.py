@@ -15,6 +15,7 @@ Comandos disponibles::
     credenciales <id> cambia usuario, contraseña o community de una OLT
     probar <id>       verifica la conexión con el equipo
     sondear <id>      valores crudos del equipo, para verificar la lectura
+    capturar <id>     qué comandos entiende la CLI del equipo (sólo lectura)
     listar-olts       OLT registradas
     descubrir <id>    descubre e inventaría una OLT
     onus <id>         inventario de ONU de una OLT
@@ -38,6 +39,7 @@ from .core.models import CredencialesOLT, SolicitudAutorizacion
 from .core.optica import clasificar
 from .core.registry import fabricantes_registrados
 from .drivers.mock.parque import generar_parque
+from .drivers.transport import PROTOCOLOS_CLI
 from .services import Contenedor, crear_contenedor
 
 
@@ -202,6 +204,53 @@ def comando_sondear(args: argparse.Namespace) -> int:
             "Si alguna potencia o temperatura no coincide, pasame estos valores "
             "y ajusto la escala del parser."
         )
+    return 0
+
+
+def comando_capturar(args: argparse.Namespace) -> int:
+    """Registra qué comandos entiende la CLI de la OLT y qué devuelven.
+
+    Es el paso previo obligatorio a autorizar y configurar ONU. Todo eso es CLI
+    —en VSOL el serial no viaja por SNMP—, y la sintaxis cambia entre versiones
+    de firmware. Antes de escribir un comando de configuración hay que ver la
+    salida real del equipo, no el manual de otra versión.
+
+    No envía ni un solo comando de escritura: hay un filtro que lo impide.
+    """
+    with _sistema(args) as sistema:
+        olt = sistema.servicio_olt.obtener(args.olt_id)
+        comandos = args.comando_extra or None
+
+        _titulo(f"Captura CLI de {olt.nombre} ({olt.host}) por {args.protocolo}")
+        print("Sólo se envían comandos de lectura. No se modifica ninguna configuración.")
+        print("Puede tardar varios minutos: cada comando espera la respuesta completa.\n")
+
+        def progreso(salida) -> None:
+            marca = "\033[32mok \033[0m" if salida.ok else "\033[33mn/d\033[0m"
+            etiqueta = salida.comando or "? (árbol completo)"
+            print(f"  {marca}  {etiqueta:<34} {salida.duracion_ms:>6} ms")
+
+        captura = sistema.servicio_captura.capturar(
+            args.olt_id,
+            protocolo=args.protocolo,
+            comandos=comandos,
+            incluir_ayuda=not args.sin_ayuda,
+            timeout=args.timeout,
+            al_avanzar=progreso,
+        )
+
+    destino = args.salida or f"captura-olt{args.olt_id}-{captura.momento:%Y%m%d-%H%M}.txt"
+    with open(destino, "w", encoding="utf-8") as archivo:
+        archivo.write(captura.a_texto())
+
+    _titulo("Resultado")
+    print(f"Comandos con datos : {len(captura.aceptados)}")
+    print(f"No disponibles     : {len(captura.rechazados)}")
+    print(f"Archivo            : {destino}")
+    print(
+        "\nRevisá el archivo antes de compartirlo: 'show running-config' puede\n"
+        "incluir contraseñas del equipo y de PPPoE de los clientes."
+    )
     return 0
 
 
@@ -480,6 +529,29 @@ def construir_parser() -> argparse.ArgumentParser:
     sondear = sub.add_parser("sondear", help="valores crudos del equipo, para verificar")
     sondear.add_argument("olt_id", type=int)
     sondear.set_defaults(funcion=comando_sondear)
+
+    capturar = sub.add_parser(
+        "capturar",
+        help="registra qué comandos entiende la CLI de la OLT (sólo lectura)",
+    )
+    capturar.add_argument("olt_id", type=int)
+    capturar.add_argument(
+        "--protocolo", default="telnet", choices=list(PROTOCOLOS_CLI), help="canal de la CLI"
+    )
+    capturar.add_argument("--salida", help="archivo donde guardar la captura")
+    capturar.add_argument("--timeout", type=float, default=20.0, help="espera por comando, en s")
+    capturar.add_argument(
+        "--sin-ayuda",
+        action="store_true",
+        help="no pedir la ayuda en línea ('?') del equipo",
+    )
+    capturar.add_argument(
+        "--comando-extra",
+        action="append",
+        metavar="COMANDO",
+        help="probar sólo estos comandos, en vez del catálogo (repetible; sólo lectura)",
+    )
+    capturar.set_defaults(funcion=comando_capturar)
 
     servidor = sub.add_parser("web", help="levanta la interfaz web")
     servidor.add_argument("--host", default="127.0.0.1", help="dirección de escucha")

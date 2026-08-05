@@ -50,6 +50,7 @@ packages = [
     "gpon_module.drivers",
     "gpon_module.drivers.mock",
     "gpon_module.drivers.transport",
+    "gpon_module.drivers.vsol",
     "gpon_module.database",
     "gpon_module.database.repositories",
     "gpon_module.services",

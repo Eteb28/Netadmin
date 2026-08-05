@@ -119,6 +119,30 @@ lado del otro, para compararlos con la web de la OLT en un minuto.
 
 Requiere `snmpwalk`/`snmpget` (`sudo apt install snmp`) o `pip install 'gpon-module[equipos]'`.
 
+### Antes de autorizar y configurar ONU: `capturar`
+
+Autorizar una ONU, cambiar su perfil o su VLAN **es CLI**, no SNMP: en VSOL el número de
+serie no viaja por SNMP y el aprovisionamiento tampoco. Y la sintaxis exacta de esos
+comandos cambia entre versiones de firmware.
+
+```bash
+gpon capturar 1                       # Telnet, catálogo completo
+gpon capturar 1 --protocolo ssh       # si la OLT tiene SSH (requiere paramiko)
+gpon capturar 1 --comando-extra "show onu"   # sólo un comando puntual
+```
+
+`capturar` abre una sesión CLI, le pide al equipo su **ayuda en línea** (`?`, que enumera la
+sintaxis real sin ejecutar nada) y prueba una lista de comandos de lectura, guardando todo
+en un archivo de texto. Lo que el firmware rechaza también queda registrado: saber qué
+comando *no* existe vale tanto como saber cuál sí.
+
+**No envía ni un solo comando de escritura.** Hay un filtro que sólo deja pasar `show`,
+`display`, `dir` y `get`, y se aplica igual al catálogo propio que a lo que se pida a mano.
+Se puede correr contra un equipo en producción a cualquier hora.
+
+Revisá el archivo antes de compartirlo: `show running-config` puede incluir contraseñas del
+equipo y de PPPoE de los clientes.
+
 | Variable | Por defecto | Para qué |
 |---|---|---|
 | `GPON_CLAVE_CIFRADO` | — | Cifra las credenciales de OLT. **Obligatoria** salvo que se pida lo contrario |

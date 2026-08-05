@@ -34,6 +34,7 @@ from ..database.repositories import (
     RepositorioPuertoPONSQL,
     RepositorioSincronizacionSQL,
 )
+from .captura import ServicioCaptura
 from .descubrimiento import ServicioDescubrimiento
 from .fabrica import FabricaDrivers
 from .olt import ServicioOLT
@@ -65,6 +66,7 @@ class Contenedor:
     servicio_olt: ServicioOLT
     servicio_onu: ServicioONU
     servicio_descubrimiento: ServicioDescubrimiento
+    servicio_captura: ServicioCaptura
 
     def cerrar(self) -> None:
         self.conexion.cerrar()
@@ -140,6 +142,7 @@ def crear_contenedor(
             fabrica=fabrica_drivers,
             reloj=reloj,
         ),
+        servicio_captura=ServicioCaptura(repositorio_olt, reloj=reloj),
         servicio_descubrimiento=ServicioDescubrimiento(
             repositorio_olt=repositorio_olt,
             repositorio_onu=repositorio_onu,

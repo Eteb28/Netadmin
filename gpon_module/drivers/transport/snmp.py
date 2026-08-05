@@ -153,9 +153,7 @@ class TransporteSNMPNetSNMP:
                 "(Debian/Ubuntu: sudo apt install snmp)."
             ) from exc
         except subprocess.TimeoutExpired as exc:
-            raise ErrorTiempoAgotado(
-                f"{herramienta} no terminó al consultar {self.host}"
-            ) from exc
+            raise ErrorTiempoAgotado(f"{herramienta} no terminó al consultar {self.host}") from exc
 
         salida_error = proceso.stderr.strip()
         if proceso.returncode != 0 or salida_error:
