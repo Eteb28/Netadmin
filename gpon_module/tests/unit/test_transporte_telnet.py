@@ -180,6 +180,45 @@ class TestPrompt:
 
         assert transporte.conectado
 
+    def test_se_reconoce_un_prompt_con_acentos(self, conectar) -> None:
+        """La OLT de ERLAN se llama 'Zona_Bº_Belgrano'.
+
+        Esa 'º' viaja como b'\\xc2\\xba', y '\\w' en un patrón de bytes es sólo
+        ASCII: el módulo no reconocía un prompt que tenía delante, se iba a
+        timeout y reintentaba el login tres veces.
+        """
+        prompt_real = "\r\n\r\nZona_Bº_Belgrano> ".encode()
+        guion = {
+            "admin": b"\r\nPassword:",
+            "Xpon@Olt9417#": prompt_real,
+            "enable": b"enable\r\n% Unknown command" + prompt_real,
+            "terminal length 0": b"terminal length 0" + prompt_real,
+            "show onu": b"show onu\r\nPON 0/7 ONU 22" + prompt_real,
+        }
+        transporte, _ = conectar(guion=guion)
+
+        transporte.abrir()
+
+        assert transporte.conectado
+        assert transporte.ejecutar("show onu") == "PON 0/7 ONU 22"
+        transporte.cerrar()
+
+    def test_un_enable_rechazado_no_tira_abajo_la_sesion(self, conectar) -> None:
+        """Sin 'enable' se pierden algunos comandos; abortar los pierde todos."""
+        prompt_no_privilegiado = b"\r\nZona_Belgrano> "
+        guion = {
+            "admin": b"\r\nPassword:",
+            "Xpon@Olt9417#": prompt_no_privilegiado,
+            "enable": b"enable\r\n% Unknown command" + prompt_no_privilegiado,
+            "terminal length 0": b"terminal length 0" + prompt_no_privilegiado,
+        }
+        transporte, _ = conectar(guion=guion)
+
+        transporte.abrir()
+
+        assert transporte.conectado
+        transporte.cerrar()
+
     def test_a_un_equipo_callado_se_le_manda_un_enter(self, conectar) -> None:
         """Varios equipos no imprimen el prompt hasta recibir uno."""
         guion = {

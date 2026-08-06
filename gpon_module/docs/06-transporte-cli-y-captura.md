@@ -122,7 +122,7 @@ la CLI no, lo dice: llegar se llega, el problema es el servicio.
 
 ## Cómo se probó
 
-* **310 tests**, todos en verde. 66 nuevos entre transporte, captura y diagnóstico.
+* **312 tests**, todos en verde. 68 nuevos entre transporte, captura y diagnóstico.
 * El Telnet se prueba contra un socket falso con guion: negociación IAC, login en dos
   pasos, contraseña rechazada, paginación, eco del comando, corte de sesión.
 * De punta a punta contra una **OLT VSOL simulada sobre un socket TCP real**, con
@@ -139,8 +139,8 @@ Dos defectos reales aparecieron en esa prueba de punta a punta y quedaron correg
 
 ### Lo que enseñó la primera sesión contra la OLT de ERLAN
 
-La traza de una sesión fallida —`--traza`— resolvió en una lectura tres cosas que ninguna
-cantidad de suposiciones habría resuelto:
+Las trazas de las sesiones fallidas —`--traza`— resolvieron en dos lecturas cuatro cosas
+que ninguna cantidad de suposiciones habría resuelto:
 
 **1. El fin de línea.** El equipo anuncia en su banner que entra en *character mode*:
 procesa cada byte según llega. Un `\r\n` son **dos Enter**. En el login eso mandaba el
@@ -161,8 +161,23 @@ Llegan en cualquier momento, también en medio de la salida de un comando. Se fi
 salida antes de que la vea un parser: una línea así en medio de una tabla sería una fila
 inventada.
 
-Las tres correcciones están fijadas por tests contra una réplica del equipo, reconstruida
-a partir de esa traza: mismo banner, mismo *character mode*, mismos avisos.
+**4. El prompt lleva un acento.** Con el fin de línea arreglado, el login pasó y el equipo
+contestó::
+
+    Zona_Bº_Belgrano>
+
+Esa `º` viaja como `\xc2\xba`, y `\w` en un patrón de **bytes** es sólo ASCII: el módulo
+no reconocía un prompt que tenía delante, se iba a timeout y reintentaba el login tres
+veces. Ahora el nombre del equipo se acepta con cualquier byte imprimible.
+
+Ese mismo prompt terminó en `>` y no en `#`: la sesión queda en modo **no privilegiado**.
+El `enable` se intenta igual, pero si el firmware no lo conoce o pide una contraseña que no
+tenemos, se avisa y se sigue — perder la lectura entera por no haber podido elevar
+privilegios sería el peor de los desenlaces.
+
+Las cuatro correcciones están fijadas por tests contra una réplica del equipo, reconstruida
+a partir de esas trazas: mismo banner, mismo *character mode*, mismo prompt con acento,
+mismos avisos.
 
 ## Qué sigue, y qué hace falta para poder hacerlo
 

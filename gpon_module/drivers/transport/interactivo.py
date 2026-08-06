@@ -25,15 +25,21 @@ log = logging.getLogger(__name__)
 PROMPT_USUARIO = re.compile(rb"(?i)(user\s*name|login|username)\s*:\s*$")
 PROMPT_PASSWORD = re.compile(rb"(?i)password\s*:\s*$")
 
-#: El prompt de comando se exige "con forma de prompt": un nombre de equipo
-#: seguido de ``#`` o ``>``. Aceptar cualquier línea terminada en ``>`` haría
-#: que una salida que contenga ese carácter cortara la lectura por la mitad.
+#: El prompt de comando se exige "con forma de prompt": desde el principio de
+#: una línea, un nombre sin espacios y después ``#`` o ``>``. Aceptar cualquier
+#: línea terminada en ``>`` haría que una salida que contenga ese carácter
+#: cortara la lectura por la mitad.
 #:
-#: ``(?:^|[\r\n])`` y no sólo ``[\r\n]``: por SSH el primer prompt suele llegar
-#: al principio del canal, sin ningún salto de línea delante. Exigirlo dejaba la
-#: sesión esperando para siempre un prompt que ya había llegado.
-PROMPT_COMANDO = re.compile(rb"(?:^|[\r\n])[\w.\-@()/:\[\]]{1,60}\s*[#>]\s?$")
-PROMPT_PRIVILEGIADO = re.compile(rb"(?:^|[\r\n])[\w.\-@()/:\[\]]{1,60}\s*#\s?$")
+#: Dos detalles que costaron una sesión cada uno contra la OLT de ERLAN:
+#:
+#: * ``(?:^|[\r\n])`` y no sólo ``[\r\n]``: por SSH el primer prompt llega al
+#:   principio del canal, sin ningún salto de línea delante.
+#: * el nombre se acepta con **cualquier byte imprimible**, no con ``\w``. En un
+#:   patrón de bytes ``\w`` es sólo ASCII, y el equipo se llama
+#:   ``Zona_Bº_Belgrano``: esa ``º`` viaja como ``\xc2\xba`` y hacía que el
+#:   módulo no reconociera un prompt que tenía delante.
+PROMPT_COMANDO = re.compile(rb"(?:^|[\r\n])[^\s\x00-\x1f]{1,60}\s*[#>]\s?$")
+PROMPT_PRIVILEGIADO = re.compile(rb"(?:^|[\r\n])[^\s\x00-\x1f]{1,60}\s*#\s?$")
 PROMPT_PAGINACION = re.compile(rb"(?i)(--\s*more\s*--|<space>|press any key|--more--)")
 
 #: Notificaciones que el equipo empuja a la sesión por su cuenta, sin que nadie
@@ -388,17 +394,27 @@ class TransporteInteractivo(TransporteCLIBase):
         if PROMPT_PRIVILEGIADO.search(salida):
             return
 
-        self._escribir("enable")
-        salida = self._leer_hasta((PROMPT_PASSWORD, PROMPT_COMANDO))
-        if PROMPT_PASSWORD.search(salida):
-            self._escribir(self.password_enable or self.password)
-            salida = self._leer_hasta((PROMPT_COMANDO, PROMPT_PASSWORD))
+        # Todo este bloque es "mejor si sale, no pasa nada si no". Ni siquiera
+        # sabemos si este firmware tiene 'enable': si se lo come, si pide una
+        # contraseña que no tenemos o si directamente no contesta, se sigue con
+        # la sesión que ya está abierta. Perder la lectura entera por no haber
+        # podido elevar privilegios sería el peor de los desenlaces.
+        try:
+            self._escribir("enable")
+            salida = self._leer_hasta((PROMPT_PASSWORD, PROMPT_COMANDO))
+            if PROMPT_PASSWORD.search(salida):
+                self._escribir(self.password_enable or self.password)
+                salida = self._leer_hasta((PROMPT_COMANDO, PROMPT_PASSWORD))
+        except ErrorTiempoAgotado as exc:
+            log.warning("%s no respondió al 'enable': %s. Se sigue igual.", self.host, exc)
+            return
 
         if not PROMPT_PRIVILEGIADO.search(salida):
             log.warning(
-                "%s no pasó a modo privilegiado. Algunos comandos de consulta "
-                "pueden no estar disponibles.",
+                "%s quedó en modo no privilegiado (prompt '%s'). Algunos comandos "
+                "de consulta pueden no estar disponibles.",
                 self.host,
+                self._prompt.decode("utf-8", errors="replace"),
             )
 
     # --- exclusión por OLT ------------------------------------------------
