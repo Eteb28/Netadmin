@@ -176,12 +176,18 @@ class ServicioCaptura:
         incluir_ayuda: bool = True,
         timeout: float = 20.0,
         al_avanzar: Any = None,
+        usuario: str | None = None,
+        password: str | None = None,
     ) -> Captura:
         """Corre la captura contra la OLT y devuelve todo lo obtenido.
 
         ``al_avanzar`` recibe cada ``SalidaComando`` apenas se completa, para
         poder mostrar progreso: una captura contra un equipo con 283 ONU tarda
         varios minutos y quedarse mirando una pantalla quieta no ayuda.
+
+        ``usuario`` y ``password`` sirven para probar credenciales **sin
+        guardarlas**. Averiguar con qué usuario entra la CLI de un equipo suele
+        llevar varios intentos, y no tiene sentido persistir cada uno.
         """
         olt = self._olts.obtener(olt_id)
         if olt.id is None:  # pragma: no cover - el repositorio siempre lo trae
@@ -193,8 +199,8 @@ class ServicioCaptura:
 
         transporte = self._fabrica_transporte(
             host=olt.host,
-            usuario=credenciales.usuario,
-            password=credenciales.password,
+            usuario=usuario or credenciales.usuario,
+            password=credenciales.password if password is None else password,
             password_enable=credenciales.password_enable,
             protocolo=protocolo,
             puerto=credenciales.puerto_ssh if protocolo == "ssh" else credenciales.puerto_telnet,

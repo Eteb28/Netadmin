@@ -62,11 +62,16 @@ def olt() -> OLT:
 
 @pytest.fixture
 def armar(olt):
-    def _armar(transporte: TransporteFalso) -> ServicioCaptura:
+    def _armar(transporte: TransporteFalso, recibidos: dict | None = None) -> ServicioCaptura:
+        def _fabricar(**kwargs):
+            if recibidos is not None:
+                recibidos.update(kwargs)
+            return transporte
+
         return ServicioCaptura(
             RepositorioOLTFalso(olt),
             reloj=RelojFijo(),
-            fabrica_transporte=lambda **_kwargs: transporte,
+            fabrica_transporte=_fabricar,
         )
 
     return _armar
@@ -146,6 +151,33 @@ class TestCaptura:
 
         assert transporte.ayudas_pedidas  # el árbol de comandos del equipo real
         assert len(captura.ayudas) == len(transporte.ayudas_pedidas)
+
+    def test_se_pueden_probar_otras_credenciales_sin_guardarlas(self, armar) -> None:
+        """Averiguar con qué usuario entra la CLI lleva varios intentos.
+
+        Persistir cada uno dejaría guardada la última credencial probada, que
+        es justamente la que no funcionó.
+        """
+        recibidos: dict = {}
+        transporte = TransporteFalso({"show version": "V1600G1"})
+        armar(transporte, recibidos).capturar(
+            1,
+            comandos=["show version"],
+            incluir_ayuda=False,
+            usuario="root",
+            password="otra-contrasena",
+        )
+
+        assert recibidos["usuario"] == "root"
+        assert recibidos["password"] == "otra-contrasena"
+
+    def test_sin_indicar_nada_se_usan_las_credenciales_guardadas(self, armar) -> None:
+        recibidos: dict = {}
+        transporte = TransporteFalso({"show version": "V1600G1"})
+        armar(transporte, recibidos).capturar(1, comandos=["show version"], incluir_ayuda=False)
+
+        assert recibidos["usuario"] == "admin"
+        assert recibidos["password"] == "secreta"
 
     def test_la_sesion_se_cierra_aunque_algo_falle(self, armar) -> None:
         class TransporteQueExplota(TransporteFalso):

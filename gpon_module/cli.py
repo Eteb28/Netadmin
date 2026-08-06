@@ -30,12 +30,13 @@ import logging
 import os
 import sys
 from collections import Counter
+from dataclasses import replace
 from getpass import getpass
 
 from .config import Configuracion
 from .core.cifrado import CifradorFernet
 from .core.enums import Capacidad, EstadoONU, Fabricante, MotivoCaida
-from .core.errors import ErrorGPON, ErrorTransporte
+from .core.errors import ErrorAutenticacion, ErrorGPON, ErrorTransporte
 from .core.models import CredencialesOLT, SolicitudAutorizacion
 from .core.optica import clasificar
 from .core.registry import fabricantes_registrados
@@ -146,25 +147,50 @@ def comando_eliminar_olt(args: argparse.Namespace) -> int:
 
 
 def comando_credenciales(args: argparse.Namespace) -> int:
-    """Reemplaza las credenciales de una OLT ya registrada."""
-    password = os.environ.get("GPON_OLT_PASSWORD") or getpass("Contraseña de la OLT: ")
-    comunidad = os.environ.get("GPON_OLT_COMUNIDAD") or args.comunidad
+    """Cambia las credenciales de una OLT, **conservando lo que no se indique**.
 
+    Es deliberado que sólo toque lo que se pide. Corregir la contraseña de la
+    CLI no debería poder romper la lectura por SNMP, y con valores por defecto
+    aplicados a ciegas la community volvería a 'public' sin que nadie lo pida.
+    """
     with _sistema(args) as sistema:
         olt = sistema.servicio_olt.obtener(args.olt_id)
-        sistema.servicio_olt.actualizar_credenciales(
-            args.olt_id,
-            CredencialesOLT(
-                usuario=args.usuario,
-                password=password,
-                comunidad_snmp_lectura=comunidad,
-                puerto_snmp=args.puerto_snmp,
-                puerto_telnet=args.puerto_telnet,
-                puerto_ssh=args.puerto_ssh,
+        actuales = sistema.repositorio_olt.obtener_credenciales(args.olt_id)
+
+        password = os.environ.get("GPON_OLT_PASSWORD")
+        if password is None:
+            escrita = getpass("Contraseña de la OLT (vacío = dejar la que está): ")
+            password = escrita or actuales.password
+
+        password_enable = actuales.password_enable
+        if args.con_enable:
+            password_enable = getpass("Contraseña de 'enable' (vacío = igual a la anterior): ")
+
+        nuevas = replace(
+            actuales,
+            usuario=args.usuario or actuales.usuario,
+            password=password,
+            password_enable=password_enable,
+            comunidad_snmp_lectura=(
+                os.environ.get("GPON_OLT_COMUNIDAD")
+                or args.comunidad
+                or actuales.comunidad_snmp_lectura
             ),
+            puerto_snmp=args.puerto_snmp or actuales.puerto_snmp,
+            puerto_telnet=args.puerto_telnet or actuales.puerto_telnet,
+            puerto_ssh=args.puerto_ssh or actuales.puerto_ssh,
         )
+        sistema.servicio_olt.actualizar_credenciales(args.olt_id, nuevas)
+
         print(f"Credenciales actualizadas para #{olt.id} {olt.nombre} ({olt.host}).")
-        print(f"Verificá con:  gpon probar {olt.id}")
+        print(f"  usuario          {nuevas.usuario}")
+        print(f"  community SNMP   {'(sin cambios)' if nuevas.comunidad_snmp_lectura else '—'}")
+        print(
+            f"  puertos          snmp {nuevas.puerto_snmp} · telnet "
+            f"{nuevas.puerto_telnet} · ssh {nuevas.puerto_ssh}"
+        )
+        print(f"\nVerificá la lectura con:  gpon probar {olt.id}")
+        print(f"Y la CLI con:             gpon capturar {olt.id} --protocolo ssh")
     return 0
 
 
@@ -232,6 +258,8 @@ def comando_capturar(args: argparse.Namespace) -> int:
             etiqueta = salida.comando or "? (árbol completo)"
             print(f"  {marca}  {etiqueta:<34} {salida.duracion_ms:>6} ms")
 
+        password = getpass("Contraseña para esta prueba: ") if args.preguntar_password else None
+
         try:
             captura = sistema.servicio_captura.capturar(
                 args.olt_id,
@@ -240,7 +268,16 @@ def comando_capturar(args: argparse.Namespace) -> int:
                 incluir_ayuda=not args.sin_ayuda,
                 timeout=args.timeout,
                 al_avanzar=progreso,
+                usuario=args.usuario,
+                password=password,
             )
+        except ErrorAutenticacion as exc:
+            # Acá el canal está bien: lo que falla son las credenciales. Un
+            # escaneo de puertos no aportaría nada, así que se dice lo que sí
+            # sirve.
+            print(f"\n{exc}\n", file=sys.stderr)
+            _ayuda_credenciales(args.olt_id, args.protocolo)
+            return 1
         except ErrorTransporte as exc:
             # No alcanza con decir "no respondió": lo que hace falta saber es
             # si el equipo no escucha ahí o si el paquete no llega. Se averigua
@@ -278,6 +315,28 @@ def comando_probar_cli(args: argparse.Namespace) -> int:
     print("Sólo se abre y cierra una conexión. No se envía usuario ni contraseña.\n")
     _diagnosticar_gestion(olt.host, timeout=args.timeout)
     return 0
+
+
+def _ayuda_credenciales(olt_id: int, protocolo: str) -> None:
+    """Qué revisar cuando el canal abre pero el equipo rechaza el login."""
+    print("El canal está bien: el equipo escucha y contesta. Lo que rechaza es")
+    print("el usuario o la contraseña.\n")
+    print("Lo más común, en orden:\n")
+    print("  1. La contraseña guardada es la que se cargó en 'alta-olt'. Si ahí")
+    print("     se puso la community SNMP o una contraseña vieja, es esto.")
+    print(f"     Corregila:  gpon credenciales {olt_id}")
+    print("     (sólo cambia lo que le indiques: la community SNMP queda intacta)\n")
+    print("  2. El usuario de la CLI puede no ser el mismo que el de la web.")
+    print("     Probá otros sin guardar nada:")
+    print(
+        f"       gpon capturar {olt_id} --protocolo {protocolo} --usuario root "
+        "--preguntar-password\n"
+    )
+    print("  3. Verificalo a mano, que descarta el módulo entero del medio:")
+    print("       ssh admin@<ip-de-la-olt>\n")
+    print("Ojo con el bloqueo por intentos fallidos: varias OLT bloquean la")
+    print("cuenta o la IP después de unos pocos. Si probás a mano y tampoco")
+    print("entra, revisá el usuario en la web del equipo antes de seguir.")
 
 
 def _diagnosticar_gestion(host: str, timeout: float = 3.0) -> None:
@@ -572,13 +631,23 @@ def construir_parser() -> argparse.ArgumentParser:
     baja.add_argument("--si", action="store_true", help="no preguntar confirmación")
     baja.set_defaults(funcion=comando_eliminar_olt)
 
-    credenciales = sub.add_parser("credenciales", help="cambia las credenciales de una OLT")
+    credenciales = sub.add_parser(
+        "credenciales",
+        help="cambia las credenciales de una OLT (conserva lo que no se indique)",
+    )
     credenciales.add_argument("olt_id", type=int)
-    credenciales.add_argument("--usuario", default="admin")
-    credenciales.add_argument("--comunidad", default="public")
-    credenciales.add_argument("--puerto-snmp", type=int, default=161)
-    credenciales.add_argument("--puerto-telnet", type=int, default=23)
-    credenciales.add_argument("--puerto-ssh", type=int, default=22)
+    # Sin valores por defecto a propósito: lo que no se pasa, no se toca. Con
+    # defaults, corregir la contraseña de la CLI pisaría la community SNMP.
+    credenciales.add_argument("--usuario")
+    credenciales.add_argument("--comunidad", help="community SNMP de lectura")
+    credenciales.add_argument("--puerto-snmp", type=int)
+    credenciales.add_argument("--puerto-telnet", type=int)
+    credenciales.add_argument("--puerto-ssh", type=int)
+    credenciales.add_argument(
+        "--con-enable",
+        action="store_true",
+        help="pedir también la contraseña de 'enable' de la CLI",
+    )
     credenciales.set_defaults(funcion=comando_credenciales)
 
     probar = sub.add_parser("probar", help="verifica la conexión con una OLT")
@@ -603,6 +672,15 @@ def construir_parser() -> argparse.ArgumentParser:
         "--sin-ayuda",
         action="store_true",
         help="no pedir la ayuda en línea ('?') del equipo",
+    )
+    capturar.add_argument(
+        "--usuario",
+        help="probar con otro usuario, sólo para esta corrida (no se guarda)",
+    )
+    capturar.add_argument(
+        "--preguntar-password",
+        action="store_true",
+        help="pedir la contraseña por teclado, sólo para esta corrida (no se guarda)",
     )
     capturar.add_argument(
         "--comando-extra",
