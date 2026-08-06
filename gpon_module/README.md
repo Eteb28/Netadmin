@@ -140,6 +140,11 @@ comando *no* existe vale tanto como saber cuál sí.
 `display`, `dir` y `get`, y se aplica igual al catálogo propio que a lo que se pida a mano.
 Se puede correr contra un equipo en producción a cualquier hora.
 
+Si la CLI no abre, `gpon probar-cli 1` dice por qué. Distingue dos fallas que se parecen y
+no lo son: **rechazado** —se llega al equipo, pero el servicio está apagado, se arregla en la
+OLT— y **sin respuesta** —el paquete no llega: firewall o lista de gestión—. No manda
+credenciales: abre y cierra una conexión TCP.
+
 Revisá el archivo antes de compartirlo: `show running-config` puede incluir contraseñas del
 equipo y de PPPoE de los clientes.
 

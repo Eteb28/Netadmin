@@ -102,9 +102,27 @@ La captura **no puede** enviar un comando de escritura:
 Está sostenido por tests, incluido uno que recorre el catálogo entero. Se puede correr
 contra un equipo en producción a cualquier hora.
 
+### 5. Diagnóstico cuando la CLI no abre
+
+`gpon probar-cli <id>` (y el mismo diagnóstico, automático, cuando `capturar` falla al
+conectarse).
+
+El primer caso real contra la OLT de ERLAN fue justamente ése: el puerto 23 no contestó.
+Un error de socket no alcanza para saber qué pasó, y las dos causas posibles se arreglan
+en lugares distintos:
+
+* **rechazado** (RST inmediato): se llega al equipo, el servicio está apagado. Se arregla
+  en la OLT.
+* **sin respuesta** (timeout): un firewall o la lista de gestión del equipo descarta el
+  paquete en silencio. Se arregla en el camino.
+
+El comando sondea 23, 22, 443 y 80, no manda credenciales —abre y cierra una conexión
+TCP— y cierra diciendo qué hacer con lo que encontró. Si la web del equipo responde pero
+la CLI no, lo dice: llegar se llega, el problema es el servicio.
+
 ## Cómo se probó
 
-* **277 tests**, todos en verde. 33 nuevos entre transporte y captura.
+* **281 tests**, todos en verde. 37 nuevos entre transporte, captura y diagnóstico.
 * El Telnet se prueba contra un socket falso con guion: negociación IAC, login en dos
   pasos, contraseña rechazada, paginación, eco del comando, corte de sesión.
 * De punta a punta contra una **OLT VSOL simulada sobre un socket TCP real**, con

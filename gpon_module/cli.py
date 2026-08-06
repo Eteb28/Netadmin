@@ -16,6 +16,7 @@ Comandos disponibles::
     probar <id>       verifica la conexión con el equipo
     sondear <id>      valores crudos del equipo, para verificar la lectura
     capturar <id>     qué comandos entiende la CLI del equipo (sólo lectura)
+    probar-cli <id>   por qué puerto se puede entrar a la CLI, y por cuál no
     listar-olts       OLT registradas
     descubrir <id>    descubre e inventaría una OLT
     onus <id>         inventario de ONU de una OLT
@@ -34,12 +35,13 @@ from getpass import getpass
 from .config import Configuracion
 from .core.cifrado import CifradorFernet
 from .core.enums import Capacidad, EstadoONU, Fabricante, MotivoCaida
-from .core.errors import ErrorGPON
+from .core.errors import ErrorGPON, ErrorTransporte
 from .core.models import CredencialesOLT, SolicitudAutorizacion
 from .core.optica import clasificar
 from .core.registry import fabricantes_registrados
 from .drivers.mock.parque import generar_parque
 from .drivers.transport import PROTOCOLOS_CLI
+from .drivers.transport.deteccion import sondear_gestion
 from .services import Contenedor, crear_contenedor
 
 
@@ -230,14 +232,22 @@ def comando_capturar(args: argparse.Namespace) -> int:
             etiqueta = salida.comando or "? (árbol completo)"
             print(f"  {marca}  {etiqueta:<34} {salida.duracion_ms:>6} ms")
 
-        captura = sistema.servicio_captura.capturar(
-            args.olt_id,
-            protocolo=args.protocolo,
-            comandos=comandos,
-            incluir_ayuda=not args.sin_ayuda,
-            timeout=args.timeout,
-            al_avanzar=progreso,
-        )
+        try:
+            captura = sistema.servicio_captura.capturar(
+                args.olt_id,
+                protocolo=args.protocolo,
+                comandos=comandos,
+                incluir_ayuda=not args.sin_ayuda,
+                timeout=args.timeout,
+                al_avanzar=progreso,
+            )
+        except ErrorTransporte as exc:
+            # No alcanza con decir "no respondió": lo que hace falta saber es
+            # si el equipo no escucha ahí o si el paquete no llega. Se averigua
+            # en el momento, mientras el operador está mirando la pantalla.
+            print(f"\nNo se pudo abrir la CLI: {exc}\n", file=sys.stderr)
+            _diagnosticar_gestion(olt.host)
+            return 1
 
     destino = args.salida or f"captura-olt{args.olt_id}-{captura.momento:%Y%m%d-%H%M}.txt"
     with open(destino, "w", encoding="utf-8") as archivo:
@@ -252,6 +262,55 @@ def comando_capturar(args: argparse.Namespace) -> int:
         "incluir contraseñas del equipo y de PPPoE de los clientes."
     )
     return 0
+
+
+def comando_probar_cli(args: argparse.Namespace) -> int:
+    """Dice por dónde se puede entrar a la CLI de una OLT, y por dónde no.
+
+    No manda credenciales ni comandos: abre y cierra una conexión TCP. Sirve
+    para separar dos problemas que se parecen y no lo son —el servicio está
+    apagado, o el paquete no llega— antes de sospechar de la contraseña.
+    """
+    with _sistema(args) as sistema:
+        olt = sistema.servicio_olt.obtener(args.olt_id)
+
+    _titulo(f"Puertos de gestión de {olt.nombre} ({olt.host})")
+    print("Sólo se abre y cierra una conexión. No se envía usuario ni contraseña.\n")
+    _diagnosticar_gestion(olt.host, timeout=args.timeout)
+    return 0
+
+
+def _diagnosticar_gestion(host: str, timeout: float = 3.0) -> None:
+    """Sondea los puertos de gestión y dice qué hacer con el resultado."""
+    sondeos = sondear_gestion(host, timeout=timeout)
+    for sondeo in sondeos:
+        color = "\033[32m" if sondeo.abierto else "\033[33m"
+        etiqueta = f"{sondeo.puerto} ({sondeo.servicio})" if sondeo.servicio else str(sondeo.puerto)
+        print(f"  {color}{sondeo.estado:<14}\033[0m {etiqueta:<18} {sondeo.explicacion}")
+
+    abiertos = [s for s in sondeos if s.abierto]
+    cli = [s for s in abiertos if s.puerto in (22, 23)]
+
+    print()
+    if cli:
+        protocolo = "ssh" if any(s.puerto == 22 for s in cli) else "telnet"
+        print(f"Probá la captura por ahí:  gpon capturar <id> --protocolo {protocolo}")
+        if protocolo == "ssh":
+            print("SSH necesita paramiko:     pip install paramiko")
+        return
+
+    print("Ningún puerto de CLI responde. Las opciones, en orden:")
+    print("  1. Habilitar Telnet o SSH en la OLT, desde su interfaz web.")
+    print("  2. Revisar la lista de gestión del equipo: varias OLT sólo aceptan")
+    print("     administración desde direcciones IP declaradas de antemano.")
+    print("  3. Revisar el firewall entre este servidor y la OLT.")
+    if any(s.abierto for s in sondeos):
+        print("\nLa web del equipo sí responde, así que llegar se llega: el problema")
+        print("está en el servicio de CLI, no en el camino.")
+    print(
+        "\nMientras tanto, la lectura por SNMP sigue funcionando: 'descubrir',\n"
+        "'sondear' y la interfaz web no dependen de la CLI."
+    )
 
 
 def comando_listar_olts(args: argparse.Namespace) -> int:
@@ -552,6 +611,13 @@ def construir_parser() -> argparse.ArgumentParser:
         help="probar sólo estos comandos, en vez del catálogo (repetible; sólo lectura)",
     )
     capturar.set_defaults(funcion=comando_capturar)
+
+    probar_cli = sub.add_parser(
+        "probar-cli", help="sondea los puertos de gestión de una OLT (no envía credenciales)"
+    )
+    probar_cli.add_argument("olt_id", type=int)
+    probar_cli.add_argument("--timeout", type=float, default=3.0, help="espera por puerto, en s")
+    probar_cli.set_defaults(funcion=comando_probar_cli)
 
     servidor = sub.add_parser("web", help="levanta la interfaz web")
     servidor.add_argument("--host", default="127.0.0.1", help="dirección de escucha")
