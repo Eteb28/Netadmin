@@ -128,8 +128,8 @@ class TestLogin:
         transporte, falso = conectar()
         transporte.abrir()
 
-        assert "admin\r\n" in falso.texto_enviado
-        assert "Xpon@Olt9417#\r\n" in falso.texto_enviado
+        assert "admin\r" in falso.texto_enviado
+        assert "Xpon@Olt9417#\r" in falso.texto_enviado
         assert transporte.conectado
         transporte.cerrar()
 
@@ -162,7 +162,7 @@ class TestLogin:
     def test_se_desactiva_la_paginacion_al_abrir(self, conectar) -> None:
         transporte, falso = conectar()
         transporte.abrir()
-        assert "terminal length 0\r\n" in falso.texto_enviado
+        assert "terminal length 0\r" in falso.texto_enviado
         transporte.cerrar()
 
 
@@ -190,7 +190,7 @@ class TestPrompt:
 
         transporte.abrir()
 
-        assert "\r\n" in falso.texto_enviado
+        assert "\r" in falso.texto_enviado
         assert transporte.conectado
 
     def test_el_enter_de_estimulo_no_se_manda_en_medio_de_una_salida(self, conectar) -> None:
@@ -209,7 +209,7 @@ class TestPrompt:
             transporte.ejecutar("show onu")
 
         # Sólo salió el comando: ningún Enter extra durante la espera.
-        assert falso.enviado[enviados_antes:] == [b"show onu\r\n"]
+        assert falso.enviado[enviados_antes:] == [b"show onu\r"]
 
     def test_el_timeout_muestra_lo_que_el_equipo_llegó_a_mandar(self, conectar) -> None:
         """Sin esto el error dice 'dejó de responder' y no se puede diagnosticar."""
@@ -226,6 +226,76 @@ class TestPrompt:
             transporte.ejecutar("show onu")
 
 
+class TestFinDeLinea:
+    """La falla más cara de todas, y la menos visible.
+
+    La OLT de ERLAN corre en "character mode": procesa cada byte según llega.
+    Un ``\\r\\n`` son DOS Enter. En el login eso mandaba el usuario y, acto
+    seguido, una contraseña vacía — y el equipo contestaba "Bad UserName or Bad
+    Password" con credenciales perfectamente válidas.
+    """
+
+    def test_cada_linea_termina_en_cr_y_nada_mas(self, conectar) -> None:
+        transporte, falso = conectar()
+        transporte.abrir()
+
+        for enviado in falso.enviado:
+            assert not enviado.endswith(b"\r\n"), (
+                f"{enviado!r} termina en CR LF: el equipo lo lee como dos Enter"
+            )
+        assert b"admin\r" in falso.enviado
+
+    def test_la_contrasena_se_manda_de_verdad(self, conectar) -> None:
+        """El síntoma real: el equipo pedía la contraseña y fallaba sin recibirla."""
+        transporte, falso = conectar()
+        transporte.abrir()
+
+        posicion_usuario = falso.enviado.index(b"admin\r")
+        assert b"Xpon@Olt9417#\r" in falso.enviado[posicion_usuario + 1 :]
+
+
+class TestRechazoRapido:
+    def test_un_rechazo_corta_en_el_acto_y_no_espera_al_timeout(self, conectar) -> None:
+        """Cada reintento gasta un intento de login, y varias OLT bloquean la cuenta."""
+        guion = {
+            "admin": b"\r\nPassword: ",
+            "Xpon@Olt9417#": (
+                b"\r\n\r\nBad UserName or Bad Password , Login Failed.\n"
+                b"\r\nPlease retry\n\r\nLogin: "
+            ),
+        }
+        transporte, falso = conectar(guion=guion)
+
+        with pytest.raises(ErrorAutenticacion, match="login fail"):
+            transporte.abrir()
+
+        # No se reintentó el login: sólo un usuario y una contraseña enviados.
+        assert falso.enviado.count(b"admin\r") == 1
+
+
+class TestAvisosAsincronos:
+    def test_un_aviso_del_equipo_no_se_cuela_en_la_salida(self, conectar) -> None:
+        """La OLT empuja avisos de ONU sin que nadie los pida, y caen en medio
+        de la salida de un comando. Dejarlos sería darle al parser una fila
+        inventada."""
+        aviso = b"\r\n2026/08/06 12:15:28   ONU Offline   PON 0/7 ONU 22 sn GPON00B8FF21 \r\n"
+        guion = {
+            "admin": b"\r\nPassword:",
+            "Xpon@Olt9417#": PROMPT,
+            "terminal length 0": _respuesta("terminal length 0", ""),
+            "show onu": b"show onu" + aviso + b"PON  ONUID  SN\r\n0/7  22  GPON00B8FF21" + PROMPT,
+        }
+        transporte, _ = conectar(guion=guion)
+        transporte.abrir()
+
+        salida = transporte.ejecutar("show onu")
+
+        assert "ONU Offline" not in salida
+        assert "PON  ONUID  SN" in salida
+        assert "0/7  22  GPON00B8FF21" in salida
+        transporte.cerrar()
+
+
 class TestTraza:
     def test_guarda_la_conversacion_completa(self, conectar, tmp_path) -> None:
         """Cuando una sesión falla contra un equipo real, la traza es lo único
@@ -237,7 +307,7 @@ class TestTraza:
         transporte.cerrar()
 
         traza = archivo.read_text(encoding="utf-8")
-        assert ">> b'show version\\r\\n'" in traza
+        assert ">> b'show version\\r'" in traza
         assert "V1600G1" in traza
 
     def test_sin_traza_no_se_crea_ningun_archivo(self, conectar, tmp_path) -> None:

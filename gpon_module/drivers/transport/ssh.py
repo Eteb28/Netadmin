@@ -102,7 +102,7 @@ class TransporteSSH(TransporteInteractivo):
         cliente, self._cliente = self._cliente, None
         if canal is not None:
             try:
-                canal.send("exit\r\n")
+                canal.send(b"exit" + self.FIN_DE_LINEA)
             except OSError:
                 pass
             finally:

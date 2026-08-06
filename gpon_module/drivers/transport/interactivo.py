@@ -36,6 +36,18 @@ PROMPT_COMANDO = re.compile(rb"(?:^|[\r\n])[\w.\-@()/:\[\]]{1,60}\s*[#>]\s?$")
 PROMPT_PRIVILEGIADO = re.compile(rb"(?:^|[\r\n])[\w.\-@()/:\[\]]{1,60}\s*#\s?$")
 PROMPT_PAGINACION = re.compile(rb"(?i)(--\s*more\s*--|<space>|press any key|--more--)")
 
+#: Notificaciones que el equipo empuja a la sesión por su cuenta, sin que nadie
+#: las pida. La VSOL de ERLAN anuncia así cada ONU que entra o sale::
+#:
+#:     2026/08/06 12:15:28   ONU Offline   PON 0/7 ONU 22 sn GPON00B8FF21
+#:
+#: Llegan en cualquier momento, también en medio de la salida de un comando, y
+#: si no se sacan el parser las toma por datos.
+LINEA_ASINCRONA = re.compile(
+    r"^\s*\d{4}/\d{2}/\d{2}\s+\d{1,2}:\d{2}:\d{2}\s+ONU\s+(Online|Offline)\b.*$",
+    re.IGNORECASE,
+)
+
 #: Textos con los que el equipo rechaza las credenciales.
 RECHAZOS_LOGIN = (
     b"incorrect",
@@ -70,6 +82,15 @@ class TransporteInteractivo(TransporteCLIBase):
     #: intervalo tras el cual conviene volver a mirar si hay que estimular al
     #: equipo con un Enter.
     SILENCIO_SEGUNDOS = 2.0
+
+    #: Con qué se termina cada línea que se le manda al equipo.
+    #:
+    #: **CR solo, no CR LF.** Es lo que manda una terminal real cuando se
+    #: aprieta Enter, y estos equipos corren en "character mode": procesan cada
+    #: byte según llega. Un ``\n`` detrás del ``\r`` es un segundo Enter, y en
+    #: el login eso significa mandar el usuario y acto seguido una contraseña
+    #: vacía — que es exactamente lo que pasó contra la OLT de ERLAN.
+    FIN_DE_LINEA = b"\r"
 
     def __init__(self, **kwargs: object) -> None:
         # La traza no es asunto de TransporteCLIBase: se saca antes de delegar.
@@ -125,7 +146,7 @@ class TransporteInteractivo(TransporteCLIBase):
             log.warning("No se pudo escribir la traza en %s: %s", self._ruta_traza, exc)
 
     def _escribir(self, texto: str) -> None:
-        self._transmitir(texto.encode("ascii", errors="replace") + b"\r\n")
+        self._transmitir(texto.encode("ascii", errors="replace") + self.FIN_DE_LINEA)
 
     def _enviar(self, comando: str) -> str:
         self._escribir(comando)
@@ -179,7 +200,7 @@ class TransporteInteractivo(TransporteCLIBase):
                     # un Enter en medio de una salida larga ensuciaría la lectura.
                     if not estimulado and not acumulado:
                         log.debug("%s no dijo nada: se manda un Enter", self.host)
-                        self._transmitir(b"\r\n")
+                        self._transmitir(self.FIN_DE_LINEA)
                         estimulado = True
                     continue  # el límite global decide cuándo rendirse
                 if not datos:
@@ -265,7 +286,7 @@ class TransporteInteractivo(TransporteCLIBase):
         crudo = self._leer_hasta_silencio()
 
         self._transmitir(b"\x15")  # Ctrl-U: borra la línea tipeada
-        self._transmitir(b"\r\n")
+        self._transmitir(self.FIN_DE_LINEA)
         try:
             self._leer_hasta((PROMPT_COMANDO,))
         except ErrorTiempoAgotado:
@@ -294,13 +315,17 @@ class TransporteInteractivo(TransporteCLIBase):
 
     @staticmethod
     def _limpiar_salida(crudo: bytes, comando: str) -> str:
-        """Quita el eco del comando y la línea del prompt.
+        """Quita el eco del comando, la línea del prompt y los avisos del equipo.
 
-        Lo que queda es la salida del equipo y nada más, que es lo que el
+        Lo que queda es la salida del comando y nada más, que es lo que el
         parser espera ver.
+
+        Los avisos hay que sacarlos aparte porque no los pidió nadie: la OLT los
+        empuja a la sesión cuando una ONU entra o sale, y pueden caer en medio
+        de una tabla. Dejarlos ahí sería darle al parser una fila inventada.
         """
         texto = crudo.decode("utf-8", errors="replace").replace("\r\n", "\n").replace("\r", "")
-        lineas = texto.split("\n")
+        lineas = [linea for linea in texto.split("\n") if not LINEA_ASINCRONA.match(linea)]
         if lineas and comando.strip() and comando.strip() in lineas[0]:
             lineas = lineas[1:]
         while lineas and re.search(r"[#>]\s*$", lineas[-1]):
@@ -322,26 +347,36 @@ class TransporteInteractivo(TransporteCLIBase):
 
         if PROMPT_USUARIO.search(salida):
             self._escribir(self.usuario)
-            salida = self._leer_hasta((PROMPT_PASSWORD, PROMPT_COMANDO))
+            # Se vigila también que vuelva a aparecer el prompt de usuario: es
+            # cómo el equipo dice "no" sin decirlo. Sin esto, un rechazo se
+            # descubría recién al vencer el timeout, y cada reintento gastaba un
+            # intento de login contra un equipo que puede bloquear la cuenta.
+            salida = self._leer_hasta((PROMPT_PASSWORD, PROMPT_COMANDO, PROMPT_USUARIO))
+            self._exigir_que_no_haya_rechazo(salida)
 
         if PROMPT_PASSWORD.search(salida):
             self._escribir(self.password)
             salida = self._leer_hasta((PROMPT_COMANDO, PROMPT_USUARIO, PROMPT_PASSWORD))
+            self._exigir_que_no_haya_rechazo(salida)
 
-        if self._rechazo_de_login(salida):
+        if PROMPT_USUARIO.search(salida) or PROMPT_PASSWORD.search(salida):
+            # Seguimos en la pantalla de login sin un motivo escrito.
             raise ErrorAutenticacion(
-                f"{self.host} rechazó el usuario '{self.usuario}' por {self.PROTOCOLO}"
+                f"{self.host} sigue pidiendo credenciales: no aceptó el usuario "
+                f"'{self.usuario}' por {self.PROTOCOLO}"
             )
 
         self._elevar_privilegios(salida)
 
-    @staticmethod
-    def _rechazo_de_login(salida: bytes) -> bool:
+    def _exigir_que_no_haya_rechazo(self, salida: bytes) -> None:
+        """Corta apenas el equipo dice que las credenciales no sirven."""
         minuscula = salida.lower()
-        if any(rechazo in minuscula for rechazo in RECHAZOS_LOGIN):
-            return True
-        # Volver a pedir usuario o contraseña es cómo estos equipos dicen "no".
-        return bool(PROMPT_USUARIO.search(salida) or PROMPT_PASSWORD.search(salida))
+        for rechazo in RECHAZOS_LOGIN:
+            if rechazo in minuscula:
+                raise ErrorAutenticacion(
+                    f"{self.host} rechazó el usuario '{self.usuario}' por "
+                    f"{self.PROTOCOLO}: «{rechazo.decode()}»"
+                )
 
     def _elevar_privilegios(self, salida: bytes) -> None:
         """``enable``, si el prompt todavía no es privilegiado.

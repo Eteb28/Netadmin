@@ -122,7 +122,7 @@ la CLI no, lo dice: llegar se llega, el problema es el servicio.
 
 ## Cómo se probó
 
-* **281 tests**, todos en verde. 37 nuevos entre transporte, captura y diagnóstico.
+* **310 tests**, todos en verde. 66 nuevos entre transporte, captura y diagnóstico.
 * El Telnet se prueba contra un socket falso con guion: negociación IAC, login en dos
   pasos, contraseña rechazada, paginación, eco del comando, corte de sesión.
 * De punta a punta contra una **OLT VSOL simulada sobre un socket TCP real**, con
@@ -136,6 +136,33 @@ Dos defectos reales aparecieron en esa prueba de punta a punta y quedaron correg
    exacto aprendido en el login.
 2. **Los tests dependían del recolector de basura** para liberar la sesión exclusiva.
    Funcionaba por casualidad. Ahora se cierra explícitamente en el *fixture*.
+
+### Lo que enseñó la primera sesión contra la OLT de ERLAN
+
+La traza de una sesión fallida —`--traza`— resolvió en una lectura tres cosas que ninguna
+cantidad de suposiciones habría resuelto:
+
+**1. El fin de línea.** El equipo anuncia en su banner que entra en *character mode*:
+procesa cada byte según llega. Un `\r\n` son **dos Enter**. En el login eso mandaba el
+usuario y, acto seguido, una contraseña vacía; el equipo contestaba *"Bad UserName or Bad
+Password"* con credenciales perfectamente válidas. Ahora se manda **CR solo**, que es lo
+que manda una terminal real.
+
+**2. El rechazo tardaba 20 s en detectarse.** Tras el fallo, el equipo vuelve a mostrar
+`Login:`, que no era ninguno de los patrones esperados, así que la sesión esperaba hasta
+el timeout — y reintentaba tres veces, gastando tres intentos de login contra un equipo
+que puede bloquear la cuenta. Ahora se corta en el acto, al leer el texto del rechazo.
+
+**3. La OLT empuja avisos a la sesión.** Sin que nadie los pida::
+
+    2026/08/06 12:15:28   ONU Offline   PON 0/7 ONU 22 sn GPON00B8FF21
+
+Llegan en cualquier momento, también en medio de la salida de un comando. Se filtran de la
+salida antes de que la vea un parser: una línea así en medio de una tabla sería una fila
+inventada.
+
+Las tres correcciones están fijadas por tests contra una réplica del equipo, reconstruida
+a partir de esa traza: mismo banner, mismo *character mode*, mismos avisos.
 
 ## Qué sigue, y qué hace falta para poder hacerlo
 

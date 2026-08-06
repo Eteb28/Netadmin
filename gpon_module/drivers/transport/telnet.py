@@ -60,7 +60,7 @@ class TransporteTelnet(TransporteInteractivo):
         if socket_actual is None:
             return
         try:
-            socket_actual.sendall(b"exit\r\n")
+            socket_actual.sendall(b"exit" + self.FIN_DE_LINEA)
         except OSError:
             pass  # el equipo pudo cerrar primero; da igual, ya nos estamos yendo
         finally:
