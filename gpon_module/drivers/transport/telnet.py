@@ -68,7 +68,7 @@ class TransporteTelnet(TransporteInteractivo):
 
     # --- bytes ------------------------------------------------------------
 
-    def _transmitir(self, datos: bytes) -> None:
+    def _escribir_canal(self, datos: bytes) -> None:
         if self._socket is None:
             raise ErrorConexion(f"La sesión Telnet con {self.host} no está abierta")
         self._socket.sendall(datos)
@@ -77,18 +77,29 @@ class TransporteTelnet(TransporteInteractivo):
         if self._socket is not None:
             self._socket.settimeout(segundos)
 
-    def _recibir(self, cantidad: int) -> bytes:
+    def _leer_canal(self, cantidad: int) -> bytes:
+        """Devuelve texto. ``b""`` significa que el equipo cerró, y nada más.
+
+        Un bloque de pura negociación IAC no deja texto, y devolverlo vacío se
+        leería como un cierre de conexión que no ocurrió. Por eso se sigue
+        leyendo hasta tener algo que mostrar.
+        """
         if self._socket is None:
             raise ErrorConexion(f"La sesión Telnet con {self.host} no está abierta")
-        try:
-            datos = self._socket.recv(cantidad)
-        except TimeoutError as exc:
-            raise ErrorTiempoAgotado(f"{self.host} dejó de responder") from exc
-        except OSError as exc:
-            raise ErrorConexion(f"Se cortó la sesión con {self.host}: {exc}") from exc
-        if not datos:
-            return b""  # el equipo cerró la conexión
-        return self._responder_negociacion(datos)
+
+        while True:
+            try:
+                datos = self._socket.recv(cantidad)
+            except TimeoutError as exc:
+                raise ErrorTiempoAgotado(f"{self.host} dejó de responder") from exc
+            except OSError as exc:
+                raise ErrorConexion(f"Se cortó la sesión con {self.host}: {exc}") from exc
+
+            if not datos:
+                return b""  # el equipo cerró la conexión
+            limpio = self._responder_negociacion(datos)
+            if limpio:
+                return limpio
 
     def _responder_negociacion(self, datos: bytes) -> bytes:
         """Contesta la negociación Telnet y devuelve sólo el texto.

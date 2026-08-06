@@ -31,6 +31,7 @@ def crear_transporte_cli(
     puerto: int | None = None,
     timeout: float = 20.0,
     intentos: int = 3,
+    ruta_traza: str | None = None,
 ) -> TransporteCLIBase:
     """Devuelve el transporte CLI pedido, ya configurado y sin abrir.
 
@@ -64,6 +65,7 @@ def crear_transporte_cli(
         puerto=puerto_efectivo,
         timeout=timeout,
         intentos=intentos,
+        ruta_traza=ruta_traza,
     )
 
 

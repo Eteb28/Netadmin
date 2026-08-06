@@ -52,9 +52,6 @@ class TransporteSSH(TransporteInteractivo):
         self._cliente: Any = None
         self._canal: Any = None
 
-    def _requiere_login_interactivo(self) -> bool:
-        return False
-
     # --- conexión ---------------------------------------------------------
 
     def _abrir_sesion(self) -> None:
@@ -115,7 +112,7 @@ class TransporteSSH(TransporteInteractivo):
 
     # --- bytes ------------------------------------------------------------
 
-    def _transmitir(self, datos: bytes) -> None:
+    def _escribir_canal(self, datos: bytes) -> None:
         if self._canal is None:
             raise ErrorConexion(f"La sesión SSH con {self.host} no está abierta")
         self._canal.sendall(datos)
@@ -124,7 +121,7 @@ class TransporteSSH(TransporteInteractivo):
         if self._canal is not None:
             self._canal.settimeout(segundos)
 
-    def _recibir(self, cantidad: int) -> bytes:
+    def _leer_canal(self, cantidad: int) -> bytes:
         if self._canal is None:
             raise ErrorConexion(f"La sesión SSH con {self.host} no está abierta")
         try:

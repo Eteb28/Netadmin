@@ -190,6 +190,14 @@ Cuando ya sepas cuál es, `gpon credenciales 1` la guarda. **Sólo cambia lo que
 la community SNMP y los puertos quedan como están, para que arreglar el acceso a la CLI no
 pueda romper la lectura que ya funciona.
 
+Si la sesión abre pero no llega a un prompt, `--traza sesion.log` guarda todo lo que se
+mandó y se recibió, byte por byte. Es lo único que permite entender qué hace un firmware
+que no se comporta como los demás:
+
+```bash
+gpon capturar 1 --protocolo ssh --traza sesion.log
+```
+
 Si la CLI no abre, `gpon probar-cli 1` dice por qué. Distingue dos fallas que se parecen y
 no lo son: **rechazado** —se llega al equipo, pero el servicio está apagado, se arregla en la
 OLT— y **sin respuesta** —el paquete no llega: firewall o lista de gestión—. No manda

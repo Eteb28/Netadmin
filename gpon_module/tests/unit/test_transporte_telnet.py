@@ -25,7 +25,8 @@ class SocketFalso:
     def __init__(self, bienvenida: bytes, guion: dict[str, bytes]) -> None:
         self.guion = guion
         self.enviado: list[bytes] = []
-        self.pendiente: deque[bytes] = deque([bienvenida])
+        # Una bienvenida vacía es un equipo que no saluda, no un socket cerrado.
+        self.pendiente: deque[bytes] = deque([bienvenida] if bienvenida else [])
         self.cerrado = False
         self.timeout: float | None = None
 
@@ -163,6 +164,88 @@ class TestLogin:
         transporte.abrir()
         assert "terminal length 0\r\n" in falso.texto_enviado
         transporte.cerrar()
+
+
+class TestPrompt:
+    def test_se_reconoce_un_prompt_sin_salto_de_linea_delante(self, conectar) -> None:
+        """Por SSH el primer prompt llega al principio del canal, pelado.
+
+        Exigirle un salto de línea delante dejaba la sesión esperando para
+        siempre un prompt que ya había llegado.
+        """
+        guion = {"terminal length 0": _respuesta("terminal length 0", "")}
+        transporte, _ = conectar(bienvenida=b"OLT_Belgrano#", guion=guion)
+
+        transporte.abrir()
+
+        assert transporte.conectado
+
+    def test_a_un_equipo_callado_se_le_manda_un_enter(self, conectar) -> None:
+        """Varios equipos no imprimen el prompt hasta recibir uno."""
+        guion = {
+            "": PROMPT,  # respuesta al Enter de estímulo
+            "terminal length 0": _respuesta("terminal length 0", ""),
+        }
+        transporte, falso = conectar(bienvenida=b"", guion=guion)
+
+        transporte.abrir()
+
+        assert "\r\n" in falso.texto_enviado
+        assert transporte.conectado
+
+    def test_el_enter_de_estimulo_no_se_manda_en_medio_de_una_salida(self, conectar) -> None:
+        """Si el equipo ya venía hablando, está vivo: un Enter ensuciaría la lectura."""
+        guion = {
+            "admin": b"\r\nPassword:",
+            "Xpon@Olt9417#": PROMPT,
+            "terminal length 0": _respuesta("terminal length 0", ""),
+            "show onu": b"show onu\r\nONU 1\r\n",  # empieza y se corta, sin prompt
+        }
+        transporte, falso = conectar(guion=guion)
+        transporte.abrir()
+        enviados_antes = len(falso.enviado)
+
+        with pytest.raises(ErrorTiempoAgotado):
+            transporte.ejecutar("show onu")
+
+        # Sólo salió el comando: ningún Enter extra durante la espera.
+        assert falso.enviado[enviados_antes:] == [b"show onu\r\n"]
+
+    def test_el_timeout_muestra_lo_que_el_equipo_llegó_a_mandar(self, conectar) -> None:
+        """Sin esto el error dice 'dejó de responder' y no se puede diagnosticar."""
+        guion = {
+            "admin": b"\r\nPassword:",
+            "Xpon@Olt9417#": PROMPT,
+            "terminal length 0": _respuesta("terminal length 0", ""),
+            "show onu": b"show onu\r\nBienvenido al equipo\r\n",
+        }
+        transporte, _ = conectar(guion=guion)
+        transporte.abrir()
+
+        with pytest.raises(ErrorTiempoAgotado, match="Bienvenido al equipo"):
+            transporte.ejecutar("show onu")
+
+
+class TestTraza:
+    def test_guarda_la_conversacion_completa(self, conectar, tmp_path) -> None:
+        """Cuando una sesión falla contra un equipo real, la traza es lo único
+        que permite entender qué mandó."""
+        archivo = tmp_path / "sesion.log"
+        transporte, _ = conectar(ruta_traza=str(archivo))
+        transporte.abrir()
+        transporte.ejecutar("show version")
+        transporte.cerrar()
+
+        traza = archivo.read_text(encoding="utf-8")
+        assert ">> b'show version\\r\\n'" in traza
+        assert "V1600G1" in traza
+
+    def test_sin_traza_no_se_crea_ningun_archivo(self, conectar, tmp_path) -> None:
+        transporte, _ = conectar()
+        transporte.abrir()
+        transporte.cerrar()
+
+        assert list(tmp_path.iterdir()) == []
 
 
 class TestSalida:

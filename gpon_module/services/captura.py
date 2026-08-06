@@ -178,6 +178,7 @@ class ServicioCaptura:
         al_avanzar: Any = None,
         usuario: str | None = None,
         password: str | None = None,
+        ruta_traza: str | None = None,
     ) -> Captura:
         """Corre la captura contra la OLT y devuelve todo lo obtenido.
 
@@ -205,6 +206,7 @@ class ServicioCaptura:
             protocolo=protocolo,
             puerto=credenciales.puerto_ssh if protocolo == "ssh" else credenciales.puerto_telnet,
             timeout=timeout,
+            ruta_traza=ruta_traza,
         )
 
         ayudas: list[SalidaComando] = []

@@ -276,6 +276,7 @@ def comando_capturar(args: argparse.Namespace) -> int:
                 al_avanzar=progreso,
                 usuario=args.usuario,
                 password=password,
+                ruta_traza=args.traza,
             )
         except ErrorAutenticacion as exc:
             # Acá el canal está bien: lo que falla son las credenciales. Un
@@ -706,6 +707,11 @@ def construir_parser() -> argparse.ArgumentParser:
         "--sin-ayuda",
         action="store_true",
         help="no pedir la ayuda en línea ('?') del equipo",
+    )
+    capturar.add_argument(
+        "--traza",
+        metavar="ARCHIVO",
+        help="guardar la sesión cruda (todo lo enviado y recibido) para diagnóstico",
     )
     capturar.add_argument(
         "--usuario",
