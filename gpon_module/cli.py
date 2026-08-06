@@ -17,6 +17,7 @@ Comandos disponibles::
     sondear <id>      valores crudos del equipo, para verificar la lectura
     capturar <id>     qué comandos entiende la CLI del equipo (sólo lectura)
     probar-cli <id>   por qué puerto se puede entrar a la CLI, y por cuál no
+    cargar-equipos    da de alta las OLT descritas en equipos.toml
     listar-olts       OLT registradas
     descubrir <id>    descubre e inventaría una OLT
     onus <id>         inventario de ONU de una OLT
@@ -43,7 +44,12 @@ from .core.registry import fabricantes_registrados
 from .drivers.mock.parque import generar_parque
 from .drivers.transport import PROTOCOLOS_CLI
 from .drivers.transport.deteccion import sondear_gestion
-from .services import Contenedor, crear_contenedor
+from .services import (
+    Contenedor,
+    ServicioInventarioArchivo,
+    crear_contenedor,
+    leer_equipos,
+)
 
 
 def _configurar_log(nivel: str) -> None:
@@ -298,6 +304,34 @@ def comando_capturar(args: argparse.Namespace) -> int:
         "\nRevisá el archivo antes de compartirlo: 'show running-config' puede\n"
         "incluir contraseñas del equipo y de PPPoE de los clientes."
     )
+    return 0
+
+
+def comando_cargar_equipos(args: argparse.Namespace) -> int:
+    """Da de alta o actualiza las OLT descritas en un archivo TOML.
+
+    Es idempotente: identifica cada equipo por su dirección, crea el que falta y
+    actualiza el que ya está. Correrlo dos veces no duplica nada, y corregir una
+    contraseña es editar el archivo y volver a correrlo.
+    """
+    equipos = leer_equipos(args.archivo)
+
+    with _sistema(args) as sistema:
+        servicio = ServicioInventarioArchivo(sistema.servicio_olt, sistema.repositorio_olt)
+        resultado = servicio.aplicar(equipos)
+
+    _titulo(f"Equipos cargados desde {args.archivo}")
+    for creada in resultado.creadas:
+        print(f"  nueva        {creada}")
+    for actualizada in resultado.actualizadas:
+        print(f"  actualizada  {actualizada}")
+    if not resultado.total:
+        print("  (el archivo no declaraba ningún equipo)")
+        return 1
+
+    print(f"\n{resultado.total} equipo(s). Siguiente paso:")
+    print("  gpon listar-olts")
+    print("  gpon probar <id>")
     return 0
 
 
@@ -689,6 +723,18 @@ def construir_parser() -> argparse.ArgumentParser:
         help="probar sólo estos comandos, en vez del catálogo (repetible; sólo lectura)",
     )
     capturar.set_defaults(funcion=comando_capturar)
+
+    equipos = sub.add_parser(
+        "cargar-equipos",
+        help="da de alta o actualiza las OLT descritas en un archivo TOML",
+    )
+    equipos.add_argument(
+        "archivo",
+        nargs="?",
+        default="equipos.toml",
+        help="archivo de equipos (por defecto: equipos.toml)",
+    )
+    equipos.set_defaults(funcion=comando_cargar_equipos)
 
     probar_cli = sub.add_parser(
         "probar-cli", help="sondea los puertos de gestión de una OLT (no envía credenciales)"

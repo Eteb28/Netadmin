@@ -87,6 +87,44 @@ donde tiene que funcionar.
 La web nunca habla con un driver: consume la API (`/api/...`), y eso está sostenido por un
 test que falla si alguna ruta web importa un servicio.
 
+## Configurar una vez y no repetirlo
+
+Dos archivos evitan reescribir todo en cada terminal. **Ninguno de los dos va al
+repositorio**: el `.gitignore` del módulo los excluye, porque una contraseña de OLT
+commiteada queda en el historial para siempre y borrarla después no la borra.
+
+`.env` — variables del módulo. Se carga solo al arrancar; lo que ya esté exportado en la
+terminal le gana, así una prueba puntual nunca queda tapada por el archivo.
+
+```bash
+GPON_CLAVE_CIFRADO=...
+GPON_BASE_DATOS=sqlite:///gpon.db
+```
+
+`equipos.toml` — el inventario de OLT, con sus credenciales. Se aplica con:
+
+```bash
+gpon cargar-equipos
+```
+
+Es idempotente: identifica cada equipo por su dirección, crea el que falta y actualiza el
+que ya está. Correrlo dos veces no duplica nada, y corregir una contraseña es editar el
+archivo y volver a correrlo. Hay una plantilla en `equipos.toml.ejemplo`.
+
+```toml
+[[olt]]
+nombre = "OLT Belgrano"
+host = "192.168.10.247"
+fabricante = "vsol"
+usuario = "eaguiar"
+password = "..."
+comunidad = "public"
+```
+
+En un servidor compartido conviene dejar las contraseñas fuera del archivo y
+referenciarlas: `password_entorno = "GPON_PASSWORD_BELGRANO"`. En cualquier caso,
+`chmod 600 equipos.toml .env` — el módulo avisa si quedaron legibles para todos.
+
 ## Con base persistente
 
 ```bash

@@ -15,6 +15,42 @@ from .core.errors import ErrorConfiguracion
 
 PREFIJO = "GPON_"
 
+#: Archivo de entorno que se lee al arrancar, si existe en el directorio actual.
+ARCHIVO_ENTORNO = ".env"
+
+
+def cargar_archivo_entorno(ruta: str | Path = ARCHIVO_ENTORNO) -> dict[str, str]:
+    """Carga variables desde un archivo ``.env``, sin pisar las ya definidas.
+
+    Existe para no tener que reescribir la clave de cifrado y la base de datos
+    en cada terminal nueva. Lo que ya está exportado gana: una variable puesta a
+    mano para una prueba puntual no debería quedar tapada por el archivo.
+
+    Formato: ``CLAVE=valor`` por línea, ``#`` para comentarios. El valor se toma
+    tal cual —sin interpretar barras invertidas ni expandir nada— porque las
+    contraseñas de equipos suelen tener ``#``, ``$`` y comillas, y cualquier
+    interpretación las rompería en silencio.
+    """
+    archivo = Path(ruta)
+    if not archivo.is_file():
+        return {}
+
+    cargadas: dict[str, str] = {}
+    for linea in archivo.read_text(encoding="utf-8").splitlines():
+        limpia = linea.strip()
+        if not limpia or limpia.startswith("#") or "=" not in limpia:
+            continue
+        clave, _, valor = limpia.partition("=")
+        clave = clave.strip().removeprefix("export ").strip()
+        valor = valor.strip()
+        # Sólo se quitan las comillas si envuelven todo el valor.
+        if len(valor) >= 2 and valor[0] == valor[-1] and valor[0] in "\"'":
+            valor = valor[1:-1]
+        if clave and clave not in os.environ:
+            os.environ[clave] = valor
+            cargadas[clave] = valor
+    return cargadas
+
 
 def _entero(nombre: str, por_defecto: int) -> int:
     valor = os.environ.get(PREFIJO + nombre)
@@ -83,8 +119,16 @@ class Configuracion:
     archivo_log: str = ""
 
     @classmethod
-    def desde_entorno(cls) -> Configuracion:
-        """Construye la configuración leyendo variables ``GPON_*``."""
+    def desde_entorno(
+        cls, *, archivo_entorno: str | Path | None = ARCHIVO_ENTORNO
+    ) -> Configuracion:
+        """Construye la configuración leyendo variables ``GPON_*``.
+
+        Si hay un ``.env`` en el directorio actual, se carga primero. Lo ya
+        exportado en la terminal tiene prioridad.
+        """
+        if archivo_entorno is not None:
+            cargar_archivo_entorno(archivo_entorno)
         return cls(
             url_base_datos=os.environ.get(PREFIJO + "BASE_DATOS", "sqlite:///gpon.db"),
             clave_cifrado=os.environ.get(PREFIJO + "CLAVE_CIFRADO", ""),
@@ -132,9 +176,7 @@ class Configuracion:
                 f"{PREFIJO}PERMITIR_CIFRADO_NULO=1 de forma explícita."
             )
         if not 1 <= self.porcentaje_minimo_lectura <= 100:
-            raise ErrorConfiguracion(
-                f"{PREFIJO}PORCENTAJE_MINIMO_LECTURA debe estar entre 1 y 100"
-            )
+            raise ErrorConfiguracion(f"{PREFIJO}PORCENTAJE_MINIMO_LECTURA debe estar entre 1 y 100")
         if not (self.es_sqlite or self.es_postgres):
             raise ErrorConfiguracion(
                 f"Base de datos no soportada: {self.url_base_datos!r}. "

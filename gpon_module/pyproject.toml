@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gpon-module"
-version = "0.4.2"
+version = "0.5.0"
 description = "Administración GPON multifabricante (VSOL, ZTE), integrable con Pucará"
 requires-python = ">=3.11"
 license = { text = "Propietario" }
@@ -59,6 +59,7 @@ packages = [
 ]
 
 [tool.setuptools.package-data]
+"gpon_module" = ["equipos.toml.ejemplo"]
 "gpon_module.database" = ["*.sql"]
 "gpon_module.web" = ["templates/*.html", "static/*.css", "static/*.js", "static/vendor/*"]
 
