@@ -20,6 +20,7 @@ from .inventario_archivo import (
     ServicioInventarioArchivo,
     leer_equipos,
 )
+from .inventario_cli import ResultadoInventarioCLI, ServicioInventarioCLI
 from .olt import ServicioOLT
 from .onu import PotenciaONU, ServicioONU
 
@@ -31,10 +32,12 @@ __all__ = [
     "PotenciaONU",
     "ResultadoCarga",
     "ResultadoDescubrimiento",
+    "ResultadoInventarioCLI",
     "SalidaComando",
     "ServicioCaptura",
     "ServicioDescubrimiento",
     "ServicioInventarioArchivo",
+    "ServicioInventarioCLI",
     "ServicioOLT",
     "ServicioONU",
     "crear_contenedor",

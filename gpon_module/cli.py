@@ -18,6 +18,7 @@ Comandos disponibles::
     capturar <id>     qué comandos entiende la CLI del equipo (sólo lectura)
     probar-cli <id>   por qué puerto se puede entrar a la CLI, y por cuál no
     cargar-equipos    da de alta las OLT descritas en equipos.toml
+    inventario-cli    completa el inventario con los seriales, leídos por CLI
     listar-olts       OLT registradas
     descubrir <id>    descubre e inventaría una OLT
     onus <id>         inventario de ONU de una OLT
@@ -44,6 +45,7 @@ from .core.registry import fabricantes_registrados
 from .drivers.mock.parque import generar_parque
 from .drivers.transport import PROTOCOLOS_CLI
 from .drivers.transport.deteccion import sondear_gestion
+from .drivers.vsol.parser_config import parsear_running_config
 from .services import (
     Contenedor,
     ServicioInventarioArchivo,
@@ -333,6 +335,66 @@ def comando_cargar_equipos(args: argparse.Namespace) -> int:
     print(f"\n{resultado.total} equipo(s). Siguiente paso:")
     print("  gpon listar-olts")
     print("  gpon probar <id>")
+    return 0
+
+
+def comando_inventario_cli(args: argparse.Namespace) -> int:
+    """Completa el inventario con lo que sólo la CLI sabe: los seriales.
+
+    SNMP da el estado en vivo de cada ONU pero no su número de serie, y sin
+    serial no se puede identificar un cliente. El serial vive en la
+    configuración del equipo, así que se lee de ahí. Es sólo lectura: el único
+    comando que se envía es 'show running-config'.
+    """
+    with _sistema(args) as sistema:
+        olt = sistema.servicio_olt.obtener(args.olt_id)
+        _titulo(f"Inventario por CLI de {olt.nombre} ({olt.host})")
+
+        if args.desde_archivo:
+            print(f"Leyendo la configuración de {args.desde_archivo} (no se toca el equipo).")
+            with open(args.desde_archivo, encoding="utf-8", errors="replace") as archivo:
+                texto = archivo.read()
+            resultado = sistema.servicio_inventario_cli.aplicar(
+                args.olt_id, parsear_running_config(texto)
+            )
+        else:
+            print(f"Leyendo 'show running-config' por {args.protocolo}. No se modifica nada.")
+            try:
+                resultado = sistema.servicio_inventario_cli.importar(
+                    args.olt_id,
+                    protocolo=args.protocolo,
+                    timeout=args.timeout,
+                    ruta_traza=args.traza,
+                )
+            except ErrorAutenticacion as exc:
+                print(f"\n{exc}\n", file=sys.stderr)
+                _ayuda_credenciales(args.olt_id, args.protocolo)
+                return 1
+
+    print(f"\nONU en la configuración   {resultado.onus_en_configuracion}")
+    print(f"ONU actualizadas          {resultado.onus_actualizadas}")
+    print(f"Seriales nuevos           {resultado.series_nuevas}")
+    print(f"Perfiles DBA              {resultado.perfiles_dba}")
+    print(f"Perfiles de tráfico       {resultado.perfiles_trafico}")
+    print(f"VLAN                      {resultado.vlans}")
+
+    if resultado.onus_solo_en_configuracion:
+        print(
+            f"\n{len(resultado.onus_solo_en_configuracion)} ONU están dadas de alta en el "
+            "equipo pero no las vio SNMP.\nProbablemente estén configuradas y todavía sin "
+            "conectar. Las primeras:"
+        )
+        for entrada in resultado.onus_solo_en_configuracion[:10]:
+            print(f"    {entrada}")
+
+    if resultado.pon_sin_autoaprendizaje:
+        print(
+            "\nPuertos PON con el autoaprendizaje apagado: "
+            f"{', '.join(resultado.pon_sin_autoaprendizaje)}.\n"
+            "Ahí una ONU nueva no aparece sola: hay que darla de alta a mano."
+        )
+
+    print(f"\nVerlo en la web:  gpon web   →  /olts/{args.olt_id}/onus")
     return 0
 
 
@@ -741,6 +803,23 @@ def construir_parser() -> argparse.ArgumentParser:
         help="archivo de equipos (por defecto: equipos.toml)",
     )
     equipos.set_defaults(funcion=comando_cargar_equipos)
+
+    inventario = sub.add_parser(
+        "inventario-cli",
+        help="completa el inventario con los seriales que sólo da la CLI (sólo lectura)",
+    )
+    inventario.add_argument("olt_id", type=int)
+    inventario.add_argument(
+        "--protocolo", default="ssh", choices=list(PROTOCOLOS_CLI), help="canal de la CLI"
+    )
+    inventario.add_argument("--timeout", type=float, default=60.0, help="espera, en segundos")
+    inventario.add_argument("--traza", metavar="ARCHIVO", help="guardar la sesión cruda")
+    inventario.add_argument(
+        "--desde-archivo",
+        metavar="ARCHIVO",
+        help="leer la configuración de un archivo ya capturado, sin tocar el equipo",
+    )
+    inventario.set_defaults(funcion=comando_inventario_cli)
 
     probar_cli = sub.add_parser(
         "probar-cli", help="sondea los puertos de gestión de una OLT (no envía credenciales)"
