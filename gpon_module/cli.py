@@ -19,6 +19,7 @@ Comandos disponibles::
     probar-cli <id>   por qué puerto se puede entrar a la CLI, y por cuál no
     cargar-equipos    da de alta las OLT descritas en equipos.toml
     inventario-cli    completa el inventario con los seriales, leídos por CLI
+    explorar-config   busca los comandos de GPON en los modos de la CLI
     listar-olts       OLT registradas
     descubrir <id>    descubre e inventaría una OLT
     onus <id>         inventario de ONU de una OLT
@@ -395,6 +396,64 @@ def comando_inventario_cli(args: argparse.Namespace) -> int:
         )
 
     print(f"\nVerlo en la web:  gpon web   →  /olts/{args.olt_id}/onus")
+    return 0
+
+
+def comando_explorar_config(args: argparse.Namespace) -> int:
+    """Busca los comandos de GPON entrando a modo configuración.
+
+    En este firmware el 'show' del modo EXEC es el del switch y no tiene nada de
+    GPON: lo que interesa vive dentro de 'configure terminal' y de
+    'interface gpon 0/N'. Para verlo hay que entrar a esos modos.
+
+    **Entrar a modo configuración no cambia ninguna configuración**, pero sí es
+    más que mirar de afuera, así que conviene saberlo. Los únicos comandos que
+    se ejecutan son de navegación entre modos y 'show'; todo lo demás se
+    pregunta con '?', que no ejecuta nada. Al terminar se vuelve con 'end'.
+    """
+    with _sistema(args) as sistema:
+        olt = sistema.servicio_olt.obtener(args.olt_id)
+
+        _titulo(f"Explorando la CLI de {olt.nombre} ({olt.host}), puerto {args.pon}")
+        print("Se entra a modo configuración para leer la ayuda en línea.")
+        print("No se ejecuta ningún comando de configuración, y se vuelve con 'end'.\n")
+
+        if not args.si:
+            respuesta = input("Escribí 'si' para continuar: ").strip().lower()
+            if respuesta not in ("si", "sí"):
+                print("Cancelado. No se tocó el equipo.")
+                return 1
+            print()
+
+        def progreso(salida) -> None:
+            marca = "\033[32mok \033[0m" if salida.ok else "\033[33mn/d\033[0m"
+            es_ayuda = salida.proposito.startswith("Ayuda")
+            etiqueta = f"{salida.comando}?" if es_ayuda else salida.comando
+            print(f"  {marca}  [{salida.grupo:<20}] {etiqueta}")
+
+        try:
+            exploracion = sistema.servicio_exploracion.explorar(
+                args.olt_id,
+                pon=args.pon,
+                protocolo=args.protocolo,
+                timeout=args.timeout,
+                ruta_traza=args.traza,
+                al_avanzar=progreso,
+            )
+        except ErrorAutenticacion as exc:
+            print(f"\n{exc}\n", file=sys.stderr)
+            _ayuda_credenciales(args.olt_id, args.protocolo)
+            return 1
+
+    destino = args.salida or f"exploracion-olt{args.olt_id}-{exploracion.momento:%Y%m%d-%H%M}.txt"
+    with open(destino, "w", encoding="utf-8") as archivo:
+        archivo.write(exploracion.a_texto())
+
+    _titulo("Resultado")
+    print(f"Comandos con datos : {len(exploracion.aceptados)}")
+    print(f"Recorrido          : {' → '.join(exploracion.recorrido)}")
+    print(f"Archivo            : {destino}")
+    print("\nLa sesión volvió al modo EXEC. No se modificó ninguna configuración.")
     return 0
 
 
@@ -820,6 +879,21 @@ def construir_parser() -> argparse.ArgumentParser:
         help="leer la configuración de un archivo ya capturado, sin tocar el equipo",
     )
     inventario.set_defaults(funcion=comando_inventario_cli)
+
+    explorar = sub.add_parser(
+        "explorar-config",
+        help="busca los comandos de GPON entrando a modo configuración (sin configurar nada)",
+    )
+    explorar.add_argument("olt_id", type=int)
+    explorar.add_argument("--pon", default="0/1", help="puerto PON a explorar, p. ej. 0/1")
+    explorar.add_argument(
+        "--protocolo", default="ssh", choices=list(PROTOCOLOS_CLI), help="canal de la CLI"
+    )
+    explorar.add_argument("--timeout", type=float, default=30.0)
+    explorar.add_argument("--salida", help="archivo donde guardar la exploración")
+    explorar.add_argument("--traza", metavar="ARCHIVO", help="guardar la sesión cruda")
+    explorar.add_argument("--si", action="store_true", help="no preguntar confirmación")
+    explorar.set_defaults(funcion=comando_explorar_config)
 
     probar_cli = sub.add_parser(
         "probar-cli", help="sondea los puertos de gestión de una OLT (no envía credenciales)"

@@ -13,6 +13,7 @@ resuelve por el registro.
 from .captura import Captura, SalidaComando, ServicioCaptura, es_solo_lectura
 from .contenedor import Contenedor, crear_contenedor
 from .descubrimiento import ResultadoDescubrimiento, ServicioDescubrimiento
+from .exploracion import Exploracion, ServicioExploracion, es_navegacion
 from .fabrica import FabricaDrivers
 from .inventario_archivo import (
     EquipoDeclarado,
@@ -28,6 +29,7 @@ __all__ = [
     "Captura",
     "Contenedor",
     "EquipoDeclarado",
+    "Exploracion",
     "FabricaDrivers",
     "PotenciaONU",
     "ResultadoCarga",
@@ -36,11 +38,13 @@ __all__ = [
     "SalidaComando",
     "ServicioCaptura",
     "ServicioDescubrimiento",
+    "ServicioExploracion",
     "ServicioInventarioArchivo",
     "ServicioInventarioCLI",
     "ServicioOLT",
     "ServicioONU",
     "crear_contenedor",
+    "es_navegacion",
     "es_solo_lectura",
     "leer_equipos",
 ]

@@ -36,6 +36,7 @@ from ..database.repositories import (
 )
 from .captura import ServicioCaptura
 from .descubrimiento import ServicioDescubrimiento
+from .exploracion import ServicioExploracion
 from .fabrica import FabricaDrivers
 from .inventario_cli import ServicioInventarioCLI
 from .olt import ServicioOLT
@@ -69,6 +70,7 @@ class Contenedor:
     servicio_descubrimiento: ServicioDescubrimiento
     servicio_captura: ServicioCaptura
     servicio_inventario_cli: ServicioInventarioCLI
+    servicio_exploracion: ServicioExploracion
 
     def cerrar(self) -> None:
         self.conexion.cerrar()
@@ -145,6 +147,7 @@ def crear_contenedor(
             reloj=reloj,
         ),
         servicio_captura=ServicioCaptura(repositorio_olt, reloj=reloj),
+        servicio_exploracion=ServicioExploracion(repositorio_olt, reloj=reloj),
         servicio_inventario_cli=ServicioInventarioCLI(
             repositorio_olt=repositorio_olt,
             repositorio_onu=repositorio_onu,
