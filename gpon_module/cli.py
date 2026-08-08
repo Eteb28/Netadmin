@@ -21,6 +21,7 @@ Comandos disponibles::
     inventario-cli    completa el inventario con los seriales, leídos por CLI
     explorar-config   busca los comandos de GPON en los modos de la CLI
     pendientes <id>   ONU detectadas y sin autorizar (AutoFind)
+    autorizar <id>    da de alta una ONU (simulado salvo que se pida --aplicar)
     listar-olts       OLT registradas
     descubrir <id>    descubre e inventaría una OLT
     onus <id>         inventario de ONU de una OLT
@@ -517,6 +518,83 @@ def comando_pendientes(args: argparse.Namespace) -> int:
     return 0
 
 
+def comando_autorizar(args: argparse.Namespace) -> int:
+    """Da de alta una ONU que está esperando en un puerto PON.
+
+    **Por defecto no envía nada**: muestra la secuencia exacta que aplicaría.
+    Para que salga de verdad al equipo hay que agregar --aplicar y confirmar.
+    """
+    with _sistema(args) as sistema:
+        olt = sistema.servicio_olt.obtener(args.olt_id)
+        _titulo(f"Alta de {args.serie} en {olt.nombre} ({olt.host})")
+
+        if args.aplicar:
+            print("\033[33mMODO REAL: los comandos se van a enviar al equipo.\033[0m")
+        else:
+            print("Modo simulación: no se envía ningún comando. Agregá --aplicar para hacerlo.")
+
+        try:
+            resultado = sistema.servicio_alta_onu.autorizar(
+                args.olt_id,
+                numero_serie=args.serie,
+                pon=args.pon,
+                onu_id=args.indice,
+                perfil_onu=args.perfil,
+                descripcion=args.descripcion,
+                perfil_dba=args.dba,
+                trafico_subida=args.subida,
+                trafico_bajada=args.bajada,
+                vlan=args.vlan,
+                dry_run=not args.aplicar,
+                protocolo=args.protocolo,
+                timeout=args.timeout,
+                usuario=args.usuario_operacion,
+                ruta_traza=args.traza,
+            )
+        except ErrorAutenticacion as exc:
+            print(f"\n{exc}\n", file=sys.stderr)
+            _ayuda_credenciales(args.olt_id, args.protocolo)
+            return 1
+
+    solicitud = resultado.solicitud
+    print(f"\nPuerto PON  {solicitud.pon}")
+    print(f"Índice ONU  {solicitud.onu_id}")
+    print(f"Perfil      {solicitud.perfil_onu}")
+    print(f"Descripción {solicitud.descripcion_efectiva}")
+
+    _titulo("Comandos" if resultado.simulado else "Comandos enviados")
+    for comando in resultado.comandos:
+        if resultado.simulado:
+            marca = " "
+        else:
+            marca = "+" if comando in resultado.comandos_aplicados else "·"
+        print(f"  {marca} {comando}")
+
+    if resultado.simulado:
+        print("\nNo se envió ninguno. Para aplicarlo de verdad:")
+        print(
+            f"  gpon autorizar {args.olt_id} --serie {args.serie} --perfil {args.perfil} --aplicar"
+        )
+        return 0
+
+    if resultado.ok:
+        ubicacion = f"{solicitud.pon}:{solicitud.onu_id}"
+        print(f"\n\033[32mONU {args.serie} autorizada en {ubicacion}.\033[0m")
+        print("Verificala con:  gpon inventario-cli", args.olt_id)
+        return 0
+
+    print(f"\n\033[31mEl equipo rechazó: {resultado.comando_que_fallo}\033[0m", file=sys.stderr)
+    print(f"{resultado.error}", file=sys.stderr)
+    if resultado.quedo_a_medias:
+        print(
+            f"\nATENCIÓN: se alcanzaron a aplicar {len(resultado.comandos_aplicados)} comandos.\n"
+            f"La ONU {solicitud.pon}:{solicitud.onu_id} quedó a medio configurar y hay que\n"
+            "revisarla en el equipo antes de reintentar.",
+            file=sys.stderr,
+        )
+    return 1
+
+
 def comando_probar_cli(args: argparse.Namespace) -> int:
     """Dice por dónde se puede entrar a la CLI de una OLT, y por dónde no.
 
@@ -971,6 +1049,34 @@ def construir_parser() -> argparse.ArgumentParser:
     pendientes.add_argument("--timeout", type=float, default=30.0)
     pendientes.add_argument("--traza", metavar="ARCHIVO", help="guardar la sesión cruda")
     pendientes.set_defaults(funcion=comando_pendientes)
+
+    autorizar = sub.add_parser(
+        "autorizar", help="da de alta una ONU que está esperando (simulado por defecto)"
+    )
+    autorizar.add_argument("olt_id", type=int)
+    autorizar.add_argument("--serie", required=True, help="número de serie que mandó el técnico")
+    autorizar.add_argument("--perfil", required=True, help="perfil de ONU, p. ej. V2802DAC")
+    autorizar.add_argument("--pon", type=int, help="puerto PON; si no se indica, se busca")
+    autorizar.add_argument(
+        "--indice", type=int, help="índice de ONU; por defecto el más bajo libre"
+    )
+    autorizar.add_argument("--descripcion", default="", help="sin espacios")
+    autorizar.add_argument("--dba", default="Internet", help="perfil DBA")
+    autorizar.add_argument("--subida", default="", help="plan de subida, p. ej. 100M-Dom-UP")
+    autorizar.add_argument("--bajada", default="", help="plan de bajada, p. ej. 100M-Dom-DOW")
+    autorizar.add_argument("--vlan", type=int, default=1001)
+    autorizar.add_argument(
+        "--aplicar", action="store_true", help="enviar los comandos de verdad al equipo"
+    )
+    autorizar.add_argument(
+        "--protocolo", default="ssh", choices=list(PROTOCOLOS_CLI), help="canal de la CLI"
+    )
+    autorizar.add_argument("--timeout", type=float, default=30.0)
+    autorizar.add_argument("--traza", metavar="ARCHIVO", help="guardar la sesión cruda")
+    autorizar.add_argument(
+        "--usuario-operacion", default="", help="quién hace el alta, para la auditoría"
+    )
+    autorizar.set_defaults(funcion=comando_autorizar)
 
     probar_cli = sub.add_parser(
         "probar-cli", help="sondea los puertos de gestión de una OLT (no envía credenciales)"

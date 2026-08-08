@@ -122,8 +122,8 @@ la CLI no, lo dice: llegar se llega, el problema es el servicio.
 
 ## Cómo se probó
 
-* **372 tests**, todos en verde. 128 nuevos entre transporte, captura, diagnóstico,
-  exploración de modos y parsers de la VSOL.
+* **409 tests**, todos en verde. 165 nuevos entre transporte, captura, diagnóstico,
+  exploración de modos, parsers de la VSOL y el alta de ONU.
 * El Telnet se prueba contra un socket falso con guion: negociación IAC, login en dos
   pasos, contraseña rechazada, paginación, eco del comando, corte de sesión.
 * De punta a punta contra una **OLT VSOL simulada sobre un socket TCP real**, con
@@ -230,6 +230,41 @@ del equipo y de PPPoE de los clientes.
 Sobre esa salida se escriben los parsers y las secuencias de aprovisionamiento, con
 `dry_run=True` por defecto —para que un comando llegue de verdad al equipo hay que
 pedirlo explícitamente— y auditoría completa de cada operación.
+
+## Fase 5: el alta de una ONU
+
+La secuencia no está inventada ni sacada de un manual: es **la que el propio equipo
+escribe** en su `show running-config` para cada una de las 284 ONU ya autorizadas. Se leyó
+de ahí, se comparó entre puertos y clientes, y quedó el molde.
+
+```
+gpon autorizar 1 --serie GPON002E64F8 --perfil V2802DAC \
+     --subida 100M-Dom-UP --bajada 100M-Dom-DOW
+```
+
+Sin `--aplicar` **no sale un solo comando**: se muestra la secuencia exacta y nada más.
+
+Antes de escribir, se verifica contra el equipo:
+
+* que la ONU esté realmente esperando en auto-find, y en qué puerto. Si no está, el alta
+  ocuparía un índice para una ONU que no llegó;
+* qué índices están usados, para reusar el hueco más bajo. En el PON 1 de ERLAN el 29 está
+  libre entre el 28 y el 30, y ahí es donde iría la próxima;
+* que el serial tenga la forma esperada. Lo tipea un técnico y llega por mensaje: es el
+  dato más frágil de todo el flujo.
+
+Si el equipo rechaza un comando del medio, **se aborta ahí**. Seguir es lo que deja una ONU
+a medio configurar. El resultado dice cuál falló y cuántos se alcanzaron a aplicar, porque
+eso es lo que hay que ir a revisar.
+
+Todo queda auditado con los comandos exactos y con si fue real o simulada.
+
+### Un error que encontró la réplica
+
+La primera versión mandaba `configure terminal` una vez por puerto mientras buscaba el
+serial. Desde el segundo puerto ya se estaba en modo configuración, y el equipo lo rechaza.
+Ahora se entra una sola vez, y para aplicar se vuelve a EXEC con `end` — así **lo que se
+muestra es exactamente lo que se envía**, empezando por su propio `configure terminal`.
 
 ## Riesgos
 

@@ -10,6 +10,7 @@ Los servicios no conocen fabricantes: piden drivers a la fábrica, que los
 resuelve por el registro.
 """
 
+from .alta_onu import ResultadoAlta, ServicioAltaONU
 from .captura import Captura, SalidaComando, ServicioCaptura, es_solo_lectura
 from .contenedor import Contenedor, crear_contenedor
 from .descubrimiento import ResultadoDescubrimiento, ServicioDescubrimiento
@@ -33,11 +34,13 @@ __all__ = [
     "Exploracion",
     "FabricaDrivers",
     "PotenciaONU",
+    "ResultadoAlta",
     "ResultadoCarga",
     "ResultadoDescubrimiento",
     "ResultadoInventarioCLI",
     "ResultadoPendientes",
     "SalidaComando",
+    "ServicioAltaONU",
     "ServicioCaptura",
     "ServicioDescubrimiento",
     "ServicioExploracion",
