@@ -86,6 +86,18 @@ class TestListado:
         entradas = [c for c in transporte.ejecutados if c.startswith("interface gpon")]
         assert len(entradas) == 8
 
+    def test_no_ofrece_la_misma_onu_dos_veces(self, armar) -> None:
+        """Algunos equipos contestan la lista completa en cada puerto.
+
+        Ofrecerla ocho veces dejaría al operador sin saber cuál de las ocho es
+        la buena.
+        """
+        transporte = TransporteFalso(dict.fromkeys(("0/1", "0/2", "0/3"), AUTO_FIND_PON1))
+
+        resultado = armar(transporte).listar(1, puertos=("0/1", "0/2", "0/3"))
+
+        assert len(resultado.pendientes) == 1
+
     def test_busca_por_serial_sin_distinguir_mayusculas(self, armar) -> None:
         """El serial llega tipeado a mano por el técnico."""
         transporte = TransporteFalso({"0/1": AUTO_FIND_PON1})

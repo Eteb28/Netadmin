@@ -75,6 +75,7 @@ gpon web --host 0.0.0.0 --puerto 8070
 | Detalle de OLT | Puertos PON, última corrida y **qué puede hacer ese modelo** |
 | ONU | Inventario con búsqueda, filtro por PON y estado, y paginación |
 | Detalle de ONU | Inventario, óptica en vivo y operaciones hechas sobre ella |
+| Alta de ONU | Las que esperan autorización, y el alta en tres pasos |
 | Potencias | Histograma de RX y las que requieren atención, ordenadas por urgencia |
 | Eventos | Histórico de cambios del inventario |
 | Auditoría | Toda escritura, con los comandos exactos y si fue real o simulada |
@@ -86,6 +87,24 @@ donde tiene que funcionar.
 
 La web nunca habla con un driver: consume la API (`/api/...`), y eso está sostenido por un
 test que falla si alguna ruta web importa un servicio.
+
+### El alta de ONU en la web
+
+`/olts/<id>/pendientes` es el flujo de todos los días, en tres pasos que no se pueden
+saltear:
+
+1. **Ver quién espera.** El equipo se consulta en vivo — es una lista que cambia sola
+   cuando un técnico conecta una ONU, así que no tendría sentido servirla de la base.
+2. **Elegir perfil y plan.** Los perfiles DBA se ofrecen desde los que el equipo ya tiene
+   definidos: elegir uno que no existe es un alta que el equipo rechaza a mitad de camino.
+3. **Mirar los comandos exactos, y recién ahí confirmar.** El botón "Ver los comandos" no
+   toca el equipo: sólo consulta en qué puerto está la ONU y qué índice queda libre.
+
+Si el equipo rechaza un comando del medio, la pantalla dice cuál falló y —cuando quedó a
+medias— que esa ONU hay que ir a revisarla antes de reintentar.
+
+Por defecto la web habla SSH. Para una OLT donde SSH no esté habilitado:
+`/olts/1/pendientes?protocolo=telnet`.
 
 ## Configurar una vez y no repetirlo
 

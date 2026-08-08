@@ -37,6 +37,12 @@ def onu(olt_id: int, pon: int, numero: int):
     return render_template("onu.html", seccion="onus", olt_id=olt_id, pon=pon, numero=numero)
 
 
+@web.get("/olts/<int:olt_id>/pendientes")
+def pendientes(olt_id: int):
+    """Alta de ONU: las que están esperando y el formulario para autorizarlas."""
+    return render_template("pendientes.html", seccion="pendientes", olt_id=olt_id)
+
+
 @web.get("/olts/<int:olt_id>/potencias")
 def potencias(olt_id: int):
     return render_template("potencias.html", seccion="potencias", olt_id=olt_id)

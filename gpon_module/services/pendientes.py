@@ -99,6 +99,7 @@ class ServicioPendientes:
         )
 
         encontradas: list[ONUPendiente] = []
+        vistas: set[tuple[int, str]] = set()
         fallas: list[tuple[str, str]] = []
 
         transporte.abrir()
@@ -116,7 +117,14 @@ class ServicioPendientes:
                 except ErrorGPON as exc:
                     fallas.append((pon, f"{type(exc).__name__}: {exc}"))
                     continue
-                encontradas.extend(parsear_onu_auto_find(salida))
+                for pendiente in parsear_onu_auto_find(salida):
+                    # Sin deduplicar, un equipo que conteste la lista completa
+                    # en cada puerto ofrecería la misma ONU ocho veces, y el
+                    # operador no sabría cuál de las ocho es la buena.
+                    clave = (pendiente.pon, pendiente.numero_serie.upper())
+                    if clave not in vistas:
+                        vistas.add(clave)
+                        encontradas.append(pendiente)
         finally:
             try:
                 transporte.ejecutar("end")

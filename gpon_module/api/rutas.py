@@ -170,9 +170,7 @@ def descubrir_olt(olt_id: int):
 @api.get("/olts/<int:olt_id>/puertos")
 def puertos_de_olt(olt_id: int):
     sistema = _sistema()
-    return jsonify(
-        [ser.puerto_pon(p) for p in sistema.repositorio_puerto.listar_de_olt(olt_id)]
-    )
+    return jsonify([ser.puerto_pon(p) for p in sistema.repositorio_puerto.listar_de_olt(olt_id)])
 
 
 @api.get("/olts/<int:olt_id>/perfiles")
@@ -284,9 +282,7 @@ def potencias_de_olt(olt_id: int):
 @api.get("/olts/<int:olt_id>/no-autorizadas")
 def no_autorizadas(olt_id: int):
     sistema = _sistema()
-    return jsonify(
-        [ser.onu_no_autorizada(n) for n in sistema.servicio_onu.no_autorizadas(olt_id)]
-    )
+    return jsonify([ser.onu_no_autorizada(n) for n in sistema.servicio_onu.no_autorizadas(olt_id)])
 
 
 # --- escrituras -----------------------------------------------------------
@@ -321,6 +317,87 @@ def reiniciar_onu(olt_id: int, pon: int, numero: int):
             "simulado": resultado.simulado,
             "comandos": list(resultado.comandos_enviados),
             "salida": resultado.salida_cruda,
+            "error": resultado.error,
+        }
+    )
+
+
+@api.get("/olts/<int:olt_id>/pendientes")
+def pendientes(olt_id: int):
+    """ONU detectadas por el equipo y todavía sin autorizar.
+
+    Consulta el equipo en vivo: es una lista que cambia sola cuando un técnico
+    conecta una ONU, así que no tendría sentido servirla de la base.
+    """
+    sistema = _sistema()
+    puertos = tuple(request.args.getlist("pon"))
+    resultado = sistema.servicio_pendientes.listar(
+        olt_id, puertos=puertos, protocolo=request.args.get("protocolo", "ssh")
+    )
+    return jsonify(
+        {
+            "momento": resultado.momento.isoformat(),
+            "completo": resultado.completo,
+            "pendientes": [
+                {
+                    "pon": p.pon,
+                    "numero_serie": p.numero_serie,
+                    "indice_propuesto": p.indice_propuesto,
+                    "estado": p.estado_informado,
+                }
+                for p in resultado.pendientes
+            ],
+            "puertos_con_falla": [
+                {"pon": pon, "motivo": motivo} for pon, motivo in resultado.puertos_con_falla
+            ],
+        }
+    )
+
+
+@api.post("/olts/<int:olt_id>/autorizar")
+def autorizar_onu(olt_id: int):
+    """Da de alta una ONU. **Simulado salvo que el pedido diga lo contrario.**
+
+    El cuerpo pide ``dry_run: false`` explícitamente para que los comandos
+    salgan al equipo. Ausente significa simulación, igual que en el resto del
+    módulo: nunca se asume que se quiere escribir.
+    """
+    sistema = _sistema()
+    cuerpo: dict[str, Any] = request.get_json(silent=True) or {}
+
+    if not cuerpo.get("numero_serie"):
+        raise ErrorValidacion("Falta el número de serie de la ONU")
+    if not cuerpo.get("perfil_onu"):
+        raise ErrorValidacion("Falta el perfil de ONU")
+
+    pedido = _dry_run_pedido()
+    resultado = sistema.servicio_alta_onu.autorizar(
+        olt_id,
+        numero_serie=cuerpo["numero_serie"],
+        perfil_onu=cuerpo["perfil_onu"],
+        pon=cuerpo.get("pon"),
+        onu_id=cuerpo.get("onu_id"),
+        descripcion=cuerpo.get("descripcion", ""),
+        perfil_dba=cuerpo.get("perfil_dba", "Internet"),
+        trafico_subida=cuerpo.get("trafico_subida", ""),
+        trafico_bajada=cuerpo.get("trafico_bajada", ""),
+        vlan=int(cuerpo.get("vlan", 1001)),
+        dry_run=True if pedido is None else pedido,
+        usuario=cuerpo.get("usuario", "web"),
+        protocolo=cuerpo.get("protocolo", "ssh"),
+    )
+    return jsonify(
+        {
+            "ok": resultado.ok,
+            "simulado": resultado.simulado,
+            "pon": resultado.solicitud.pon,
+            "onu_id": resultado.solicitud.onu_id,
+            "numero_serie": resultado.solicitud.numero_serie,
+            "descripcion": resultado.solicitud.descripcion_efectiva,
+            "comandos": list(resultado.comandos),
+            "comandos_aplicados": list(resultado.comandos_aplicados),
+            "quedo_a_medias": resultado.quedo_a_medias,
+            "comando_que_fallo": resultado.comando_que_fallo,
             "error": resultado.error,
         }
     )
@@ -380,6 +457,4 @@ def sincronizaciones():
 def alarmas():
     sistema = _sistema()
     olt_id = request.args.get("olt_id", type=int)
-    return jsonify(
-        [ser.alarma(a) for a in sistema.repositorio_alarma.listar_activas(olt_id)]
-    )
+    return jsonify([ser.alarma(a) for a in sistema.repositorio_alarma.listar_activas(olt_id)])
