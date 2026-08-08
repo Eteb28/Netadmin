@@ -116,14 +116,25 @@ class SolicitudAlta:
         return self.descripcion or f"GPON{self.ranura}/{self.pon}:{self.onu_id}"
 
 
-def secuencia_alta(solicitud: SolicitudAlta) -> tuple[str, ...]:
-    """Arma los comandos del alta, en orden. **No envía nada.**"""
+def navegacion_al_puerto(solicitud: SolicitudAlta) -> tuple[str, ...]:
+    """Los comandos que llevan la sesión hasta el puerto PON.
+
+    Van separados de los del alta porque quien ya está adentro del puerto no
+    tiene que volver a entrar: repetir ``configure terminal`` estando en modo
+    configuración lo rechaza el equipo.
+    """
+    return (
+        "configure terminal",
+        f"interface gpon {solicitud.ranura}/{solicitud.pon}",
+    )
+
+
+def comandos_de_alta(solicitud: SolicitudAlta) -> tuple[str, ...]:
+    """Sólo los comandos que configuran la ONU, sin navegación ni salida."""
     solicitud.validar()
 
     onu = solicitud.onu_id
     comandos = [
-        "configure terminal",
-        f"interface gpon {solicitud.ranura}/{solicitud.pon}",
         f"onu add {onu} profile {solicitud.perfil_onu} sn {solicitud.numero_serie}",
         f"onu {onu} desc {solicitud.descripcion_efectiva}",
         f"onu {onu} tcont 1 name {solicitud.nombre_tcont} dba {solicitud.perfil_dba}",
@@ -144,9 +155,17 @@ def secuencia_alta(solicitud: SolicitudAlta) -> tuple[str, ...]:
         f"onu {onu} service-port 1 gemport 1 uservlan {solicitud.vlan} vlan {solicitud.vlan}",
         f"onu {onu} service-port 1 description {solicitud.servicio}",
         f"onu {onu} portvlan veip 1 mode transparent",
-        "end",
     ]
     return tuple(comandos)
+
+
+def secuencia_alta(solicitud: SolicitudAlta) -> tuple[str, ...]:
+    """El alta completa, tal como se tipearía desde el modo normal.
+
+    Es la secuencia canónica: la que se muestra al operador y la que documenta
+    qué hace el módulo. **No envía nada.**
+    """
+    return navegacion_al_puerto(solicitud) + comandos_de_alta(solicitud) + ("end",)
 
 
 def secuencia_baja(pon: int, onu_id: int, ranura: int = 0) -> tuple[str, ...]:

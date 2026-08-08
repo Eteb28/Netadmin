@@ -26,7 +26,13 @@ from ..core.enums import Fabricante, TipoOperacion
 from ..core.errors import CapacidadNoSoportada, ErrorComando, ErrorValidacion
 from ..core.models import Operacion, RefONU
 from ..drivers.transport import crear_transporte_cli
-from ..drivers.vsol.comandos_alta import SolicitudAlta, primer_indice_libre, secuencia_alta
+from ..drivers.vsol.comandos_alta import (
+    SolicitudAlta,
+    comandos_de_alta,
+    navegacion_al_puerto,
+    primer_indice_libre,
+    secuencia_alta,
+)
 from ..drivers.vsol.parser_tablas import parsear_onu_auto_find, parsear_onu_info
 
 log = logging.getLogger(__name__)
@@ -128,11 +134,11 @@ class ServicioAltaONU:
                 log.info("Alta simulada de %s en PON %s: no se envió nada", numero_serie, ubicacion)
                 resultado = ResultadoAlta(solicitud=solicitud, comandos=comandos, simulado=True)
             else:
-                # Se vuelve al modo EXEC para aplicar la secuencia entera tal
-                # como se muestra, empezando por su propio 'configure terminal'.
-                # Lo que se ve es exactamente lo que se envía.
-                transporte.ejecutar("end")
-                resultado = self._aplicar(transporte, solicitud, comandos)
+                # La sesión ya está adentro del puerto: las verificaciones la
+                # dejaron ahí. Salir a EXEC y volver a entrar sería repetir una
+                # navegación que ya se hizo, y el equipo rechaza el segundo
+                # 'configure terminal'. Se aplica desde donde estamos.
+                resultado = self._aplicar(transporte, solicitud, comandos_de_alta(solicitud))
         finally:
             self._volver_a_exec(transporte)
             transporte.cerrar()
@@ -185,7 +191,13 @@ class ServicioAltaONU:
     def _aplicar(
         self, transporte: Any, solicitud: SolicitudAlta, comandos: tuple[str, ...]
     ) -> ResultadoAlta:
-        aplicados: list[str] = []
+        """Envía los comandos del alta desde el puerto donde ya está la sesión.
+
+        La navegación cuenta como aplicada porque se ejecutó de verdad, durante
+        las verificaciones. Así lo que se informa es lo que efectivamente salió
+        a la red, ni más ni menos.
+        """
+        aplicados: list[str] = list(navegacion_al_puerto(solicitud))
         salidas: list[str] = []
 
         for comando in comandos:
@@ -196,12 +208,12 @@ class ServicioAltaONU:
                     "Alta abortada en %s tras %d de %d comandos. Falló: %s",
                     solicitud.numero_serie,
                     len(aplicados),
-                    len(comandos),
+                    len(secuencia_alta(solicitud)),
                     comando,
                 )
                 return ResultadoAlta(
                     solicitud=solicitud,
-                    comandos=comandos,
+                    comandos=secuencia_alta(solicitud),
                     simulado=False,
                     ok=False,
                     comandos_aplicados=tuple(aplicados),
@@ -213,10 +225,10 @@ class ServicioAltaONU:
 
         return ResultadoAlta(
             solicitud=solicitud,
-            comandos=comandos,
+            comandos=secuencia_alta(solicitud),
             simulado=False,
             ok=True,
-            comandos_aplicados=tuple(aplicados),
+            comandos_aplicados=tuple([*aplicados, "end"]),
             salidas=tuple(salidas),
         )
 

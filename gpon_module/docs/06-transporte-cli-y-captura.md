@@ -122,7 +122,7 @@ la CLI no, lo dice: llegar se llega, el problema es el servicio.
 
 ## Cómo se probó
 
-* **409 tests**, todos en verde. 165 nuevos entre transporte, captura, diagnóstico,
+* **410 tests**, todos en verde. 165 nuevos entre transporte, captura, diagnóstico,
   exploración de modos, parsers de la VSOL y el alta de ONU.
 * El Telnet se prueba contra un socket falso con guion: negociación IAC, login en dos
   pasos, contraseña rechazada, paginación, eco del comando, corte de sesión.
@@ -259,12 +259,19 @@ eso es lo que hay que ir a revisar.
 
 Todo queda auditado con los comandos exactos y con si fue real o simulada.
 
-### Un error que encontró la réplica
+### Dos errores que costaron una corrida cada uno
 
 La primera versión mandaba `configure terminal` una vez por puerto mientras buscaba el
 serial. Desde el segundo puerto ya se estaba en modo configuración, y el equipo lo rechaza.
-Ahora se entra una sola vez, y para aplicar se vuelve a EXEC con `end` — así **lo que se
-muestra es exactamente lo que se envía**, empezando por su propio `configure terminal`.
+Lo encontró la réplica, antes de llegar al equipo real.
+
+La segunda salía a EXEC con `end` y volvía a entrar con `configure terminal`, para que la
+secuencia se aplicara entera tal como se mostraba. **Contra la OLT real, ese segundo
+`configure terminal` fue rechazado** —al parecer `end` devuelve a modo no privilegiado, y
+ahí ya no se acepta—. La lección es la misma que la primera vez: la sesión no tiene por qué
+salir y volver a entrar, porque las verificaciones ya la dejaron en el puerto correcto.
+Ahora se aplica desde donde está, y la navegación que efectivamente se ejecutó cuenta como
+aplicada, así lo que se informa sigue siendo lo que salió a la red.
 
 ## Riesgos
 

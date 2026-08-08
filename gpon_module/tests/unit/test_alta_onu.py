@@ -217,6 +217,21 @@ class TestEscrituraReal:
         # pero recién después de volver a EXEC con 'end'.
         assert transporte.ejecutados.count("configure terminal") == 1
 
+    def test_nunca_se_manda_configure_terminal_dos_veces(self, armar) -> None:
+        """Contra la OLT real, el segundo 'configure terminal' fue rechazado.
+
+        Probablemente porque 'end' devuelve a modo no privilegiado, donde ya no
+        se acepta. Sea cual sea el motivo, la sesión no tiene por qué salir y
+        volver a entrar: las verificaciones ya la dejaron en el puerto correcto.
+        """
+        transporte = TransporteFalso()
+        servicio, _ = armar(transporte)
+
+        servicio.autorizar(1, numero_serie="GPON002E64F8", perfil_onu="V2802DAC", dry_run=False)
+
+        assert transporte.ejecutados.count("configure terminal") == 1
+        assert transporte.ejecutados.index("end") == len(transporte.ejecutados) - 1
+
     def test_lo_que_se_muestra_es_exactamente_lo_que_se_envia(self, armar) -> None:
         transporte = TransporteFalso()
         servicio, _ = armar(transporte)
