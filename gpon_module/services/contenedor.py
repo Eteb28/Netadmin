@@ -41,6 +41,7 @@ from .fabrica import FabricaDrivers
 from .inventario_cli import ServicioInventarioCLI
 from .olt import ServicioOLT
 from .onu import ServicioONU
+from .pendientes import ServicioPendientes
 
 log = logging.getLogger(__name__)
 
@@ -71,6 +72,7 @@ class Contenedor:
     servicio_captura: ServicioCaptura
     servicio_inventario_cli: ServicioInventarioCLI
     servicio_exploracion: ServicioExploracion
+    servicio_pendientes: ServicioPendientes
 
     def cerrar(self) -> None:
         self.conexion.cerrar()
@@ -148,6 +150,7 @@ def crear_contenedor(
         ),
         servicio_captura=ServicioCaptura(repositorio_olt, reloj=reloj),
         servicio_exploracion=ServicioExploracion(repositorio_olt, reloj=reloj),
+        servicio_pendientes=ServicioPendientes(repositorio_olt, reloj=reloj),
         servicio_inventario_cli=ServicioInventarioCLI(
             repositorio_olt=repositorio_olt,
             repositorio_onu=repositorio_onu,

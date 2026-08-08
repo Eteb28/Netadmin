@@ -20,6 +20,7 @@ Comandos disponibles::
     cargar-equipos    da de alta las OLT descritas en equipos.toml
     inventario-cli    completa el inventario con los seriales, leídos por CLI
     explorar-config   busca los comandos de GPON en los modos de la CLI
+    pendientes <id>   ONU detectadas y sin autorizar (AutoFind)
     listar-olts       OLT registradas
     descubrir <id>    descubre e inventaría una OLT
     onus <id>         inventario de ONU de una OLT
@@ -454,6 +455,65 @@ def comando_explorar_config(args: argparse.Namespace) -> int:
     print(f"Recorrido          : {' → '.join(exploracion.recorrido)}")
     print(f"Archivo            : {destino}")
     print("\nLa sesión volvió al modo EXEC. No se modificó ninguna configuración.")
+    return 0
+
+
+def comando_pendientes(args: argparse.Namespace) -> int:
+    """Lista las ONU detectadas y sin autorizar, para dar de alta un cliente.
+
+    Es la pantalla "ONU AutoFind" de la web del equipo, por consola. Recorre los
+    puertos PON en una sola sesión y muestra lo que está esperando.
+
+    Sólo lectura: el comando que se envía es 'show onu auto-find'. Vive dentro
+    de 'interface gpon 0/N', así que se entra a modo configuración y se sale con
+    'end', sin ejecutar ahí ningún comando de configuración.
+    """
+    with _sistema(args) as sistema:
+        olt = sistema.servicio_olt.obtener(args.olt_id)
+        puertos = tuple(args.pon) if args.pon else ()
+
+        _titulo(f"ONU esperando autorización en {olt.nombre} ({olt.host})")
+        try:
+            resultado = sistema.servicio_pendientes.listar(
+                args.olt_id,
+                puertos=puertos,
+                protocolo=args.protocolo,
+                timeout=args.timeout,
+                ruta_traza=args.traza,
+            )
+        except ErrorAutenticacion as exc:
+            print(f"\n{exc}\n", file=sys.stderr)
+            _ayuda_credenciales(args.olt_id, args.protocolo)
+            return 1
+
+    if args.serie:
+        encontrada = resultado.buscar(args.serie)
+        if encontrada is None:
+            print(f"El serial {args.serie} NO está esperando autorización.")
+            print("\nPuede ser que la ONU todavía no llegó a registrarse, que esté")
+            print("en otra OLT, o que el serial venga con un error de tipeo.")
+            return 1
+        print(f"{args.serie} está esperando en el PON {encontrada.pon}.")
+        print(f"  índice propuesto : {encontrada.indice_propuesto}")
+        print(f"  estado           : {encontrada.estado_informado}")
+        return 0
+
+    if not resultado.pendientes:
+        print("No hay ninguna ONU esperando autorización.")
+    else:
+        print(f"{'PON':<6} {'Número de serie':<18} {'Índice':<8} Estado")
+        for pendiente in resultado.pendientes:
+            indice = "" if pendiente.indice_propuesto is None else pendiente.indice_propuesto
+            print(
+                f"{pendiente.pon:<6} {pendiente.numero_serie:<18} "
+                f"{indice!s:<8} {pendiente.estado_informado}"
+            )
+
+    if resultado.puertos_con_falla:
+        print("\nPuertos que no se pudieron leer (no significa que no tengan ONU):")
+        for pon, motivo in resultado.puertos_con_falla:
+            print(f"    {pon}: {motivo}")
+
     return 0
 
 
@@ -894,6 +954,23 @@ def construir_parser() -> argparse.ArgumentParser:
     explorar.add_argument("--traza", metavar="ARCHIVO", help="guardar la sesión cruda")
     explorar.add_argument("--si", action="store_true", help="no preguntar confirmación")
     explorar.set_defaults(funcion=comando_explorar_config)
+
+    pendientes = sub.add_parser(
+        "pendientes", help="ONU detectadas y sin autorizar, listas para dar de alta"
+    )
+    pendientes.add_argument("olt_id", type=int)
+    pendientes.add_argument(
+        "--serie", help="buscar un número de serie puntual, el que manda el técnico"
+    )
+    pendientes.add_argument(
+        "--pon", action="append", metavar="PUERTO", help="limitar a estos puertos, p. ej. 0/1"
+    )
+    pendientes.add_argument(
+        "--protocolo", default="ssh", choices=list(PROTOCOLOS_CLI), help="canal de la CLI"
+    )
+    pendientes.add_argument("--timeout", type=float, default=30.0)
+    pendientes.add_argument("--traza", metavar="ARCHIVO", help="guardar la sesión cruda")
+    pendientes.set_defaults(funcion=comando_pendientes)
 
     probar_cli = sub.add_parser(
         "probar-cli", help="sondea los puertos de gestión de una OLT (no envía credenciales)"

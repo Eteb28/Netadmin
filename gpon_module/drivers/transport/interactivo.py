@@ -54,6 +54,52 @@ LINEA_ASINCRONA = re.compile(
     re.IGNORECASE,
 )
 
+#: ``ESC[<n>C`` — el equipo alinea las columnas de sus tablas moviendo el cursor
+#: en vez de escribir espacios. Verificado contra la V1600G1: el número es la
+#: **columna absoluta** donde arranca el campo, y coincide exactamente con la
+#: posición del encabezado. Sin traducirlo, una fila llega así::
+#:
+#:     GPON0/1:1\x1b[25CGPON002E64F8\x1b[50Cunknow
+#:
+#: que ningún parser puede separar en columnas.
+SECUENCIA_COLUMNA = re.compile(r"\x1b\[(\d+)C")
+
+#: El resto de las secuencias ANSI (colores, borrados) no aporta nada y se saca.
+SECUENCIA_ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]|\x1b[()][AB0-2]|\x1b[=>]")
+
+
+def expandir_columnas(linea: str) -> str:
+    """Reemplaza los saltos de columna ANSI por los espacios equivalentes.
+
+    Deja la fila alineada igual que en la pantalla del operador, que es como el
+    encabezado promete que está.
+    """
+    partes: list[str] = []
+    ancho = 0
+    desde = 0
+
+    for salto in SECUENCIA_COLUMNA.finditer(linea):
+        trozo = linea[desde : salto.start()]
+        partes.append(trozo)
+        ancho += len(trozo)
+
+        objetivo = int(salto.group(1))
+        # Si el texto ya pasó la columna pedida, al menos hay que separar los
+        # campos: pegarlos volvería a dejar la fila sin poder partirse.
+        relleno = max(objetivo - ancho, 1)
+        partes.append(" " * relleno)
+        ancho += relleno
+        desde = salto.end()
+
+    partes.append(linea[desde:])
+    return "".join(partes)
+
+
+def limpiar_ansi(texto: str) -> str:
+    """Deja el texto tal como se vería en pantalla, sin códigos de control."""
+    return SECUENCIA_ANSI.sub("", expandir_columnas(texto))
+
+
 #: Textos con los que el equipo rechaza las credenciales.
 RECHAZOS_LOGIN = (
     b"incorrect",
@@ -299,6 +345,7 @@ class TransporteInteractivo(TransporteCLIBase):
             log.debug("%s no devolvió el prompt tras la ayuda de '%s'", self.host, prefijo)
 
         texto = crudo.decode("utf-8", errors="replace").replace("\r\n", "\n").replace("\r", "")
+        texto = "\n".join(limpiar_ansi(linea) for linea in texto.split("\n"))
 
         # Al terminar, el equipo redibuja el prompt con lo que quedó tipeado, y
         # varios lo pegan al último renglón sin salto de línea. Descartar esa
@@ -331,7 +378,11 @@ class TransporteInteractivo(TransporteCLIBase):
         de una tabla. Dejarlos ahí sería darle al parser una fila inventada.
         """
         texto = crudo.decode("utf-8", errors="replace").replace("\r\n", "\n").replace("\r", "")
-        lineas = [linea for linea in texto.split("\n") if not LINEA_ASINCRONA.match(linea)]
+        lineas = [
+            limpiar_ansi(linea)
+            for linea in texto.split("\n")
+            if not LINEA_ASINCRONA.match(linea)
+        ]
         if lineas and comando.strip() and comando.strip() in lineas[0]:
             lineas = lineas[1:]
         while lineas and re.search(r"[#>]\s*$", lineas[-1]):

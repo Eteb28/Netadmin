@@ -122,7 +122,8 @@ la CLI no, lo dice: llegar se llega, el problema es el servicio.
 
 ## Cómo se probó
 
-* **312 tests**, todos en verde. 68 nuevos entre transporte, captura y diagnóstico.
+* **372 tests**, todos en verde. 128 nuevos entre transporte, captura, diagnóstico,
+  exploración de modos y parsers de la VSOL.
 * El Telnet se prueba contra un socket falso con guion: negociación IAC, login en dos
   pasos, contraseña rechazada, paginación, eco del comando, corte de sesión.
 * De punta a punta contra una **OLT VSOL simulada sobre un socket TCP real**, con
@@ -178,6 +179,34 @@ privilegios sería el peor de los desenlaces.
 Las cuatro correcciones están fijadas por tests contra una réplica del equipo, reconstruida
 a partir de esas trazas: mismo banner, mismo *character mode*, mismo prompt con acento,
 mismos avisos.
+
+### La exploración de modos: dónde estaba todo
+
+`show ?` en el modo EXEC no tiene un solo comando de GPON — es la CLI del switch. Entrar a
+`configure terminal` → `interface gpon 0/1` y pedir la ayuda ahí resolvió el resto:
+
+| Encontrado | Para qué |
+|---|---|
+| `show onu auto-find` | ONU detectadas y **sin autorizar** — la pantalla "AutoFind" de la web |
+| `show onu info` | Inventario con modelo, perfil y **número de serie** |
+| `show onu state` | `working` / `OffLine` / `DyingGasp` / `LOS` |
+| `onu confirm` | Autorizar una ONU auto-detectada |
+| `onu add`, `onu delete`, `onu reboot` | Alta, baja y reinicio |
+
+Dos hallazgos que cambian cosas ya escritas:
+
+**El `Phase State` es el motivo de caída que SNMP no da.** `DyingGasp` es un corte de luz
+en el domicilio —la ONU alcanzó a avisar que se quedaba sin energía— y `LOS` es pérdida de
+señal óptica, o sea fibra. Son dos cuadrillas distintas, y en el PON 1 de ERLAN aparecen
+las dos. Es exactamente la distinción que el panel mostraba como "no disponible".
+
+**Las tablas se alinean con secuencias ANSI, no con espacios.** Una fila llega así::
+
+    GPON0/1:1\x1b[25CGPON002E64F8\x1b[50Cunknow
+
+El número es la columna absoluta donde arranca el campo, y coincide exacto con la posición
+del encabezado. Sin traducirlo no hay parser que pueda separar las columnas. El transporte
+ahora lo convierte a espacios antes de que nadie vea el texto.
 
 ## Qué sigue, y qué hace falta para poder hacerlo
 

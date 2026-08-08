@@ -24,6 +24,7 @@ from .inventario_archivo import (
 from .inventario_cli import ResultadoInventarioCLI, ServicioInventarioCLI
 from .olt import ServicioOLT
 from .onu import PotenciaONU, ServicioONU
+from .pendientes import ResultadoPendientes, ServicioPendientes
 
 __all__ = [
     "Captura",
@@ -35,6 +36,7 @@ __all__ = [
     "ResultadoCarga",
     "ResultadoDescubrimiento",
     "ResultadoInventarioCLI",
+    "ResultadoPendientes",
     "SalidaComando",
     "ServicioCaptura",
     "ServicioDescubrimiento",
@@ -43,6 +45,7 @@ __all__ = [
     "ServicioInventarioCLI",
     "ServicioOLT",
     "ServicioONU",
+    "ServicioPendientes",
     "crear_contenedor",
     "es_navegacion",
     "es_solo_lectura",
