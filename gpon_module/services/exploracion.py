@@ -97,17 +97,29 @@ AYUDAS_INTERFAZ_PON: tuple[str, ...] = (
 #: El ``?`` sigue sin ejecutar nada, así que bajar no cambia lo que el servicio
 #: puede hacer: sólo cuántas preguntas hace en el mismo viaje.
 #:
-#: La lista es explícita en vez de "bajá todo lo que puedas" porque el árbol
-#: completo son cientos de preguntas y la mayoría —VoIP, CATV, tr069— no hacen
-#: falta para lo que se está construyendo.
-AYUDAS_A_PROFUNDIZAR: tuple[str, ...] = (
-    "onu 1 pri ",
+#: No se baja por todo el árbol: son cientos de preguntas y la mayoría —VoIP,
+#: CATV, tr069— no hacen falta para lo que se está construyendo.
+AYUDAS_A_PROFUNDIZAR: tuple[str, ...] = ("onu 1 pri ",)
+
+#: Subárboles que sí se recorren **enteros**, con la profundidad que haga falta.
+#:
+#: Antes esto era una lista de prefijos exactos y se quedó corta dos veces: la
+#: primera no llegaba a ``wan_conn add``, la segunda no llegaba a
+#: ``wan_conn add route`` ni a ``wifi_ssid 1 name``. Cada vez costó una corrida
+#: contra el equipo con alguien esperando. Enumerar los nodos de un árbol que
+#: todavía no se conoce es el error; lo que se conoce es **por dónde** hay que
+#: entrar, y eso es lo que se declara acá.
+SUBARBOLES_A_RECORRER: tuple[str, ...] = (
     "onu 1 pri wan_conn ",
     "onu 1 pri wan_adv ",
     "onu 1 pri wifi_ssid ",
     "onu 1 pri wifi_switch ",
     "onu 1 pri username ",
 )
+
+#: Tope global de preguntas del recorrido. Es la red de contención que hace
+#: seguro decir "recorré el subárbol entero" sin conocerlo de antemano.
+MAXIMO_NODOS = 150
 
 #: Tope de ramas a recorrer por prefijo. Existe para que un firmware con una
 #: ayuda enorme no convierta la exploración en una sesión de media hora.
@@ -122,6 +134,17 @@ OPCION_AYUDA = re.compile(r"^\s{2,}(?P<palabra>[A-Za-z][\w.\-]*)\s\s+\S")
 #: bajo, que existe siempre. El ``?`` no ejecuta nada, así que elegir un número
 #: no configura ninguna ONU.
 RANGO_AYUDA = re.compile(r"^\s{2,}<(?P<desde>\d+)-\d+>\s\s+\S")
+
+
+def _hay_que_bajar(prefijo: str) -> bool:
+    """¿Se sigue por las ramas de este prefijo?
+
+    Un prefijo exacto de ``AYUDAS_A_PROFUNDIZAR`` baja un nivel; cualquier cosa
+    dentro de un subárbol declarado baja todo lo que haga falta.
+    """
+    if prefijo in AYUDAS_A_PROFUNDIZAR:
+        return True
+    return prefijo.startswith(SUBARBOLES_A_RECORRER)
 
 
 def ramas_de(ayuda: str) -> tuple[str, ...]:
@@ -341,8 +364,9 @@ class ServicioExploracion:
         acumulador: list[SalidaComando],
         al_avanzar: Any,
     ) -> None:
+        preguntas = 0
         for prefijo in prefijos:
-            self._bajar(transporte, prefijo, modo, acumulador, al_avanzar)
+            preguntas += self._bajar(transporte, prefijo, modo, acumulador, al_avanzar, preguntas)
 
     def _bajar(
         self,
@@ -351,17 +375,32 @@ class ServicioExploracion:
         modo: str,
         acumulador: list[SalidaComando],
         al_avanzar: Any,
-    ) -> None:
-        """Pide la ayuda de un prefijo y sigue por sus ramas si corresponde."""
+        preguntas: int,
+    ) -> int:
+        """Pide la ayuda de un prefijo y sigue por sus ramas si corresponde.
+
+        Devuelve cuántas preguntas hizo, para que el presupuesto se respete a lo
+        largo de todo el recorrido y no rama por rama.
+        """
+        if preguntas >= MAXIMO_NODOS:
+            log.warning(
+                "Se alcanzó el tope de %d preguntas: no se bajó por %r", MAXIMO_NODOS, prefijo
+            )
+            return 0
+
         resultado = self._una_ayuda(transporte, prefijo, modo)
         acumulador.append(resultado)
         if al_avanzar is not None:
             al_avanzar(resultado)
+        hechas = 1
 
-        if prefijo not in AYUDAS_A_PROFUNDIZAR or not resultado.ok:
-            return
+        if not resultado.ok or not _hay_que_bajar(prefijo):
+            return hechas
         for rama in ramas_de(resultado.salida):
-            self._bajar(transporte, f"{prefijo}{rama} ", modo, acumulador, al_avanzar)
+            hechas += self._bajar(
+                transporte, f"{prefijo}{rama} ", modo, acumulador, al_avanzar, preguntas + hechas
+            )
+        return hechas
 
     @staticmethod
     def _una_ayuda(transporte: Any, prefijo: str, modo: str) -> SalidaComando:

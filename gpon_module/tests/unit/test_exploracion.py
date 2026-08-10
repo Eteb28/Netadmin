@@ -17,7 +17,9 @@ from gpon_module.services.captura import es_solo_lectura
 from gpon_module.services.exploracion import (
     CANDIDATOS_INTERFAZ_PON,
     MAXIMO_RAMAS,
+    SUBARBOLES_A_RECORRER,
     ServicioExploracion,
+    _hay_que_bajar,
     es_navegacion,
     es_permitido,
     ramas_de,
@@ -263,3 +265,33 @@ class TestLecturaConShowAlFinal:
         """El invariante del servicio: nada que no sea navegación o lectura."""
         for comando, _ in CANDIDATOS_INTERFAZ_PON:
             assert es_permitido(comando), comando
+
+
+class TestSubarboles:
+    """Enumerar los nodos de un árbol que todavía no se conoce fue el error.
+
+    La lista de prefijos exactos se quedó corta dos veces —primero no llegaba a
+    ``wan_conn add``, después a ``wan_conn add route`` y a ``wifi_ssid 1
+    name``— y cada vez costó una corrida contra el equipo con alguien
+    esperando. Lo que sí se conoce es por dónde hay que entrar.
+    """
+
+    def test_se_baja_por_todo_lo_que_cuelgue_de_un_subarbol(self) -> None:
+        assert _hay_que_bajar("onu 1 pri wan_conn ")
+        assert _hay_que_bajar("onu 1 pri wan_conn add ")
+        assert _hay_que_bajar("onu 1 pri wan_conn add route ")
+        assert _hay_que_bajar("onu 1 pri wifi_ssid 1 name ")
+
+    def test_el_prefijo_de_un_nivel_sigue_bajando_uno_solo(self) -> None:
+        assert _hay_que_bajar("onu 1 pri ")
+        # 'catv' cuelga de 'onu 1 pri' pero no de ningún subárbol declarado.
+        assert not _hay_que_bajar("onu 1 pri catv ")
+
+    def test_no_se_baja_por_lo_que_no_se_declaro(self) -> None:
+        assert not _hay_que_bajar("onu 1 pri voip_timer ")
+        assert not _hay_que_bajar("show ")
+
+    def test_los_subarboles_declarados_cuelgan_de_pri(self) -> None:
+        """Si alguno no cuelga, no se llega nunca: el padre no lo enumera."""
+        for subarbol in SUBARBOLES_A_RECORRER:
+            assert subarbol.startswith("onu 1 pri ")

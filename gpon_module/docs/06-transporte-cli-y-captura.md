@@ -440,6 +440,14 @@ existe siempre — y sólo cuando la ayuda no ofrece ninguna palabra: si ofrece 
 las palabras son el camino y el número llevaría a preguntar de más. Los otros marcadores
 (`<cr>`, `<onu_list>`, `<A.B.C.D>`) se descartan.
 
+**Enumerar nodos de un árbol que no se conoce fue el error.** La lista de prefijos
+exactos se quedó corta dos veces: primero no llegaba a `wan_conn add`, después no llegaba a
+`wan_conn add route` ni a `wifi_ssid 1 name`. Cada vez costó una corrida contra el equipo
+con alguien esperando del otro lado. Lo que sí se conoce de antemano es **por dónde hay que
+entrar**, así que ahora se declaran subárboles —`wan_conn`, `wan_adv`, `wifi_ssid`,
+`wifi_switch`, `username`— y se recorren enteros, con un tope global de 150 preguntas como
+red de contención.
+
 ### Un `show` que no empieza con `show`
 
 `onu 1 pri wan_conn show` lee la WAN de una ONU ya configurada —los nombres reales de cada
@@ -490,6 +498,35 @@ el formato del índice: acá es `1/1/1:7` y no el `GPON0/1:7` de las otras tabla
 
 Una fase que el módulo no conozca **no pisa** lo que ya sabe: un firmware con una fase
 nueva no debe convertir un inventario bueno en uno de ONU en estado desconocido.
+
+### El equipo dicta su propia sintaxis
+
+`onu 1 pri wan_conn show` no sólo lista los valores: **termina imprimiendo los comandos que
+recrean esa configuración**.
+
+```
+wanIndex            : 1
+bindingLan          : lan1
+bindingSsid         : ssid1 ssid2 ssid3 ssid4
+wanVlanId           : 1001
+pppoeUserName       : esc_mitre_88
+...
+onu 1 pri wan_conn add routeQOS enable
+onu 1 pri wan_conn index 1 route internet bind_lan 1 bind_ssid 15 qos enable
+    nat enable mtu 1492 pppoe proxy disable user esc_mitre_88 pwd a1b1 server FTTH mode auto
+```
+
+Es la sintaxis contada por el propio firmware, sobre un cliente que anda. Se guarda cruda,
+sin retocar: modificarla al leerla sería perder la única fuente confiable que hay.
+
+De ahí sale también cómo se escriben las interfaces ligadas. El equipo **muestra nombres y
+recibe una máscara de bits**: `bindingLan: lan1` se escribe `bind_lan 1`, y
+`bindingSsid: ssid1 ssid2 ssid3 ssid4` se escribe `bind_ssid 15` (1+2+4+8). Las dos formas
+aparecen en el mismo volcado, así que la interpretación queda comprobada contra sí misma —
+no hace falta creerle a nadie.
+
+Ojo: esta salida trae **la contraseña PPPoE del cliente en texto plano**. El modelo la
+oculta al imprimirse, y esto no debería loguearse entero nunca.
 
 ## Riesgos
 
