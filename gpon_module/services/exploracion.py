@@ -110,13 +110,18 @@ AYUDAS_A_PROFUNDIZAR: tuple[str, ...] = ("onu 1 pri ",)
 #: contra el equipo con alguien esperando. Enumerar los nodos de un árbol que
 #: todavía no se conoce es el error; lo que se conoce es **por dónde** hay que
 #: entrar, y eso es lo que se declara acá.
-SUBARBOLES_A_RECORRER: tuple[str, ...] = (
-    "onu 1 pri wan_conn ",
-    "onu 1 pri wan_adv ",
-    "onu 1 pri wifi_ssid ",
-    "onu 1 pri wifi_switch ",
-    "onu 1 pri username ",
-)
+#: Cada raíz con **cuántos niveles** se baja por debajo de ella. La profundidad
+#: es por subárbol y no global porque las formas son distintas: ``wan_conn`` se
+#: agota en tres niveles y esconde una combinatoria en ``bind``, mientras que el
+#: WiFi es una cadena larga de pares clave-valor —``name <str> auth <modo>
+#: encrypt <tipo> key <clave>``— que hay que recorrer entera.
+SUBARBOLES_A_RECORRER: dict[str, int] = {
+    "onu 1 pri wan_conn ": 3,
+    "onu 1 pri wan_adv ": 3,
+    "onu 1 pri wifi_ssid ": 8,
+    "onu 1 pri wifi_switch ": 4,
+    "onu 1 pri username ": 4,
+}
 
 #: Tope global de preguntas del recorrido. Es la red de contención que hace
 #: seguro decir "recorré el subárbol entero" sin conocerlo de antemano.
@@ -131,10 +136,19 @@ MAXIMO_NODOS = 150
 #: y gastó las 150 preguntas sin llegar nunca a ``wan_conn`` ni a
 #: ``wifi_ssid``, que era justamente lo que se estaba buscando.
 #:
-#: Tres niveles alcanzan para todo lo que hace falta —``wan_conn add route``,
-#: ``wifi_ssid 1 name``, ``wan_adv index 1 bind``— y cortan la combinatoria en
-#: el primer escalón.
-PROFUNDIDAD_MAXIMA = 3
+#: Tres niveles alcanzan para la WAN —``wan_conn add route``, ``wan_adv index 1
+#: bind``— y cortan la combinatoria en el primer escalón. El WiFi necesita más,
+#: y por eso la profundidad se declara por subárbol.
+PROFUNDIDAD_POR_DEFECTO = 3
+
+#: Con qué se rellena un ``<string>`` para poder seguir preguntando.
+#:
+#: ``wifi_ssid 1 name ?`` contesta sólo ``<string>``, y lo que interesa —el modo
+#: de autenticación, el cifrado, la clave— está **después** del nombre. Sin
+#: rellenarlo el recorrido se corta justo antes de lo único que falta. El ``?``
+#: no ejecuta nada, así que poner un valor de prueba no configura ninguna ONU:
+#: es texto tipeado que después se borra con Ctrl-U.
+VALOR_DE_PRUEBA = "X"
 
 #: Tope de ramas a recorrer por prefijo. Existe para que un firmware con una
 #: ayuda enorme no convierta la exploración en una sesión de media hora.
@@ -150,34 +164,44 @@ OPCION_AYUDA = re.compile(r"^\s{2,}(?P<palabra>[A-Za-z][\w.\-]*)\s\s+\S")
 #: no configura ninguna ONU.
 RANGO_AYUDA = re.compile(r"^\s{2,}<(?P<desde>\d+)-\d+>\s\s+\S")
 
+#: ``  <string>  Specify onu wifi ssid name string, max length 32.`` — un texto
+#: libre. Igual que el rango, es un hueco y no una rama, pero detrás puede haber
+#: más comando. ``<cr>`` queda afuera: ahí el comando termina de verdad.
+TEXTO_AYUDA = re.compile(r"^\s{2,}<(?!cr>)[a-z_]+>\s\s+\S", re.IGNORECASE)
+
 
 def _hay_que_bajar(prefijo: str) -> bool:
     """¿Se sigue por las ramas de este prefijo?
 
     Un prefijo exacto de ``AYUDAS_A_PROFUNDIZAR`` baja un nivel. Dentro de un
-    subárbol declarado se baja hasta ``PROFUNDIDAD_MAXIMA`` niveles: sin ese
+    subárbol declarado se baja hasta la profundidad que ese subárbol declare:
+    sin ese
     tope, una rama que acepta listas repetidas se traga el recorrido entero.
     """
     if prefijo in AYUDAS_A_PROFUNDIZAR:
         return True
-    for raiz in SUBARBOLES_A_RECORRER:
+    for raiz, profundidad in SUBARBOLES_A_RECORRER.items():
         if prefijo.startswith(raiz):
             bajo_la_raiz = len(prefijo.split()) - len(raiz.split())
-            return bajo_la_raiz < PROFUNDIDAD_MAXIMA
+            return bajo_la_raiz < profundidad
     return False
 
 
 def ramas_de(ayuda: str) -> tuple[str, ...]:
     """Por dónde se puede seguir bajando en la ayuda.
 
-    Los marcadores de texto —``<cr>``, ``<onu_list>``, ``<A.B.C.D>``— se
-    descartan: son valores que hay que poner, no ramas. Un rango numérico sí se
-    usa, pero **sólo cuando no hay ninguna palabra**: si el equipo ofrece las
-    dos cosas, las palabras son el camino y el número es un atajo que llevaría a
-    preguntar de más.
+    Las palabras son el camino. Cuando no hay ninguna se rellena el hueco, para
+    poder seguir: un rango numérico con su extremo bajo, un ``<string>`` con un
+    valor de prueba. ``<cr>`` no se rellena —ahí el comando termina de verdad— y
+    ``<A.B.C.D>`` tampoco, porque una IP inventada no lleva a ningún lado.
+
+    El orden importa: si el equipo ofrece palabras **y** un hueco, las palabras
+    ganan. Rellenar igual llevaría a preguntar de más por un camino que ya está
+    enumerado.
     """
     palabras: list[str] = []
     rangos: list[str] = []
+    hay_texto = False
     for linea in ayuda.splitlines():
         if encontrado := OPCION_AYUDA.match(linea):
             palabra = encontrado.group("palabra")
@@ -187,8 +211,10 @@ def ramas_de(ayuda: str) -> tuple[str, ...]:
             desde = encontrado.group("desde")
             if desde not in rangos:
                 rangos.append(desde)
+        elif TEXTO_AYUDA.match(linea):
+            hay_texto = True
 
-    elegidas = palabras or rangos
+    elegidas = palabras or rangos or ([VALOR_DE_PRUEBA] if hay_texto else [])
     return tuple(elegidas[:MAXIMO_RAMAS])
 
 #: Candidatos de sólo lectura a probar dentro de ``interface gpon 0/N``. Es

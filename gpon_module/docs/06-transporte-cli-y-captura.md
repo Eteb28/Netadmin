@@ -464,6 +464,35 @@ Dos cambios, y los dos sobre el mismo principio:
 
 Contra el árbol real esto pasa de 159 preguntas que no servían a 35 que traen todo.
 
+**Y los huecos de texto también son camino.** `wifi_ssid 1 name ?` contesta sólo
+`<string>`, pero el modo de autenticación, el cifrado y la clave están **después** del
+nombre. Sin rellenar ese hueco el recorrido se corta justo antes de lo único que faltaba,
+así que se rellena con un valor de prueba —el `?` no ejecuta nada, es texto que después se
+borra con Ctrl-U—. `<cr>` no se rellena, porque ahí el comando termina de verdad, y
+`<A.B.C.D>` tampoco: una IP inventada no lleva a ningún lado.
+
+La profundidad pasó a declararse **por subárbol**, porque las formas son distintas:
+`wan_conn` se agota en tres niveles y esconde la combinatoria del `bind`, mientras que el
+WiFi es una cadena larga de pares clave-valor que hay que recorrer entera.
+
+## Fase 7: dónde está cada cosa del CPE
+
+Después de cuatro exploraciones, el mapa completo:
+
+| Qué | Dónde |
+|---|---|
+| WAN con PPPoE | `onu <id> pri wan_conn add route [qos enable]` + `... index <n> route <modo> ...` + `commit` |
+| Modo de la WAN | `internet`, `voip`, `tr069`, `multicast` y las combinaciones |
+| Interfaces ligadas | `bind_lan` / `bind_ssid`, **como mascara de bits** |
+| Nombre del SSID | `onu <id> pri wifi_ssid <1-8> name <texto>` |
+| Radio y **pais** | `onu <id> pri wifi_switch <1-2> enable <pais> [canal]` |
+| Guardar en el CPE | `onu <id> pri save_config` |
+
+El `Country: FCC` no estaba donde se lo buscó —no es del SSID sino de la radio— y aparece
+como una de quince opciones de `wifi_switch <n> enable`, seguida del canal (`auto`,
+`chl_36`, ...). `wifi_switch 1` es 2.4 GHz y `wifi_switch 2` es 5 GHz, que se corresponden
+con SSID1 y SSID5.
+
 **Para lo puntual, `--ayuda-de`.** Cuando falta un pedazo concreto no tiene sentido pagar
 el recorrido entero: `gpon explorar-config 1 --ayuda-de 'onu 1 pri wifi_ssid 1 name '`
 pregunta eso y nada más. Preguntar por dos prefijos toma segundos; una exploración completa

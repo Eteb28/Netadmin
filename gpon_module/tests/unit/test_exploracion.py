@@ -18,8 +18,8 @@ from gpon_module.services.exploracion import (
     CANDIDATOS_INTERFAZ_PON,
     MAXIMO_NODOS,
     MAXIMO_RAMAS,
-    PROFUNDIDAD_MAXIMA,
     SUBARBOLES_A_RECORRER,
+    VALOR_DE_PRUEBA,
     ServicioExploracion,
     _hay_que_bajar,
     es_navegacion,
@@ -392,7 +392,43 @@ class TestElPozoCombinatorio:
         assert not _hay_que_bajar("onu 1 pri wan_adv index 1 bind lan1 ")
 
     def test_la_profundidad_alcanza_para_los_comandos_reales(self) -> None:
-        """Tres niveles: 'wan_conn add route' y 'wifi_ssid 1 name'."""
-        assert PROFUNDIDAD_MAXIMA >= 2
         assert _hay_que_bajar("onu 1 pri wan_conn add ")
         assert _hay_que_bajar("onu 1 pri wifi_ssid 1 ")
+
+    def test_el_wifi_baja_mas_que_la_wan(self) -> None:
+        """Formas distintas, profundidades distintas.
+
+        ``wan_conn`` se agota en tres niveles y esconde la combinatoria del
+        ``bind``; el WiFi es una cadena larga de pares clave-valor que hay que
+        recorrer entera para llegar a la clave.
+        """
+        assert SUBARBOLES_A_RECORRER["onu 1 pri wifi_ssid "] > (
+            SUBARBOLES_A_RECORRER["onu 1 pri wan_conn "]
+        )
+        assert _hay_que_bajar("onu 1 pri wifi_ssid 1 name X auth_mode wpa2psk encrypt ")
+
+
+class TestHuecosDeTexto:
+    """``wifi_ssid 1 name ?`` contesta sólo ``<string>``.
+
+    Lo que interesa —el modo de autenticación, el cifrado, la clave— está
+    **después** del nombre. Sin rellenar ese hueco el recorrido se corta justo
+    antes de lo único que faltaba.
+    """
+
+    def test_un_texto_libre_se_rellena_para_poder_seguir(self) -> None:
+        ayuda = "  <string>  Specify onu wifi ssid name string, max length 32.\n"
+
+        assert ramas_de(ayuda) == (VALOR_DE_PRUEBA,)
+
+    def test_cr_no_se_rellena(self) -> None:
+        """Ahí el comando termina de verdad: no hay nada más que preguntar."""
+        assert ramas_de("  <cr>  Just Press Enter to Execute command!\n") == ()
+
+    def test_una_ip_no_se_inventa(self) -> None:
+        """Una dirección inventada no lleva a ningún lado."""
+        assert ramas_de("  <A.B.C.D>  Specify ONU LAN IP Address.\n") == ()
+
+    def test_si_hay_palabras_el_hueco_no_se_usa(self) -> None:
+        """Rellenar igual sería preguntar de más por un camino ya enumerado."""
+        assert ramas_de("  name  Nombre.\n  <string>  Texto.\n") == ("name",)
