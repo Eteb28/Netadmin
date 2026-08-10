@@ -442,11 +442,32 @@ las palabras son el camino y el número llevaría a preguntar de más. Los otros
 
 **Enumerar nodos de un árbol que no se conoce fue el error.** La lista de prefijos
 exactos se quedó corta dos veces: primero no llegaba a `wan_conn add`, después no llegaba a
-`wan_conn add route` ni a `wifi_ssid 1 name`. Cada vez costó una corrida contra el equipo
-con alguien esperando del otro lado. Lo que sí se conoce de antemano es **por dónde hay que
-entrar**, así que ahora se declaran subárboles —`wan_conn`, `wan_adv`, `wifi_ssid`,
-`wifi_switch`, `username`— y se recorren enteros, con un tope global de 150 preguntas como
-red de contención.
+`wan_conn add route` ni a `wifi_ssid 1 name`. Lo que sí se conoce de antemano es **por dónde
+hay que entrar**, así que se declaran subárboles —`wan_conn`, `wan_adv`, `wifi_ssid`,
+`wifi_switch`, `username`— y se recorren enteros.
+
+**Y "entero" tampoco alcanzaba.** `wan_adv index 1 bind` acepta una **lista repetida** de
+interfaces: `bind lan1 ?` ofrece `lan2 … ssid10`, `bind lan1 lan2 ?` ofrece el resto, y así.
+Eso no es un árbol, es una combinatoria. El recorrido en profundidad se hundió ahí y gastó
+las 150 preguntas del presupuesto **sin llegar nunca a `wan_conn` ni a `wifi_ssid`**, que
+era justo lo que se estaba buscando. Otra corrida perdida.
+
+Dos cambios, y los dos sobre el mismo principio:
+
+* **Se recorre a lo ancho, no en profundidad.** El orden en que se piden las cosas es el
+  orden en que se pierden si algo se corta, y lo poco profundo es lo que casi siempre
+  importa. En profundidad, la primera rama que se abre se lleva todo.
+* **Tope de tres niveles** bajo la raíz de cada subárbol. Alcanza para `wan_conn add route`
+  y `wifi_ssid 1 name`, y corta la combinatoria en el primer escalón: a `bind` se le
+  pregunta una vez —devuelve la lista completa de interfaces, que es lo que sirve— y no se
+  sigue por cada combinación.
+
+Contra el árbol real esto pasa de 159 preguntas que no servían a 35 que traen todo.
+
+**Para lo puntual, `--ayuda-de`.** Cuando falta un pedazo concreto no tiene sentido pagar
+el recorrido entero: `gpon explorar-config 1 --ayuda-de 'onu 1 pri wifi_ssid 1 name '`
+pregunta eso y nada más. Preguntar por dos prefijos toma segundos; una exploración completa
+toma minutos con alguien esperando.
 
 ### Un `show` que no empieza con `show`
 

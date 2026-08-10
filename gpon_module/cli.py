@@ -446,6 +446,7 @@ def comando_explorar_config(args: argparse.Namespace) -> int:
                 timeout=args.timeout,
                 ruta_traza=args.traza,
                 al_avanzar=progreso,
+                ayudas_extra=tuple(args.ayuda_de or ()),
             )
         except ErrorAutenticacion as exc:
             print(f"\n{exc}\n", file=sys.stderr)
@@ -1229,6 +1230,15 @@ def construir_parser() -> argparse.ArgumentParser:
     explorar.add_argument("--salida", help="archivo donde guardar la exploración")
     explorar.add_argument("--traza", metavar="ARCHIVO", help="guardar la sesión cruda")
     explorar.add_argument("--si", action="store_true", help="no preguntar confirmación")
+    explorar.add_argument(
+        "--ayuda-de",
+        action="append",
+        metavar="PREFIJO",
+        help=(
+            "preguntar la ayuda de un prefijo puntual, p. ej. "
+            "--ayuda-de 'onu 1 pri wifi_ssid 1 name '. Se puede repetir"
+        ),
+    )
     explorar.set_defaults(funcion=comando_explorar_config)
 
     pendientes = sub.add_parser(

@@ -16,7 +16,9 @@ from gpon_module.core.reloj import RelojFijo
 from gpon_module.services.captura import es_solo_lectura
 from gpon_module.services.exploracion import (
     CANDIDATOS_INTERFAZ_PON,
+    MAXIMO_NODOS,
     MAXIMO_RAMAS,
+    PROFUNDIDAD_MAXIMA,
     SUBARBOLES_A_RECORRER,
     ServicioExploracion,
     _hay_que_bajar,
@@ -295,3 +297,102 @@ class TestSubarboles:
         """Si alguno no cuelga, no se llega nunca: el padre no lo enumera."""
         for subarbol in SUBARBOLES_A_RECORRER:
             assert subarbol.startswith("onu 1 pri ")
+
+
+#: Las 18 interfaces que ``bind`` ofrece en la OLT real.
+INTERFACES = [f"lan{n}" for n in range(1, 9)] + [f"ssid{n}" for n in range(1, 11)]
+
+
+def ayuda_simulada(prefijo: str) -> str:
+    """Réplica del árbol de la OLT de Belgrano, con su trampa incluida.
+
+    ``bind`` acepta una **lista repetida**: cada nivel ofrece las interfaces que
+    todavía no se usaron. Eso no es un árbol, es una combinatoria, y es lo que
+    se tragó una corrida entera contra el equipo.
+    """
+    if prefijo == "onu 1 pri ":
+        ramas = ["wan_conn", "wan_adv", "wifi_ssid", "wifi_switch", "username", "catv"]
+        return "".join(f"  {r}   Cosa.\n" for r in ramas)
+    if prefijo.endswith(("wan_conn ", "wan_adv ")):
+        return "  add   A.\n  commit  C.\n  show  S.\n  index  I.\n"
+    if prefijo.endswith("add "):
+        return "  bridge  B.\n  route  R.\n"
+    if prefijo.endswith("index "):
+        return "  <1-8>  Wan index number.\n"
+    if prefijo.endswith("index 1 "):
+        return "  bind  B.\n  bridge  B.\n  delete  D.\n  route  R.\n  vlan  V.\n"
+    if " bind " in prefijo:
+        usadas = set(prefijo.split())
+        return "".join(f"  {i}  Wan bind {i}.\n" for i in INTERFACES if i not in usadas)
+    if prefijo.endswith("wifi_ssid "):
+        return "  <1-8>  Specify onu wifi ssid number.\n"
+    if prefijo.endswith("wifi_ssid 1 "):
+        return "  name  Specify onu wifi ssid name.\n  disable  Disable.\n"
+    if prefijo.endswith("wifi_switch "):
+        return "  <1-2>  Specify device number.\n"
+    return "  <cr>  Just Press Enter!\n"
+
+
+def recorrer(raiz: str = "onu 1 pri ") -> list[str]:
+    """Corre el mismo algoritmo del servicio sobre el árbol simulado."""
+    from collections import deque
+
+    pendientes, vistos, orden = deque([raiz]), set(), []
+    while pendientes and len(vistos) < MAXIMO_NODOS:
+        prefijo = pendientes.popleft()
+        if prefijo in vistos:
+            continue
+        vistos.add(prefijo)
+        orden.append(prefijo)
+        if _hay_que_bajar(prefijo):
+            pendientes.extend(f"{prefijo}{r} " for r in ramas_de(ayuda_simulada(prefijo)))
+    return orden
+
+
+class TestElPozoCombinatorio:
+    """La corrida del 10/08 gastó las 150 preguntas sin llegar a lo buscado.
+
+    ``wan_adv index 1 bind`` acepta listas repetidas de interfaces, así que el
+    recorrido en profundidad se hundió ahí: 159 preguntas, todas del ``bind``, y
+    ni una a ``wan_conn`` ni a ``wifi_ssid``. Costó una corrida contra el equipo
+    con alguien esperando.
+    """
+
+    def test_llega_a_todo_lo_que_hace_falta(self) -> None:
+        recorrido = recorrer()
+
+        for necesario in (
+            "onu 1 pri wan_conn add route ",
+            "onu 1 pri wan_conn index 1 ",
+            "onu 1 pri wifi_ssid 1 name ",
+            "onu 1 pri wifi_switch 1 ",
+        ):
+            assert necesario in recorrido, necesario
+
+    def test_no_se_hunde_en_la_combinatoria(self) -> None:
+        recorrido = recorrer()
+
+        assert len(recorrido) < MAXIMO_NODOS
+        # A 'bind' se le pregunta —devuelve la lista de interfaces, que sirve—
+        # pero no se sigue por cada combinación de ellas.
+        binds = [p for p in recorrido if " bind " in p]
+        assert all(p.endswith("bind ") for p in binds), binds
+
+    def test_lo_ancho_se_pregunta_antes_que_lo_hondo(self) -> None:
+        """El orden en que se pide es el orden en que se pierde si algo corta."""
+        recorrido = recorrer()
+        profundidades = [len(p.split()) for p in recorrido]
+
+        assert profundidades == sorted(profundidades)
+
+    def test_el_tope_de_profundidad_corta_donde_tiene_que_cortar(self) -> None:
+        """A 'bind' se llega y se le pregunta; de ahí para abajo, no."""
+        assert _hay_que_bajar("onu 1 pri wan_adv index 1 ")
+        assert not _hay_que_bajar("onu 1 pri wan_adv index 1 bind ")
+        assert not _hay_que_bajar("onu 1 pri wan_adv index 1 bind lan1 ")
+
+    def test_la_profundidad_alcanza_para_los_comandos_reales(self) -> None:
+        """Tres niveles: 'wan_conn add route' y 'wifi_ssid 1 name'."""
+        assert PROFUNDIDAD_MAXIMA >= 2
+        assert _hay_que_bajar("onu 1 pri wan_conn add ")
+        assert _hay_que_bajar("onu 1 pri wifi_ssid 1 ")

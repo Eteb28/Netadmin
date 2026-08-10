@@ -25,6 +25,7 @@ from __future__ import annotations
 import logging
 import re
 import time
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -121,6 +122,20 @@ SUBARBOLES_A_RECORRER: tuple[str, ...] = (
 #: seguro decir "recorré el subárbol entero" sin conocerlo de antemano.
 MAXIMO_NODOS = 150
 
+#: Cuántos niveles se baja por debajo de la raíz de un subárbol.
+#:
+#: Existe por un caso concreto que costó una corrida entera. ``wan_adv index 1
+#: bind`` acepta una **lista repetida** de interfaces: ``bind lan1 ?`` ofrece
+#: ``lan2 … ssid10``, ``bind lan1 lan2 ?`` ofrece el resto, y así. El árbol no
+#: es un árbol, es una combinatoria. Un recorrido en profundidad se hundió ahí
+#: y gastó las 150 preguntas sin llegar nunca a ``wan_conn`` ni a
+#: ``wifi_ssid``, que era justamente lo que se estaba buscando.
+#:
+#: Tres niveles alcanzan para todo lo que hace falta —``wan_conn add route``,
+#: ``wifi_ssid 1 name``, ``wan_adv index 1 bind``— y cortan la combinatoria en
+#: el primer escalón.
+PROFUNDIDAD_MAXIMA = 3
+
 #: Tope de ramas a recorrer por prefijo. Existe para que un firmware con una
 #: ayuda enorme no convierta la exploración en una sesión de media hora.
 MAXIMO_RAMAS = 60
@@ -139,12 +154,17 @@ RANGO_AYUDA = re.compile(r"^\s{2,}<(?P<desde>\d+)-\d+>\s\s+\S")
 def _hay_que_bajar(prefijo: str) -> bool:
     """¿Se sigue por las ramas de este prefijo?
 
-    Un prefijo exacto de ``AYUDAS_A_PROFUNDIZAR`` baja un nivel; cualquier cosa
-    dentro de un subárbol declarado baja todo lo que haga falta.
+    Un prefijo exacto de ``AYUDAS_A_PROFUNDIZAR`` baja un nivel. Dentro de un
+    subárbol declarado se baja hasta ``PROFUNDIDAD_MAXIMA`` niveles: sin ese
+    tope, una rama que acepta listas repetidas se traga el recorrido entero.
     """
     if prefijo in AYUDAS_A_PROFUNDIZAR:
         return True
-    return prefijo.startswith(SUBARBOLES_A_RECORRER)
+    for raiz in SUBARBOLES_A_RECORRER:
+        if prefijo.startswith(raiz):
+            bajo_la_raiz = len(prefijo.split()) - len(raiz.split())
+            return bajo_la_raiz < PROFUNDIDAD_MAXIMA
+    return False
 
 
 def ramas_de(ayuda: str) -> tuple[str, ...]:
@@ -279,8 +299,15 @@ class ServicioExploracion:
         timeout: float = 30.0,
         ruta_traza: str | None = None,
         al_avanzar: Any = None,
+        ayudas_extra: tuple[str, ...] = (),
     ) -> Exploracion:
-        """Entra a modo configuración, lee las ayudas y vuelve."""
+        """Entra a modo configuración, lee las ayudas y vuelve.
+
+        ``ayudas_extra`` agrega prefijos puntuales a los del modo interfaz. Es
+        para cuando falta un pedazo concreto del árbol y no tiene sentido pagar
+        el recorrido entero: preguntar por dos prefijos toma segundos, y una
+        exploración completa toma minutos con alguien esperando.
+        """
         if not NAVEGACION_INTERFAZ.match(f"interface gpon {pon}"):
             raise ErrorValidacion(
                 f"Puerto PON inválido: '{pon}'. Se espera la forma 'ranura/puerto', p. ej. 0/1."
@@ -316,7 +343,11 @@ class ServicioExploracion:
             self._navegar(transporte, f"interface gpon {pon}")
             recorrido.append(f"interface gpon {pon}")
             self._pedir_ayudas(
-                transporte, AYUDAS_INTERFAZ_PON, f"interface gpon {pon}", ayudas, al_avanzar
+                transporte,
+                AYUDAS_INTERFAZ_PON + tuple(ayudas_extra),
+                f"interface gpon {pon}",
+                ayudas,
+                al_avanzar,
             )
 
             for comando, proposito in CANDIDATOS_INTERFAZ_PON:
@@ -364,43 +395,43 @@ class ServicioExploracion:
         acumulador: list[SalidaComando],
         al_avanzar: Any,
     ) -> None:
-        preguntas = 0
-        for prefijo in prefijos:
-            preguntas += self._bajar(transporte, prefijo, modo, acumulador, al_avanzar, preguntas)
+        """Recorre la ayuda **a lo ancho**, nivel por nivel.
 
-    def _bajar(
-        self,
-        transporte: Any,
-        prefijo: str,
-        modo: str,
-        acumulador: list[SalidaComando],
-        al_avanzar: Any,
-        preguntas: int,
-    ) -> int:
-        """Pide la ayuda de un prefijo y sigue por sus ramas si corresponde.
+        En profundidad, la primera rama que se abre se lleva todo el
+        presupuesto. Pasó: ``wan_adv index 1 bind`` acepta listas repetidas, el
+        recorrido se hundió ahí y gastó las 150 preguntas sin llegar nunca a
+        ``wan_conn`` ni a ``wifi_ssid``, que era lo que se estaba buscando.
 
-        Devuelve cuántas preguntas hizo, para que el presupuesto se respete a lo
-        largo de todo el recorrido y no rama por rama.
+        A lo ancho, lo poco profundo —que es lo que casi siempre importa— se
+        pregunta primero, y lo que queda afuera al agotarse el presupuesto es lo
+        más hondo. El orden en que se piden las cosas es el orden en que se
+        pierden si algo se corta.
         """
-        if preguntas >= MAXIMO_NODOS:
-            log.warning(
-                "Se alcanzó el tope de %d preguntas: no se bajó por %r", MAXIMO_NODOS, prefijo
-            )
-            return 0
+        pendientes: deque[str] = deque(prefijos)
+        vistos: set[str] = set()
 
-        resultado = self._una_ayuda(transporte, prefijo, modo)
-        acumulador.append(resultado)
-        if al_avanzar is not None:
-            al_avanzar(resultado)
-        hechas = 1
+        while pendientes:
+            if len(vistos) >= MAXIMO_NODOS:
+                log.warning(
+                    "Tope de %d preguntas alcanzado; quedaron %d prefijos sin recorrer",
+                    MAXIMO_NODOS,
+                    len(pendientes),
+                )
+                break
 
-        if not resultado.ok or not _hay_que_bajar(prefijo):
-            return hechas
-        for rama in ramas_de(resultado.salida):
-            hechas += self._bajar(
-                transporte, f"{prefijo}{rama} ", modo, acumulador, al_avanzar, preguntas + hechas
-            )
-        return hechas
+            prefijo = pendientes.popleft()
+            if prefijo in vistos:
+                continue
+            vistos.add(prefijo)
+
+            resultado = self._una_ayuda(transporte, prefijo, modo)
+            acumulador.append(resultado)
+            if al_avanzar is not None:
+                al_avanzar(resultado)
+
+            if not resultado.ok or not _hay_que_bajar(prefijo):
+                continue
+            pendientes.extend(f"{prefijo}{rama} " for rama in ramas_de(resultado.salida))
 
     @staticmethod
     def _una_ayuda(transporte: Any, prefijo: str, modo: str) -> SalidaComando:
