@@ -71,7 +71,24 @@ class ServicioPropuestaAlta:
     @property
     def disponible(self) -> bool:
         """Sin sistema comercial a mano, el alta se sigue haciendo a mano."""
-        return self._clientes is not None and getattr(self._clientes, "disponible", False)
+        return not self.motivo_no_disponible
+
+    @property
+    def motivo_no_disponible(self) -> str:
+        """Por qué no se puede autocompletar, en una frase accionable.
+
+        Que la variable no esté puesta y que apunte a un archivo inexistente
+        son problemas distintos y se arreglan en lugares distintos. Decir el
+        primero cuando pasa el segundo manda a revisar la configuración que ya
+        estaba bien.
+        """
+        if self._clientes is None:
+            return (
+                "No hay un sistema comercial configurado. Poné GPON_BASE_CLIENTES en el "
+                "archivo .env con la ruta absoluta de la base de Pucará, o cargá los "
+                "datos del cliente a mano."
+            )
+        return getattr(self._clientes, "motivo_no_disponible", "")
 
     def proponer(
         self, olt_id: int, numero_cliente: str, *, vlan: int = VLAN_POR_DEFECTO

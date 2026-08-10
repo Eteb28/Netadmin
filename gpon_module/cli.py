@@ -758,10 +758,13 @@ def comando_cliente(args: argparse.Namespace) -> int:
     revisar la traducción del plan antes de dar de alta a nadie.
     """
     with _sistema(args) as sistema:
-        if not sistema.servicio_propuesta_alta.disponible:
+        if motivo := sistema.servicio_propuesta_alta.motivo_no_disponible:
+            print(f"\n{motivo}\n", file=sys.stderr)
             print(
-                "No hay sistema comercial configurado. Apuntá GPON_BASE_CLIENTES a la\n"
-                "base de Pucará (se abre en modo sólo lectura) o cargá los datos a mano.",
+                "En el archivo .env, con la ruta absoluta:\n"
+                "    GPON_BASE_CLIENTES=/ruta/a/netadmin.db\n\n"
+                "Si la exportás en la terminal, hace falta 'export': sin él la variable\n"
+                "se queda en el shell y el proceso hijo no la ve.",
                 file=sys.stderr,
             )
             return 1

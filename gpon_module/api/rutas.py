@@ -189,11 +189,8 @@ def cliente_para_alta(olt_id: int, numero: str):
     la WAN del CPE; es el mismo dato que hoy el operador copia a mano.
     """
     sistema = _sistema()
-    if not sistema.servicio_propuesta_alta.disponible:
-        raise ErrorValidacion(
-            "No hay un sistema comercial configurado (GPON_BASE_CLIENTES), "
-            "así que los datos del cliente se cargan a mano."
-        )
+    if motivo := sistema.servicio_propuesta_alta.motivo_no_disponible:
+        raise ErrorValidacion(motivo)
     propuesta = sistema.servicio_propuesta_alta.proponer(olt_id, numero)
     return jsonify(ser.propuesta_alta(propuesta))
 

@@ -20,6 +20,7 @@ alta a un cliente sea confirmar datos en vez de retipearlos.
 from __future__ import annotations
 
 import logging
+import os
 import re
 import sqlite3
 from pathlib import Path
@@ -57,7 +58,35 @@ class RepositorioClientesPucara:
         El alta a mano tiene que poder hacerse igual: que el sistema comercial
         no esté a mano no es motivo para dejar a un técnico esperando.
         """
-        return self._ruta.is_file()
+        return not self.motivo_no_disponible
+
+    @property
+    def ruta(self) -> Path:
+        return self._ruta
+
+    @property
+    def motivo_no_disponible(self) -> str:
+        """Por qué no se puede leer, con la ruta que se intentó.
+
+        Existe porque "no hay sistema comercial configurado" y "la ruta que
+        configuraste no existe" mandan a buscar el problema a lugares
+        distintos, y decir el primero cuando pasa el segundo hace perder la
+        tarde. Vacío significa que sí se puede leer.
+        """
+        if not self._ruta.is_absolute() and not self._ruta.exists():
+            # Una ruta relativa depende del directorio desde el que se arrancó,
+            # que casi nunca es el que la persona tenía en la cabeza.
+            return (
+                f"La ruta configurada es relativa y no existe desde acá: {self._ruta}. "
+                "Poné la ruta absoluta en GPON_BASE_CLIENTES."
+            )
+        if not self._ruta.exists():
+            return f"No existe el archivo {self._ruta} (GPON_BASE_CLIENTES)."
+        if self._ruta.is_dir():
+            return f"{self._ruta} es un directorio, no la base de datos."
+        if not os.access(self._ruta, os.R_OK):
+            return f"No hay permiso de lectura sobre {self._ruta}."
+        return ""
 
     def buscar(self, numero: str) -> Cliente:
         """Trae al cliente por su número. Levanta ``NoEncontrado`` si no está."""
@@ -87,12 +116,8 @@ class RepositorioClientesPucara:
     # --- internos ---------------------------------------------------------
 
     def _consultar(self, sql: str, parametros: tuple) -> sqlite3.Row | None:
-        if not self.disponible:
-            raise ErrorRepositorio(
-                f"No se encuentra la base del sistema comercial en {self._ruta}. "
-                "Configurala con GPON_BASE_CLIENTES o dejá el campo vacío para "
-                "cargar los datos a mano."
-            )
+        if motivo := self.motivo_no_disponible:
+            raise ErrorRepositorio(motivo)
         # 'mode=ro' es lo que convierte "sólo lectura" en algo que no depende de
         # que el código se porte bien.
         uri = f"file:{self._ruta}?mode=ro"

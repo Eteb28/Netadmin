@@ -107,12 +107,34 @@ class TestDatosIncompletos:
 
 
 class TestAislamiento:
-    def test_sin_base_configurada_lo_dice_en_vez_de_romper(self, tmp_path) -> None:
-        repositorio = RepositorioClientesPucara(tmp_path / "no-existe.db")
+    def test_una_ruta_que_no_existe_dice_cual_es(self, tmp_path) -> None:
+        """"No hay sistema comercial configurado" y "la ruta está mal" se
+        arreglan en lugares distintos. Decir el primero cuando pasa el segundo
+        manda a revisar la configuración que ya estaba bien."""
+        faltante = tmp_path / "no-existe.db"
+        repositorio = RepositorioClientesPucara(faltante)
 
         assert not repositorio.disponible
-        with pytest.raises(ErrorRepositorio, match="No se encuentra"):
+        assert str(faltante) in repositorio.motivo_no_disponible
+        with pytest.raises(ErrorRepositorio, match="No existe el archivo"):
             repositorio.buscar("034716")
+
+    def test_una_ruta_relativa_se_explica_aparte(self) -> None:
+        """Depende del directorio desde el que se arrancó, que casi nunca es
+        el que la persona tenía en la cabeza."""
+        repositorio = RepositorioClientesPucara("netadmin.db")
+
+        assert "relativa" in repositorio.motivo_no_disponible
+        assert "absoluta" in repositorio.motivo_no_disponible
+
+    def test_un_directorio_no_es_una_base(self, tmp_path) -> None:
+        repositorio = RepositorioClientesPucara(tmp_path)
+
+        assert "directorio" in repositorio.motivo_no_disponible
+
+    def test_una_base_legible_no_tiene_motivo(self, repositorio) -> None:
+        assert repositorio.motivo_no_disponible == ""
+        assert repositorio.disponible
 
     def test_la_contrasena_no_se_filtra_al_imprimir(self, repositorio) -> None:
         """Un log con la clave PPPoE de un cliente es una fuga de credenciales."""

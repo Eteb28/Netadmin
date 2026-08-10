@@ -99,6 +99,11 @@ saltear:
    la NAP, y los traduce al vocabulario de la OLT. La base comercial se abre en modo
    `ro`: el alta de una ONU no puede editar la base de clientes. Es opcional — sin
    `GPON_BASE_CLIENTES` se carga todo a mano.
+
+   La ruta va **absoluta**, y en el `.env` antes que en la terminal: un `VAR=valor` sin
+   `export` se queda en el shell y el proceso hijo no lo ve. Si algo falla, el mensaje
+   distingue los tres casos —sin configurar, archivo inexistente, ruta relativa—, porque
+   se arreglan en lugares distintos.
 2. **Elegir perfil y plan.** Los perfiles DBA y los planes de tráfico se ofrecen desde los
    que el equipo ya tiene definidos: elegir uno que no existe es un alta que el equipo
    rechaza a mitad de camino. Ya pasó una vez —`100M-Dom-DOWN` contra el `100M-Dom-DOW`
