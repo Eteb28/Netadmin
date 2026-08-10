@@ -322,6 +322,76 @@ Un índice **vacío** sí se puede borrar: un alta que quedó a medias puede no 
 a aparecer en el inventario, y ése es justamente el caso que hay que poder limpiar. Lo que
 frena la baja es encontrar *otra* ONU, no no encontrar ninguna.
 
+## El alta que se completa sola
+
+El operador copiaba a mano cuatro cosas que ya estaban escritas en Pucará. Cada
+copia era una oportunidad de equivocarse, y una ya se cobró. Ahora el número de cliente
+trae todo:
+
+| Campo del alta | De dónde sale |
+|---|---|
+| Perfil de ONU | `clientes.equipo_modelo` → `V2802DAC` |
+| Planes de tráfico | `clientes.plan` → megabits → perfil de la OLT |
+| Descripción | `nro_cliente` + `clientes.nap` → `034716_CDO8_NAP3` |
+| PPPoE | `clientes.pppoe_usuario` / `pppoe_clave` |
+| VLAN | 1001 por defecto, editable |
+
+**La base comercial se abre en modo `ro`.** No es una promesa del código: es SQLite el
+que rechaza la escritura. El alta de una ONU no puede convertirse en un camino lateral
+para editar la base de clientes. Y el módulo sigue sin importar una sola línea de código
+de Pucará —hay un test que lo vigila—: lee un archivo por una ruta de configuración, nada
+más. Sin `GPON_BASE_CLIENTES`, todo se carga a mano igual que antes.
+
+### La traducción del plan
+
+`INTERNET 10 MB` y `10M-Dom-Dow` son dos vocabularios para lo mismo, y nadie los había
+conectado salvo la cabeza del operador. La traducción se hace por **megabits, segmento y
+sentido**, y el resultado se elige de los perfiles que la OLT declaró — nunca se construye
+un nombre. Por eso resuelve sola que el de 10 termina en `Dow`, el de 100 en `DOW` y el de
+empresa en `Dowm`: la inconsistencia la desempata el equipo.
+
+Cuando no hay correspondencia, se dice que no la hay. Proponer el más parecido sería el
+bug original con otra cara.
+
+## Fase 7: la configuración del CPE (pendiente de sintaxis)
+
+Los requisitos están definidos; falta un dato del equipo para poder escribirlos.
+
+**WAN**, con los datos del cliente:
+
+```
+Connect Type: route        IP Version: ipv4       Service Mode: internet
+Connect Mode: PPPOE        MTU: 1492              serverName: FTTH1
+UserName: <nro_cliente>    pwd: <pppoe_clave>     Nat: enable
+VLAN Mode: Tag             VLAN ID: <la misma que la del service-port>
+Bind: lan1 lan2 ssid1..ssid8
+```
+
+La VLAN de la WAN **no es un campo aparte**: es la misma que se configura en la VLAN List
+y en el service-port. Tenerla dos veces sería tener dos formas de que no coincidan.
+
+**WiFi**, con `Country: FCC` y dos redes configurables en nombre y contraseña:
+
+| Red | Autenticación | Cifrado |
+|---|---|---|
+| WIFI0 / SSID1 (2.4 GHz) | `WPA2PSK` | `AES` |
+| WIFI1 / SSID5 (5 GHz) | `WPAPSK/WPA2PSK` | `AES` |
+
+**Lo que falta.** Estos parámetros viven en las líneas `onu N pri ...` del
+`show running-config`, que el parser saltea a propósito: ahí están las contraseñas PPPoE
+y las claves WiFi de los clientes en texto plano. Se sabe *dónde* están, no *cómo se
+escriben*. Adivinar la sintaxis es exactamente lo que dejó la ONU 1:29 a medio configurar,
+así que en vez de eso `gpon explorar-config` ahora pide la ayuda en línea de esos
+prefijos:
+
+```
+onu 1 pri ?      onu 1 wan ?      onu 1 wifi ?      onu 1 ssid ?
+```
+
+El `?` enumera la sintaxis **sin ejecutar nada**: nunca se manda Enter. Con esa salida se
+escribe el constructor de comandos igual que se escribió el del alta — leyendo lo que el
+equipo dice de sí mismo, no un manual.
+
 ## Riesgos
 
 | # | Riesgo | Estado |
@@ -333,3 +403,5 @@ frena la baja es encontrar *otra* ONU, no no encontrar ninguna.
 | R13 | La CLI bloquea la cuenta tras varios intentos fallidos | Mitigado: el protocolo se elige explícitamente, nunca se prueba uno y se cae al otro |
 | R14 | Un nombre de plan mal tipeado corta el alta a mitad | Cubierto: se valida contra los planes guardados antes de abrir la sesión |
 | R15 | Una baja sobre el índice equivocado deja sin servicio a otro cliente | Mitigado: se muestra el serial del índice y `--serie` lo verifica |
+| R16 | El alta escribe en la base comercial | Cubierto: se abre con `mode=ro`, lo impide SQLite |
+| R17 | Un dato desactualizado en Pucará se aplica sin que nadie lo note | Mitigado: la propuesta viaja con motivo y advertencias, y avisa si el serial no coincide |

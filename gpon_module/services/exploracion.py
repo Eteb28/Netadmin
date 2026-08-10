@@ -63,6 +63,15 @@ AYUDAS_INTERFAZ_PON: tuple[str, ...] = (
     "onu add ",
     "show ",
     "no onu ",
+    # La configuración del CPE —WAN con PPPoE, y WiFi— vive en las líneas
+    # 'onu N pri ...' del running-config, que el parser saltea a propósito
+    # porque ahí están las contraseñas de los clientes en texto plano. Para
+    # poder *escribirlas* hace falta la sintaxis, y la sintaxis se pide con
+    # '?', que enumera sin ejecutar nada.
+    "onu 1 pri ",
+    "onu 1 wan ",
+    "onu 1 wifi ",
+    "onu 1 ssid ",
 )
 
 #: Candidatos de sólo lectura a probar dentro de ``interface gpon 0/N``. Es
@@ -78,6 +87,13 @@ CANDIDATOS_INTERFAZ_PON: tuple[tuple[str, str], ...] = (
     ("show onu state", "Estado de cada ONU"),
     ("show onu optical", "Potencias por ONU"),
     ("show onu optical-info", "Variante"),
+    # Cómo ve el equipo la configuración del CPE: es el bloque que la web de la
+    # OLT muestra como "WAN" y "WiFi", y el que hay que saber escribir.
+    ("show onu 1 pri", "Configuración WAN/servicio de una ONU"),
+    ("show onu wan", "Variante"),
+    ("show onu 1 wan", "Variante con índice"),
+    ("show onu wifi", "Configuración WiFi"),
+    ("show onu 1 wifi", "Variante con índice"),
 )
 
 

@@ -95,6 +95,10 @@ saltear:
 
 1. **Ver quién espera.** El equipo se consulta en vivo — es una lista que cambia sola
    cuando un técnico conecta una ONU, así que no tendría sentido servirla de la base.
+1. **Cargar el número de cliente.** Trae de Pucará el plan, el modelo de ONU, el PPPoE y
+   la NAP, y los traduce al vocabulario de la OLT. La base comercial se abre en modo
+   `ro`: el alta de una ONU no puede editar la base de clientes. Es opcional — sin
+   `GPON_BASE_CLIENTES` se carga todo a mano.
 2. **Elegir perfil y plan.** Los perfiles DBA y los planes de tráfico se ofrecen desde los
    que el equipo ya tiene definidos: elegir uno que no existe es un alta que el equipo
    rechaza a mitad de camino. Ya pasó una vez —`100M-Dom-DOWN` contra el `100M-Dom-DOW`
@@ -126,6 +130,8 @@ terminal le gana, así una prueba puntual nunca queda tapada por el archivo.
 ```bash
 GPON_CLAVE_CIFRADO=...
 GPON_BASE_DATOS=sqlite:///gpon.db
+# Opcional: base de Pucará para autocompletar el alta. Se abre de sólo lectura.
+GPON_BASE_CLIENTES=/ruta/a/netadmin.db
 ```
 
 `equipos.toml` — el inventario de OLT, con sus credenciales. Se aplica con:
