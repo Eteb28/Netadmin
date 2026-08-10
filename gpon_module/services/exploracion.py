@@ -83,12 +83,42 @@ AYUDAS_INTERFAZ_PON: tuple[str, ...] = (
     # 'onu 1 ?' es el que importa: 'onu add ?' contestó los subcomandos del
     # alta (desc, tcont, gemport, service…) y ahí no había ninguno de CPE.
     "onu 1 ",
-    "onu 1 pri ",
     "onu 1 modify ",
-    "onu 1 wan ",
-    "onu 1 wifi ",
-    "onu 1 ssid ",
+    "onu 1 pri ",
 )
+
+#: Prefijos cuyas ramas se recorren solas, un nivel más abajo.
+#:
+#: ``onu 1 pri ?`` contestó 34 opciones —entre ellas ``wan_conn``, ``wifi_ssid``
+#: y ``save_config``—, pero para escribir un comando hace falta saber qué va
+#: *después* de cada una. Sin esto haría falta una corrida por nivel, con el
+#: equipo del otro lado y una persona esperando. El ``?`` sigue sin ejecutar
+#: nada, así que bajar un nivel no cambia lo que el servicio puede hacer: sólo
+#: cuántas preguntas hace en el mismo viaje.
+AYUDAS_A_PROFUNDIZAR: tuple[str, ...] = ("onu 1 pri ",)
+
+#: Tope de ramas a recorrer por prefijo. Existe para que un firmware con una
+#: ayuda enorme no convierta la exploración en una sesión de media hora.
+MAXIMO_RAMAS = 60
+
+#: Una opción de la ayuda: dos espacios, la palabra, y su descripción. Se
+#: descartan los marcadores ``<1-128>``, ``<cr>`` y ``<onu_list>``: no son
+#: ramas por las que se pueda seguir preguntando, son valores que hay que
+#: poner.
+OPCION_AYUDA = re.compile(r"^\s{2,}(?P<palabra>[A-Za-z][\w.\-]*)\s\s+\S")
+
+
+def ramas_de(ayuda: str) -> tuple[str, ...]:
+    """Las palabras por las que se puede seguir bajando en la ayuda."""
+    vistas: list[str] = []
+    for linea in ayuda.splitlines():
+        encontrado = OPCION_AYUDA.match(linea)
+        if encontrado is None:
+            continue
+        palabra = encontrado.group("palabra")
+        if palabra not in vistas:
+            vistas.append(palabra)
+    return tuple(vistas[:MAXIMO_RAMAS])
 
 #: Candidatos de sólo lectura a probar dentro de ``interface gpon 0/N``. Es
 #: donde debería estar el listado que la web muestra como "ONU AutoFind".
@@ -282,29 +312,41 @@ class ServicioExploracion:
         al_avanzar: Any,
     ) -> None:
         for prefijo in prefijos:
-            inicio = time.monotonic()
-            try:
-                salida = transporte.ayuda(prefijo)
-                resultado = SalidaComando(
-                    comando=prefijo,
-                    proposito="Ayuda en línea del equipo",
-                    grupo=modo,
-                    salida=salida,
-                    ok=True,
-                    duracion_ms=int((time.monotonic() - inicio) * 1000),
-                )
-            except ErrorGPON as exc:
-                resultado = SalidaComando(
-                    comando=prefijo,
-                    proposito="Ayuda en línea del equipo",
-                    grupo=modo,
-                    ok=False,
-                    error=str(exc),
-                    duracion_ms=int((time.monotonic() - inicio) * 1000),
-                )
+            resultado = self._una_ayuda(transporte, prefijo, modo)
             acumulador.append(resultado)
             if al_avanzar is not None:
                 al_avanzar(resultado)
+
+            if prefijo not in AYUDAS_A_PROFUNDIZAR or not resultado.ok:
+                continue
+            for rama in ramas_de(resultado.salida):
+                hijo = self._una_ayuda(transporte, f"{prefijo}{rama} ", modo)
+                acumulador.append(hijo)
+                if al_avanzar is not None:
+                    al_avanzar(hijo)
+
+    @staticmethod
+    def _una_ayuda(transporte: Any, prefijo: str, modo: str) -> SalidaComando:
+        inicio = time.monotonic()
+        try:
+            salida = transporte.ayuda(prefijo)
+        except ErrorGPON as exc:
+            return SalidaComando(
+                comando=prefijo,
+                proposito="Ayuda en línea del equipo",
+                grupo=modo,
+                ok=False,
+                error=str(exc),
+                duracion_ms=int((time.monotonic() - inicio) * 1000),
+            )
+        return SalidaComando(
+            comando=prefijo,
+            proposito="Ayuda en línea del equipo",
+            grupo=modo,
+            salida=salida,
+            ok=True,
+            duracion_ms=int((time.monotonic() - inicio) * 1000),
+        )
 
     @staticmethod
     def _correr(transporte: Any, comando: str, proposito: str, modo: str) -> SalidaComando:

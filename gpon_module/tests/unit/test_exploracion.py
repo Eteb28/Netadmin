@@ -15,9 +15,11 @@ from gpon_module.core.models import OLT, CredencialesOLT
 from gpon_module.core.reloj import RelojFijo
 from gpon_module.services.exploracion import (
     CANDIDATOS_INTERFAZ_PON,
+    MAXIMO_RAMAS,
     ServicioExploracion,
     es_navegacion,
     es_permitido,
+    ramas_de,
 )
 
 
@@ -158,3 +160,52 @@ class TestRecorrido:
 
         assert "No se" in texto and "configuración" in texto
         assert "exec → configure terminal" in texto
+
+
+class TestDescensoPorLaAyuda:
+    """Bajar un nivel solo, para no pedir una corrida por nivel.
+
+    ``onu 1 pri ?`` contesta 34 opciones, pero para escribir un comando hace
+    falta saber qué va después de cada una. El ``?`` no ejecuta nada, así que
+    bajar no cambia lo que el servicio puede hacer: sólo cuántas preguntas hace
+    en el mismo viaje.
+    """
+
+    #: La salida real de la OLT de Belgrano, recortada.
+    AYUDA_PRI = (
+        "onu 1 pri \n"
+        "  acl                   Specify ONU acl.\n"
+        "  save_config           Specify onu save configuration control.\n"
+        "  wan_conn              Specify ONU wan connection.\n"
+        "  wifi_ssid             Specify onu wifi ssid.\n"
+    )
+
+    def test_encuentra_las_ramas_por_las_que_se_puede_seguir(self) -> None:
+        assert ramas_de(self.AYUDA_PRI) == ("acl", "save_config", "wan_conn", "wifi_ssid")
+
+    def test_los_marcadores_de_valor_no_son_ramas(self) -> None:
+        """``<1-128>`` no es algo por lo que se pueda seguir preguntando."""
+        ayuda = (
+            "onu \n"
+            "  <1-128>     Specify onu list. 1,3,5-10,12,16 etc.\n"
+            "  <onu_list>  Specify onu list.\n"
+            "  <cr>        Just Press Enter to Execute command!\n"
+            "  add         Add onu to this gpon interface\n"
+        )
+
+        assert ramas_de(ayuda) == ("add",)
+
+    def test_no_repite_una_rama_que_aparece_dos_veces(self) -> None:
+        ayuda = "x \n  add  Uno\n  add  Otra vez\n"
+
+        assert ramas_de(ayuda) == ("add",)
+
+    def test_hay_un_tope_de_ramas(self) -> None:
+        """Un firmware con una ayuda enorme no puede volver esto media hora."""
+        ayuda = "x \n" + "".join(f"  opcion{n}  Descripción\n" for n in range(200))
+
+        assert len(ramas_de(ayuda)) == MAXIMO_RAMAS
+
+    def test_una_linea_sin_descripcion_no_cuenta(self) -> None:
+        """El eco del prefijo tipeado no es una opción."""
+        assert ramas_de("onu 1 pri \n") == ()

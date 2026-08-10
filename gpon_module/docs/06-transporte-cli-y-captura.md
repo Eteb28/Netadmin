@@ -398,17 +398,45 @@ está en la misma captura: `onu add ?` enumera todo el vocabulario del alta —`
 `tcont`, `gemport`, `service`, `service-port`, `portvlan`, `profile`— y ahí no hay ni WAN
 ni WiFi.
 
-**Lo que falta.** La sintaxis de adentro de ese perfil. `gpon explorar-config` ahora la
-pide:
+**Confirmado el 10/08.** No está en `profile pri` —ése sólo acepta `id` y `name`— sino
+en un subcomando **por ONU**. `onu 1 ?` lo mostró:
 
 ```
-profile pri ?    profile srv ?    onu 1 ?    onu 1 pri ?    onu 1 modify ?
+onu 1
+  pri               Specify private omci information.     ← acá
+  ...
 ```
 
-El `?` enumera **sin ejecutar nada**: nunca se manda Enter, y la lista blanca del servicio
-sigue impidiendo cualquier otra cosa. Con esa salida se escribe el constructor igual que se
-escribió el del alta — leyendo lo que el equipo dice de sí mismo, no un manual. Adivinar la
-sintaxis es exactamente lo que dejó la ONU 1:29 a medio configurar.
+Y `onu 1 pri ?` contestó 34 opciones. Las que importan:
+
+| Rama | Para qué |
+|---|---|
+| `wan_conn` | la conexión WAN: es donde va el PPPoE |
+| `wan_adv` | parámetros avanzados de esa WAN |
+| `wifi_ssid` | nombre y clave de cada SSID |
+| `wifi_switch` | prender y apagar cada radio |
+| `save_config` | **guardar en el CPE** — sin esto la configuración se pierde al reiniciar |
+
+`save_config` es el hallazgo que no se buscaba: aplicar la WAN y el WiFi sin guardar dejaría
+al cliente andando hasta el primer corte de luz. Va a ser el último comando de la secuencia.
+
+**Lo que falta.** Los argumentos de cada rama. Y ahí apareció un problema de método: pedirlos
+requería otra corrida, con el equipo del otro lado y una persona esperando — una por nivel
+del árbol.
+
+### La exploración baja sola
+
+`explorar-config` ahora recorre las ramas de `onu 1 pri` por su cuenta: pide la ayuda,
+lee las palabras que devolvió y vuelve a preguntar por cada una. Un nivel, con tope de 60
+ramas para que un firmware charlatán no convierta la exploración en media hora.
+
+Bajar no cambia lo que el servicio *puede* hacer —el `?` sigue sin ejecutar nada y la lista
+blanca sigue en pie—: cambia cuántas preguntas hace en el mismo viaje. Las que se descartan
+son los marcadores de valor (`<1-128>`, `<cr>`, `<onu_list>`): no son ramas por las que
+seguir, son huecos que hay que llenar.
+
+Adivinar la sintaxis es exactamente lo que dejó la ONU 1:29 a medio configurar. Preguntar
+sale barato; suponer salió caro.
 
 ## Dos cosas que enseñó la exploración del 10/08
 
