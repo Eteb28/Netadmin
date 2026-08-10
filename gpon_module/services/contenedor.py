@@ -39,6 +39,7 @@ from .alta_onu import ServicioAltaONU
 from .baja_onu import ServicioBajaONU
 from .captura import ServicioCaptura
 from .descubrimiento import ServicioDescubrimiento
+from .estados_cli import ServicioEstadosCLI
 from .exploracion import ServicioExploracion
 from .fabrica import FabricaDrivers
 from .inventario_cli import ServicioInventarioCLI
@@ -82,6 +83,7 @@ class Contenedor:
     servicio_alta_onu: ServicioAltaONU
     servicio_baja_onu: ServicioBajaONU
     servicio_propuesta_alta: ServicioPropuestaAlta
+    servicio_estados_cli: ServicioEstadosCLI
 
     def cerrar(self) -> None:
         self.conexion.cerrar()
@@ -180,6 +182,11 @@ def crear_contenedor(
         servicio_propuesta_alta=ServicioPropuestaAlta(
             repositorio_clientes=repositorio_clientes,
             repositorio_perfiles=repositorio_perfiles,
+        ),
+        servicio_estados_cli=ServicioEstadosCLI(
+            repositorio_olt=repositorio_olt,
+            repositorio_onu=repositorio_onu,
+            reloj=reloj,
         ),
         servicio_inventario_cli=ServicioInventarioCLI(
             repositorio_olt=repositorio_olt,

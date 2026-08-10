@@ -23,6 +23,7 @@ Comandos disponibles::
     pendientes <id>   ONU detectadas y sin autorizar (AutoFind)
     autorizar <id>    da de alta una ONU (simulado salvo que se pida --aplicar)
     baja <id>         da de baja una ONU (simulado salvo que se pida --aplicar)
+    estados <id>      motivo de caída de cada ONU (DyingGasp / LOS), por CLI
     planes <id>       lista los perfiles de tráfico; --sembrar carga los conocidos
     cliente <id>      lo que se autocompleta a partir del número de cliente
     listar-olts       OLT registradas
@@ -656,6 +657,56 @@ def comando_baja(args: argparse.Namespace) -> int:
     return 1
 
 
+def comando_estados(args: argparse.Namespace) -> int:
+    """Trae el motivo de caída de cada ONU y lo guarda en el inventario.
+
+    Es la diferencia entre mandar una cuadrilla y no mandarla: DyingGasp es un
+    corte de luz en lo del cliente y LOS es fibra cortada. SNMP no distingue una
+    de otra en estos equipos; 'show onu state' sí.
+    """
+    with _sistema(args) as sistema:
+        olt = sistema.servicio_olt.obtener(args.olt_id)
+        _titulo(f"Estado de las ONU de {olt.nombre} ({olt.host})")
+        print("Sólo lectura: no se envía ningún comando de configuración.\n")
+
+        try:
+            resultado = sistema.servicio_estados_cli.actualizar(
+                args.olt_id,
+                protocolo=args.protocolo,
+                timeout=args.timeout,
+                ruta_traza=args.traza,
+            )
+        except ErrorAutenticacion as exc:
+            print(f"\n{exc}\n", file=sys.stderr)
+            _ayuda_credenciales(args.olt_id, args.protocolo)
+            return 1
+
+    print(f"ONU leídas       {resultado.onus_leidas}")
+    print(f"Actualizadas     {resultado.onus_actualizadas}")
+
+    etiquetas = {
+        "ninguno": "En línea",
+        "apagado": "Corte de luz (DyingGasp)",
+        "perdida_senal": "Fibra cortada (LOS)",
+        "desconocido": "Caídas sin motivo informado",
+    }
+    _titulo("Por motivo")
+    for motivo, cantidad in sorted(resultado.por_motivo.items(), key=lambda x: -x[1]):
+        print(f"  {etiquetas.get(motivo, motivo):32} {cantidad}")
+
+    if resultado.solo_en_el_equipo:
+        print(
+            f"\n{len(resultado.solo_en_el_equipo)} ONU están en el equipo y no en el "
+            "inventario. Corré 'gpon descubrir' para traerlas."
+        )
+    if resultado.puertos_con_falla:
+        print("\nPuertos que no se pudieron leer:", file=sys.stderr)
+        for pon, motivo in resultado.puertos_con_falla:
+            print(f"    {pon}: {motivo}", file=sys.stderr)
+        return 1
+    return 0
+
+
 def comando_planes(args: argparse.Namespace) -> int:
     """Muestra los perfiles de tráfico guardados de una OLT.
 
@@ -1243,6 +1294,15 @@ def construir_parser() -> argparse.ArgumentParser:
         "--usuario-operacion", default="", help="quién hace la baja, para la auditoría"
     )
     baja.set_defaults(funcion=comando_baja)
+
+    estados = sub.add_parser("estados", help="motivo de caída de cada ONU, leído por CLI")
+    estados.add_argument("olt_id", type=int)
+    estados.add_argument(
+        "--protocolo", default="ssh", choices=list(PROTOCOLOS_CLI), help="canal de la CLI"
+    )
+    estados.add_argument("--timeout", type=float, default=60.0)
+    estados.add_argument("--traza", metavar="ARCHIVO", help="guardar la sesión cruda")
+    estados.set_defaults(funcion=comando_estados)
 
     planes = sub.add_parser("planes", help="perfiles de tráfico guardados de una OLT")
     planes.add_argument("olt_id", type=int)

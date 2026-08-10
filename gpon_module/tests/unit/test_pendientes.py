@@ -109,6 +109,45 @@ class TestListado:
         assert resultado.buscar("GPON00000000") is None
 
 
+class TestPuertoSinNovedades:
+    """Verificado en Belgrano: sin ONU esperando, el equipo contesta 'Error:'.
+
+    Con una ONU esperando devuelve la tabla; con ninguna, un ``Error:`` pelado
+    en vez de una tabla vacía. Tomarlo como falla haría que la pantalla dijera
+    "no se pudieron leer los 8 puertos" todos los días sin altas pendientes,
+    que son la mayoría.
+    """
+
+    def test_el_error_pelado_es_un_puerto_sin_onu_esperando(self, armar) -> None:
+        class TransporteQueDaError(TransporteFalso):
+            def ejecutar(self, comando: str) -> str:
+                self.ejecutados.append(comando)
+                if comando.startswith("interface gpon "):
+                    self.pon_actual = comando.split()[-1]
+                    return ""
+                if comando == "show onu auto-find":
+                    if self.pon_actual == "0/1":
+                        return AUTO_FIND_PON1
+                    raise ErrorComando("Error:", comando=comando)
+                return ""
+
+        transporte = TransporteQueDaError()
+
+        resultado = armar(transporte).listar(1, puertos=("0/1", "0/2", "0/3"))
+
+        assert len(resultado.pendientes) == 1
+        assert resultado.puertos_con_falla == ()
+        assert resultado.completo
+
+    def test_un_rechazo_de_sintaxis_sigue_siendo_una_falla(self, armar) -> None:
+        """La excepción es angosta a propósito: sólo el 'Error:' sin más texto."""
+        transporte = TransporteFalso({"0/1": AUTO_FIND_PON1})  # 0/2 no existe
+
+        resultado = armar(transporte).listar(1, puertos=("0/1", "0/2"))
+
+        assert [pon for pon, _ in resultado.puertos_con_falla] == ["0/2"]
+
+
 class TestHonestidad:
     def test_un_puerto_que_falla_se_informa_y_no_se_confunde_con_vacio(self, armar) -> None:
         """Decir 'no hay ONU nuevas' cuando en realidad no se pudo mirar es peor

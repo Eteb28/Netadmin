@@ -377,20 +377,76 @@ y en el service-port. Tenerla dos veces sería tener dos formas de que no coinci
 | WIFI0 / SSID1 (2.4 GHz) | `WPA2PSK` | `AES` |
 | WIFI1 / SSID5 (5 GHz) | `WPAPSK/WPA2PSK` | `AES` |
 
-**Lo que falta.** Estos parámetros viven en las líneas `onu N pri ...` del
-`show running-config`, que el parser saltea a propósito: ahí están las contraseñas PPPoE
-y las claves WiFi de los clientes en texto plano. Se sabe *dónde* están, no *cómo se
-escriben*. Adivinar la sintaxis es exactamente lo que dejó la ONU 1:29 a medio configurar,
-así que en vez de eso `gpon explorar-config` ahora pide la ayuda en línea de esos
-prefijos:
+**Dónde vive.** La exploración del 10/08 lo ubicó. En modo configuración, `profile ?`
+contesta:
 
 ```
-onu 1 pri ?      onu 1 wan ?      onu 1 wifi ?      onu 1 ssid ?
+profile
+  onu      Specify onu profile interface.
+  dba      Specify dba profile interface.
+  traffic  Specify traffic profile interface.
+  line     Specify line profile interface.
+  srv      Specify srv profile interface.
+  pri      Specify private profile interface.     ← acá
+  ...
 ```
 
-El `?` enumera la sintaxis **sin ejecutar nada**: nunca se manda Enter. Con esa salida se
-escribe el constructor de comandos igual que se escribió el del alta — leyendo lo que el
-equipo dice de sí mismo, no un manual.
+`pri` es *private profile*, y es lo que en el `show running-config` aparece como
+`onu N pri ...`. Es un dato de arquitectura, no un detalle: la configuración del CPE en
+este firmware **no son comandos sueltos por ONU**, es un perfil. La confirmación indirecta
+está en la misma captura: `onu add ?` enumera todo el vocabulario del alta —`desc`,
+`tcont`, `gemport`, `service`, `service-port`, `portvlan`, `profile`— y ahí no hay ni WAN
+ni WiFi.
+
+**Lo que falta.** La sintaxis de adentro de ese perfil. `gpon explorar-config` ahora la
+pide:
+
+```
+profile pri ?    profile srv ?    onu 1 ?    onu 1 pri ?    onu 1 modify ?
+```
+
+El `?` enumera **sin ejecutar nada**: nunca se manda Enter, y la lista blanca del servicio
+sigue impidiendo cualquier otra cosa. Con esa salida se escribe el constructor igual que se
+escribió el del alta — leyendo lo que el equipo dice de sí mismo, no un manual. Adivinar la
+sintaxis es exactamente lo que dejó la ONU 1:29 a medio configurar.
+
+## Dos cosas que enseñó la exploración del 10/08
+
+### `show onu auto-find` contesta `Error:` cuando no hay nada esperando
+
+No devuelve una tabla vacía: devuelve un `Error:` pelado. Y `Error:` está en la lista de
+marcadores de rechazo, así que el listado de pendientes daba **siete puertos fallados**
+todos los días sin altas — que son la mayoría de los días. Peor que un falso negativo: un
+falso "no se pudo mirar" enseña a ignorar el aviso.
+
+Ahora ese caso se lee como "puerto sin ONU esperando". La excepción es angosta a propósito
+—sólo el `Error:` sin más texto—: un rechazo de sintaxis o un puerto inexistente siguen
+siendo fallas. Y si la suposición fuera errónea el costo es acotado y se nota solo, porque
+el operador está buscando un serial concreto que el técnico acaba de instalar.
+
+### `show onu state` sí publica el motivo de caída
+
+```
+1/1/1:7     enable    disable    DyingGasp    1(GPON)
+1/1/1:18    enable    disable    LOS          1(GPON)
+1/1/1:19    enable    disable    OffLine      1(GPON)
+```
+
+Eso cierra un hueco que estaba abierto desde la Fase 2: SNMP en estos equipos dice que la
+ONU no está, pero no por qué. **DyingGasp es un corte de luz en el domicilio y LOS es
+fibra cortada**; confundirlas cuesta un viaje de cuadrilla. `OffLine` se informa como
+desconocido en vez de elegir una de las dos.
+
+```
+gpon estados 1
+```
+
+Es de sólo lectura y actualiza el inventario, así que el panel puede separar "cortes de
+luz" de "fibra cortada" —las tarjetas ya estaban, les faltaba quién las llenara—. Ojo con
+el formato del índice: acá es `1/1/1:7` y no el `GPON0/1:7` de las otras tablas.
+
+Una fase que el módulo no conozca **no pisa** lo que ya sabe: un firmware con una fase
+nueva no debe convertir un inventario bueno en uno de ONU en estado desconocido.
 
 ## Riesgos
 
@@ -405,3 +461,4 @@ equipo dice de sí mismo, no un manual.
 | R15 | Una baja sobre el índice equivocado deja sin servicio a otro cliente | Mitigado: se muestra el serial del índice y `--serie` lo verifica |
 | R16 | El alta escribe en la base comercial | Cubierto: se abre con `mode=ro`, lo impide SQLite |
 | R17 | Un dato desactualizado en Pucará se aplica sin que nadie lo note | Mitigado: la propuesta viaja con motivo y advertencias, y avisa si el serial no coincide |
+| R18 | Una respuesta normal del equipo se lee como falla y enseña a ignorar los avisos | Cubierto para `auto-find`; la excepción es angosta y está documentada |

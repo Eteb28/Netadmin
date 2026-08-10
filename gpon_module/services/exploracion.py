@@ -56,7 +56,18 @@ def es_permitido(comando: str) -> bool:
 
 #: Ayudas a pedir en cada modo. La clave es el prefijo tipeado antes del ``?``.
 AYUDAS_EXEC: tuple[str, ...] = ("", "show ")
-AYUDAS_CONFIGURACION: tuple[str, ...] = ("", "interface ", "onu ", "profile ")
+AYUDAS_CONFIGURACION: tuple[str, ...] = (
+    "",
+    "interface ",
+    "onu ",
+    "profile ",
+    # 'profile ?' contestó: «pri  Specify private profile interface». Ahí es
+    # donde este firmware guarda la configuración del CPE —la WAN con PPPoE y
+    # el WiFi—, que es lo que en el running-config aparece como 'onu N pri ...'.
+    "profile pri ",
+    "profile srv ",
+    "profile onu ",
+)
 AYUDAS_INTERFAZ_PON: tuple[str, ...] = (
     "",
     "onu ",
@@ -68,7 +79,12 @@ AYUDAS_INTERFAZ_PON: tuple[str, ...] = (
     # porque ahí están las contraseñas de los clientes en texto plano. Para
     # poder *escribirlas* hace falta la sintaxis, y la sintaxis se pide con
     # '?', que enumera sin ejecutar nada.
+    #
+    # 'onu 1 ?' es el que importa: 'onu add ?' contestó los subcomandos del
+    # alta (desc, tcont, gemport, service…) y ahí no había ninguno de CPE.
+    "onu 1 ",
     "onu 1 pri ",
+    "onu 1 modify ",
     "onu 1 wan ",
     "onu 1 wifi ",
     "onu 1 ssid ",

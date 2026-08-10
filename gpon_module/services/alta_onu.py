@@ -236,6 +236,8 @@ class ServicioAltaONU:
                 transporte.ejecutar(f"interface gpon 0/{numero}")
                 salida = transporte.ejecutar(COMANDO_PENDIENTES)
             except ErrorComando:
+                # Incluye el 'Error:' con que este firmware contesta un puerto
+                # sin ONU esperando. En cualquier caso acá no está la buscada.
                 continue
             for pendiente in parsear_onu_auto_find(salida):
                 if pendiente.numero_serie.upper() == buscado:

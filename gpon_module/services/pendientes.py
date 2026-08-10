@@ -32,6 +32,27 @@ COMANDO_PENDIENTES = "show onu auto-find"
 FABRICANTES_SOPORTADOS = (Fabricante.VSOL,)
 
 
+def es_lista_vacia(error: ErrorComando) -> bool:
+    """¿El rechazo es el que da el equipo cuando no hay ninguna ONU esperando?
+
+    Verificado en la OLT de Belgrano: con una ONU esperando, ``show onu
+    auto-find`` devuelve la tabla; sin ninguna, contesta un ``Error:`` pelado en
+    vez de una tabla vacía. Tomarlo como falla del puerto haría que la pantalla
+    dijera "no se pudieron leer los 8 puertos" todos los días en que no hay
+    altas pendientes, que es la mayoría.
+
+    Se acota a propósito: sólo el ``Error:`` sin más texto. Cualquier otro
+    rechazo —sintaxis, puerto inexistente, sesión caída— sigue siendo una falla
+    y se informa como tal.
+
+    Si la suposición fuera errónea, el costo es acotado y se nota solo: el
+    operador está buscando un serial concreto que el técnico acaba de instalar,
+    y lo que vería es "no hay ninguna esperando" en vez de un error de puerto.
+    """
+    texto = str(error)
+    return "Error:" in texto and "Invalid" not in texto and "Unknown" not in texto
+
+
 @dataclass(frozen=True, slots=True)
 class ResultadoPendientes:
     olt_id: int
@@ -110,6 +131,12 @@ class ServicioPendientes:
                     transporte.ejecutar(f"interface gpon {pon}")
                     salida = transporte.ejecutar(COMANDO_PENDIENTES)
                 except ErrorComando as exc:
+                    # Sin ONU esperando, este firmware contesta 'Error:' en vez
+                    # de una tabla vacía. Eso es un puerto sin novedades, no un
+                    # puerto que no se pudo leer.
+                    if es_lista_vacia(exc):
+                        log.debug("PON %s sin ONU esperando (%s)", pon, exc)
+                        continue
                     # Un puerto que no existe en este chasis no es una falla del
                     # recorrido: se anota y se sigue con los demás.
                     fallas.append((pon, str(exc)))

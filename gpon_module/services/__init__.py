@@ -15,6 +15,7 @@ from .baja_onu import ResultadoBaja, ServicioBajaONU
 from .captura import Captura, SalidaComando, ServicioCaptura, es_solo_lectura
 from .contenedor import Contenedor, crear_contenedor
 from .descubrimiento import ResultadoDescubrimiento, ServicioDescubrimiento
+from .estados_cli import ResultadoEstados, ServicioEstadosCLI
 from .exploracion import Exploracion, ServicioExploracion, es_navegacion
 from .fabrica import FabricaDrivers
 from .inventario_archivo import (
@@ -43,6 +44,7 @@ __all__ = [
     "ResultadoBaja",
     "ResultadoCarga",
     "ResultadoDescubrimiento",
+    "ResultadoEstados",
     "ResultadoInventarioCLI",
     "ResultadoPendientes",
     "SalidaComando",
@@ -50,6 +52,7 @@ __all__ = [
     "ServicioBajaONU",
     "ServicioCaptura",
     "ServicioDescubrimiento",
+    "ServicioEstadosCLI",
     "ServicioExploracion",
     "ServicioInventarioArchivo",
     "ServicioInventarioCLI",
