@@ -179,6 +179,25 @@ def perfiles_de_olt(olt_id: int):
     return jsonify(ser.perfiles(sistema.repositorio_perfiles.obtener_de_olt(olt_id)))
 
 
+@api.get("/olts/<int:olt_id>/clientes/<numero>")
+def cliente_para_alta(olt_id: int, numero: str):
+    """Todo lo que se puede completar solo a partir del número de cliente.
+
+    Es de **sólo lectura y sólo propuesta**: no toca ni el sistema comercial ni
+    el equipo. Lo que devuelve va al formulario para que alguien lo confirme.
+    La contraseña PPPoE viaja porque el formulario la necesita para configurar
+    la WAN del CPE; es el mismo dato que hoy el operador copia a mano.
+    """
+    sistema = _sistema()
+    if not sistema.servicio_propuesta_alta.disponible:
+        raise ErrorValidacion(
+            "No hay un sistema comercial configurado (GPON_BASE_CLIENTES), "
+            "así que los datos del cliente se cargan a mano."
+        )
+    propuesta = sistema.servicio_propuesta_alta.proponer(olt_id, numero)
+    return jsonify(ser.propuesta_alta(propuesta))
+
+
 @api.get("/olts/<int:olt_id>/resumen")
 def resumen_de_olt(olt_id: int):
     """Cifras del panel: estados, motivos de caída y corrida más reciente."""
@@ -378,6 +397,7 @@ def autorizar_onu(olt_id: int):
         pon=cuerpo.get("pon"),
         onu_id=cuerpo.get("onu_id"),
         descripcion=cuerpo.get("descripcion", ""),
+        sufijo_descripcion=cuerpo.get("sufijo_descripcion", ""),
         perfil_dba=cuerpo.get("perfil_dba", "Internet"),
         trafico_subida=cuerpo.get("trafico_subida", ""),
         trafico_bajada=cuerpo.get("trafico_bajada", ""),

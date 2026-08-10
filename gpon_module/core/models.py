@@ -358,6 +358,52 @@ class Perfiles:
     service_ports: tuple[ServicePort, ...] = ()
 
 
+# --- El cliente, visto desde el sistema comercial -------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class Cliente:
+    """Lo que el sistema comercial sabe de un cliente, para no retipearlo.
+
+    El módulo **no es dueño de este dato**: lo lee de Pucará y lo usa para
+    proponer. Nada de acá se guarda ni se corrige; si el número de cliente
+    está mal cargado allá, se arregla allá.
+
+    Es de sólo lectura por una razón concreta: el alta de una ONU no puede
+    convertirse en un camino lateral para editar la base comercial.
+    """
+
+    numero: str = ""
+    nombre: str = ""
+    plan: str = ""
+    tipo_servicio: str = ""
+    estado: str = ""
+    #: Megabits de bajada del plan, cuando el sistema comercial los declara.
+    #: Es lo que permite elegir el perfil de tráfico sin adivinar por el nombre.
+    megabits_bajada: int | None = None
+    sitio: str = ""
+    cdo: int | None = None
+    nap: int | None = None
+    pppoe_usuario: str = ""
+    pppoe_password: str = ""
+    modelo_equipo: str = ""
+    numero_serie: str = ""
+
+    def __repr__(self) -> str:  # pragma: no cover - trivial
+        return f"Cliente(numero={self.numero!r}, nombre={self.nombre!r}, password=***)"
+
+    @property
+    def ubicacion(self) -> str:
+        """``CDO21_NAP2``, el sufijo con que ERLAN nombra sus ONU.
+
+        Vacío si falta alguno de los dos: media ubicación en una descripción es
+        peor que ninguna, porque parece completa.
+        """
+        if self.cdo is None or self.nap is None:
+            return ""
+        return f"CDO{self.cdo}_NAP{self.nap}"
+
+
 # --- Configuración del CPE ------------------------------------------------
 
 

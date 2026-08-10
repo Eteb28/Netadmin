@@ -90,6 +90,11 @@ class Configuracion:
     # Base de datos
     url_base_datos: str = "sqlite:///gpon.db"
 
+    #: Base del sistema comercial (Pucará), **de sólo lectura**, para
+    #: autocompletar el alta con los datos del cliente. Vacío desactiva el
+    #: autocompletado: el alta a mano tiene que poder hacerse igual.
+    ruta_base_clientes: str = ""
+
     # Seguridad
     clave_cifrado: str = ""
     permitir_cifrado_nulo: bool = False
@@ -131,6 +136,7 @@ class Configuracion:
             cargar_archivo_entorno(archivo_entorno)
         return cls(
             url_base_datos=os.environ.get(PREFIJO + "BASE_DATOS", "sqlite:///gpon.db"),
+            ruta_base_clientes=os.environ.get(PREFIJO + "BASE_CLIENTES", ""),
             clave_cifrado=os.environ.get(PREFIJO + "CLAVE_CIFRADO", ""),
             permitir_cifrado_nulo=_booleano("PERMITIR_CIFRADO_NULO", False),
             dry_run_por_defecto=_booleano("DRY_RUN", True),

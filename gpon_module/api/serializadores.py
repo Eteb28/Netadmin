@@ -32,6 +32,7 @@ from ..core.models import (
 )
 from ..core.optica import clasificar
 from ..services.descubrimiento import ResultadoDescubrimiento
+from ..services.propuesta_alta import PropuestaAlta
 
 
 def _fecha(momento: datetime | None) -> str | None:
@@ -266,4 +267,37 @@ def resultado_descubrimiento(entidad: ResultadoDescubrimiento) -> dict[str, Any]
         "no_autorizadas": [onu_no_autorizada(n) for n in entidad.no_autorizadas],
         "advertencias": list(entidad.advertencias),
         "duracion_ms": entidad.duracion_ms,
+    }
+
+
+def propuesta_alta(entidad: PropuestaAlta) -> dict[str, Any]:
+    """Lo que se puede completar solo, con el porqué y con lo que no se pudo.
+
+    El motivo y las advertencias no son decoración: son lo que le permite al
+    operador decidir si acepta la propuesta o la corrige. Una sugerencia sin
+    justificación se acepta a ciegas, que es justo lo que hay que evitar.
+    """
+    cliente = entidad.cliente
+    return {
+        "cliente": {
+            "numero": cliente.numero,
+            "nombre": cliente.nombre,
+            "plan": cliente.plan,
+            "megabits_bajada": cliente.megabits_bajada,
+            "estado": cliente.estado,
+            "sitio": cliente.sitio,
+            "cdo": cliente.cdo,
+            "nap": cliente.nap,
+            "numero_serie": cliente.numero_serie,
+        },
+        "perfil_onu": entidad.perfil_onu,
+        "trafico_subida": entidad.trafico_subida,
+        "trafico_bajada": entidad.trafico_bajada,
+        "vlan": entidad.vlan,
+        "sufijo_descripcion": entidad.sufijo_descripcion,
+        "pppoe_usuario": entidad.pppoe_usuario,
+        "pppoe_password": entidad.pppoe_password,
+        "motivo_plan": entidad.motivo_plan,
+        "advertencias": list(entidad.advertencias),
+        "completa": entidad.completa,
     }

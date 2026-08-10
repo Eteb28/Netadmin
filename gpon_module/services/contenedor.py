@@ -25,6 +25,7 @@ from ..core.reloj import RelojSistema
 from ..database.conexion import Conexion, a_texto, crear_conexion
 from ..database.repositories import (
     RepositorioAlarmaSQL,
+    RepositorioClientesPucara,
     RepositorioEventoSQL,
     RepositorioMetricaSQL,
     RepositorioOLTSQL,
@@ -44,6 +45,7 @@ from .inventario_cli import ServicioInventarioCLI
 from .olt import ServicioOLT
 from .onu import ServicioONU
 from .pendientes import ServicioPendientes
+from .propuesta_alta import ServicioPropuestaAlta
 
 log = logging.getLogger(__name__)
 
@@ -66,6 +68,8 @@ class Contenedor:
     repositorio_alarma: RepositorioAlarmaSQL
     repositorio_operacion: RepositorioOperacionSQL
     repositorio_sincronizacion: RepositorioSincronizacionSQL
+    #: Sólo lectura, y opcional: sin sistema comercial el alta se hace a mano.
+    repositorio_clientes: RepositorioClientesPucara | None
 
     fabrica_drivers: FabricaDrivers
     servicio_olt: ServicioOLT
@@ -77,6 +81,7 @@ class Contenedor:
     servicio_pendientes: ServicioPendientes
     servicio_alta_onu: ServicioAltaONU
     servicio_baja_onu: ServicioBajaONU
+    servicio_propuesta_alta: ServicioPropuestaAlta
 
     def cerrar(self) -> None:
         self.conexion.cerrar()
@@ -122,6 +127,11 @@ def crear_contenedor(
     repositorio_alarma = RepositorioAlarmaSQL(conexion)
     repositorio_operacion = RepositorioOperacionSQL(conexion)
     repositorio_sincronizacion = RepositorioSincronizacionSQL(conexion)
+    repositorio_clientes = (
+        RepositorioClientesPucara(configuracion.ruta_base_clientes)
+        if configuracion.ruta_base_clientes
+        else None
+    )
 
     fabrica_drivers = FabricaDrivers(
         repositorio_olt,
@@ -143,6 +153,7 @@ def crear_contenedor(
         repositorio_alarma=repositorio_alarma,
         repositorio_operacion=repositorio_operacion,
         repositorio_sincronizacion=repositorio_sincronizacion,
+        repositorio_clientes=repositorio_clientes,
         fabrica_drivers=fabrica_drivers,
         servicio_olt=ServicioOLT(repositorio_olt, fabrica_drivers, reloj=reloj),
         servicio_onu=ServicioONU(
@@ -165,6 +176,10 @@ def crear_contenedor(
             repositorio_olt=repositorio_olt,
             repositorio_operacion=repositorio_operacion,
             reloj=reloj,
+        ),
+        servicio_propuesta_alta=ServicioPropuestaAlta(
+            repositorio_clientes=repositorio_clientes,
+            repositorio_perfiles=repositorio_perfiles,
         ),
         servicio_inventario_cli=ServicioInventarioCLI(
             repositorio_olt=repositorio_olt,

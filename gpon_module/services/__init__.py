@@ -27,6 +27,8 @@ from .inventario_cli import ResultadoInventarioCLI, ServicioInventarioCLI
 from .olt import ServicioOLT
 from .onu import PotenciaONU, ServicioONU
 from .pendientes import ResultadoPendientes, ServicioPendientes
+from .planes import ParPlanes, elegir_planes, segmento_de
+from .propuesta_alta import PropuestaAlta, ServicioPropuestaAlta
 
 __all__ = [
     "Captura",
@@ -34,7 +36,9 @@ __all__ = [
     "EquipoDeclarado",
     "Exploracion",
     "FabricaDrivers",
+    "ParPlanes",
     "PotenciaONU",
+    "PropuestaAlta",
     "ResultadoAlta",
     "ResultadoBaja",
     "ResultadoCarga",
@@ -52,8 +56,11 @@ __all__ = [
     "ServicioOLT",
     "ServicioONU",
     "ServicioPendientes",
+    "ServicioPropuestaAlta",
     "crear_contenedor",
+    "elegir_planes",
     "es_navegacion",
     "es_solo_lectura",
     "leer_equipos",
+    "segmento_de",
 ]

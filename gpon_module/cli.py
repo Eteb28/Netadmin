@@ -23,6 +23,8 @@ Comandos disponibles::
     pendientes <id>   ONU detectadas y sin autorizar (AutoFind)
     autorizar <id>    da de alta una ONU (simulado salvo que se pida --aplicar)
     baja <id>         da de baja una ONU (simulado salvo que se pida --aplicar)
+    planes <id>       lista los perfiles de tráfico; --sembrar carga los conocidos
+    cliente <id>      lo que se autocompleta a partir del número de cliente
     listar-olts       OLT registradas
     descubrir <id>    descubre e inventaría una OLT
     onus <id>         inventario de ONU de una OLT
@@ -43,13 +45,14 @@ from .config import Configuracion
 from .core.cifrado import CifradorFernet
 from .core.enums import Capacidad, EstadoONU, Fabricante, MotivoCaida
 from .core.errors import ErrorAutenticacion, ErrorGPON, ErrorTransporte
-from .core.models import CredencialesOLT, SolicitudAutorizacion
+from .core.models import CredencialesOLT, PerfilTrafico, SolicitudAutorizacion
 from .core.optica import clasificar
 from .core.registry import fabricantes_registrados
 from .drivers.mock.parque import generar_parque
 from .drivers.transport import PROTOCOLOS_CLI
 from .drivers.transport.deteccion import sondear_gestion
 from .drivers.vsol.parser_config import parsear_running_config
+from .drivers.vsol.planes_conocidos import PLANES_ERLAN
 from .services import (
     Contenedor,
     ServicioInventarioArchivo,
@@ -653,6 +656,89 @@ def comando_baja(args: argparse.Namespace) -> int:
     return 1
 
 
+def comando_planes(args: argparse.Namespace) -> int:
+    """Muestra los perfiles de tráfico guardados de una OLT.
+
+    Con --sembrar carga los 26 verificados contra la OLT de Belgrano, para que
+    el desplegable del alta esté lleno antes del primer inventario. La fuente de
+    verdad sigue siendo el equipo: `gpon inventario-cli` los pisa.
+    """
+    with _sistema(args) as sistema:
+        olt = sistema.servicio_olt.obtener(args.olt_id)
+
+        if args.sembrar:
+            guardados = sistema.repositorio_perfiles.obtener_de_olt(args.olt_id)
+            if guardados.trafico and not args.forzar:
+                print(
+                    f"{olt.nombre} ya tiene {len(guardados.trafico)} perfiles leídos del equipo.\n"
+                    "No se pisan con la semilla: agregá --forzar si es lo que querés.",
+                    file=sys.stderr,
+                )
+                return 1
+            semilla = replace(
+                guardados,
+                trafico=tuple(
+                    PerfilTrafico(olt_id=args.olt_id, nombre=nombre) for nombre in PLANES_ERLAN
+                ),
+            )
+            sistema.repositorio_perfiles.reemplazar_de_olt(args.olt_id, semilla)
+            print(f"Cargados {len(PLANES_ERLAN)} perfiles de tráfico en {olt.nombre}.")
+            print("Para leerlos del equipo:  gpon inventario-cli", args.olt_id)
+
+        perfiles = sistema.repositorio_perfiles.obtener_de_olt(args.olt_id)
+
+    _titulo(f"Perfiles de tráfico de {olt.nombre}")
+    if not perfiles.trafico:
+        print("No hay ninguno guardado.")
+        print(f"  gpon inventario-cli {args.olt_id}     los lee del equipo")
+        print(f"  gpon planes {args.olt_id} --sembrar   carga los conocidos de ERLAN")
+        return 0
+
+    for perfil in perfiles.trafico:
+        print(f"  {perfil.nombre}")
+    print(f"\n{len(perfiles.trafico)} perfiles.")
+    return 0
+
+
+def comando_cliente(args: argparse.Namespace) -> int:
+    """Muestra qué se autocompletaría para un número de cliente.
+
+    No toca el equipo ni el sistema comercial: sólo lee y propone. Sirve para
+    revisar la traducción del plan antes de dar de alta a nadie.
+    """
+    with _sistema(args) as sistema:
+        if not sistema.servicio_propuesta_alta.disponible:
+            print(
+                "No hay sistema comercial configurado. Apuntá GPON_BASE_CLIENTES a la\n"
+                "base de Pucará (se abre en modo sólo lectura) o cargá los datos a mano.",
+                file=sys.stderr,
+            )
+            return 1
+        propuesta = sistema.servicio_propuesta_alta.proponer(args.olt_id, args.numero)
+
+    cliente = propuesta.cliente
+    _titulo(f"Cliente {cliente.numero} — {cliente.nombre}")
+    print(f"Plan            {cliente.plan}")
+    print(f"Estado          {cliente.estado}")
+    print(f"Ubicación       {cliente.sitio or '—'}  {propuesta.cliente.ubicacion or '—'}")
+
+    _titulo("Lo que se completaría solo")
+    print(f"Perfil de ONU   {propuesta.perfil_onu or '—'}")
+    print(f"Plan de bajada  {propuesta.trafico_bajada or '—'}")
+    print(f"Plan de subida  {propuesta.trafico_subida or '—'}")
+    print(f"  ({propuesta.motivo_plan})")
+    print(f"VLAN            {propuesta.vlan}")
+    print(f"Descripción     GPON0/<pon>:<idx>_{propuesta.sufijo_descripcion}")
+    oculta = "*" * len(propuesta.pppoe_password)
+    print(f"PPPoE           {propuesta.pppoe_usuario or '—'} / {oculta or '—'}")
+
+    if propuesta.advertencias:
+        print()
+        for aviso in propuesta.advertencias:
+            print(f"  \033[33m•\033[0m {aviso}")
+    return 0 if propuesta.completa else 1
+
+
 def comando_probar_cli(args: argparse.Namespace) -> int:
     """Dice por dónde se puede entrar a la CLI de una OLT, y por dónde no.
 
@@ -1157,6 +1243,21 @@ def construir_parser() -> argparse.ArgumentParser:
         "--usuario-operacion", default="", help="quién hace la baja, para la auditoría"
     )
     baja.set_defaults(funcion=comando_baja)
+
+    planes = sub.add_parser("planes", help="perfiles de tráfico guardados de una OLT")
+    planes.add_argument("olt_id", type=int)
+    planes.add_argument(
+        "--sembrar", action="store_true", help="cargar los 26 verificados en la OLT de ERLAN"
+    )
+    planes.add_argument(
+        "--forzar", action="store_true", help="sembrar aunque ya haya perfiles guardados"
+    )
+    planes.set_defaults(funcion=comando_planes)
+
+    cliente = sub.add_parser("cliente", help="qué se autocompleta para un número de cliente")
+    cliente.add_argument("olt_id", type=int)
+    cliente.add_argument("numero", help="número de cliente, p. ej. 034716")
+    cliente.set_defaults(funcion=comando_cliente)
 
     probar_cli = sub.add_parser(
         "probar-cli", help="sondea los puertos de gestión de una OLT (no envía credenciales)"

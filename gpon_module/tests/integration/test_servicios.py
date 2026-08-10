@@ -18,6 +18,7 @@ from gpon_module.core.enums import (
 )
 from gpon_module.core.errors import (
     CapacidadNoSoportada,
+    ErrorRepositorio,
     ErrorValidacion,
     NoEncontrado,
 )
@@ -375,20 +376,58 @@ class TestContenedor:
         assert sistema.servicio_descubrimiento is not None
         assert sistema.conexion.version_esquema() >= 1
 
-    def test_el_modulo_no_importa_nada_de_pucara(self) -> None:
-        """Requisito explícito: sin dependencias hacia Pucará, en ninguna dirección."""
+    def test_el_modulo_no_importa_codigo_de_pucara(self) -> None:
+        """Requisito explícito: sin dependencias hacia Pucará, en ninguna dirección.
+
+        Lo que se mide es el **módulo importado**, no el texto de la línea: el
+        módulo lee la base comercial de Pucará —de sólo lectura, y por una ruta
+        de configuración—, así que tiene clases con "Pucara" en el nombre. Eso
+        no es una dependencia de código; importar ``pucara.algo`` sí lo sería,
+        y es lo que este test prohíbe.
+        """
+        import ast
         import pathlib
 
         raiz = pathlib.Path(__file__).resolve().parents[2]
+        prohibidos = ("pucara", "netadmin")
         sospechosos = []
+
         for archivo in raiz.rglob("*.py"):
             if "tests" in archivo.parts:
                 continue
-            texto = archivo.read_text(encoding="utf-8")
-            for linea in texto.splitlines():
-                despojada = linea.strip()
-                if despojada.startswith(("import ", "from ")) and (
-                    "pucara" in despojada.lower() or "netadmin" in despojada.lower()
-                ):
-                    sospechosos.append(f"{archivo.name}: {despojada}")
+            arbol = ast.parse(archivo.read_text(encoding="utf-8"), filename=str(archivo))
+            for nodo in ast.walk(arbol):
+                if isinstance(nodo, ast.Import):
+                    modulos = [alias.name for alias in nodo.names]
+                elif isinstance(nodo, ast.ImportFrom):
+                    modulos = [nodo.module or ""]
+                else:
+                    continue
+                for modulo in modulos:
+                    raiz_modulo = modulo.split(".")[0].lower()
+                    if raiz_modulo in prohibidos:
+                        sospechosos.append(f"{archivo.name}: {modulo}")
+
         assert sospechosos == []
+
+    def test_la_base_comercial_se_abre_de_solo_lectura(self, tmp_path) -> None:
+        """Que el alta de una ONU no pueda editar la base comercial.
+
+        No alcanza con no escribir: se abre con ``mode=ro``, así que el intento
+        lo rechaza SQLite. Es la diferencia entre una convención y una garantía.
+        """
+        import sqlite3
+
+        from gpon_module.database.repositories import RepositorioClientesPucara
+
+        base = tmp_path / "comercial.db"
+        with sqlite3.connect(base) as preparacion:
+            preparacion.execute("CREATE TABLE clientes (nro_cliente TEXT)")
+            preparacion.execute("INSERT INTO clientes VALUES ('034716')")
+
+        repositorio = RepositorioClientesPucara(base)
+        with pytest.raises(ErrorRepositorio):
+            repositorio._consultar("DELETE FROM clientes", ())
+
+        with sqlite3.connect(base) as comprobacion:
+            assert comprobacion.execute("SELECT COUNT(*) FROM clientes").fetchone()[0] == 1

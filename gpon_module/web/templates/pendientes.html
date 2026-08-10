@@ -41,6 +41,24 @@
     <span class="text-secondary">en el PON <span id="pon-elegido"></span></span>
   </div>
   <div class="card-body">
+    <!-- Paso 1a: el número de cliente trae todo lo demás -->
+    <div class="row g-3 align-items-end mb-3 pb-3 border-bottom">
+      <div class="col-md-4">
+        <label class="form-label small fw-semibold">Número de cliente</label>
+        <div class="input-group input-group-sm">
+          <input class="form-control monoespaciada" id="nro-cliente" placeholder="034716"
+                 onkeydown="if(event.key==='Enter'){event.preventDefault();buscarCliente();}">
+          <button class="btn btn-outline-primary" onclick="buscarCliente()">Buscar</button>
+        </div>
+        <div class="form-text">Completa el plan, la descripción y el PPPoE desde Pucará.</div>
+      </div>
+      <div class="col-md-8">
+        <div id="ficha-cliente" class="small text-secondary">
+          Opcional: si lo dejás vacío, cargá los campos a mano.
+        </div>
+      </div>
+    </div>
+
     <div class="row g-3">
       <div class="col-md-4">
         <label class="form-label small">Perfil de ONU</label>
@@ -58,26 +76,26 @@
       <div class="col-md-4">
         <label class="form-label small">VLAN</label>
         <input class="form-control form-control-sm monoespaciada" id="vlan" value="1001">
+        <div class="form-text">1001 por defecto. Es la misma que va en la WAN del CPE.</div>
       </div>
       <div class="col-md-4">
         <label class="form-label small">Plan de bajada</label>
-        <input class="form-control form-control-sm monoespaciada" id="bajada" list="perfiles-trafico"
-               placeholder="100M-Dom-DOW">
-        <datalist id="perfiles-trafico"></datalist>
-        <div class="form-text">
+        <select class="form-select form-select-sm monoespaciada" id="bajada"></select>
+        <div class="form-text" id="motivo-plan">
           La lista sale del equipo. Si está vacía, corré <code>gpon inventario-cli</code>.
         </div>
       </div>
       <div class="col-md-4">
         <label class="form-label small">Plan de subida</label>
-        <input class="form-control form-control-sm monoespaciada" id="subida" list="perfiles-trafico"
-               placeholder="100M-Dom-UP">
+        <select class="form-select form-select-sm monoespaciada" id="subida"></select>
       </div>
       <div class="col-md-4">
         <label class="form-label small">Descripción</label>
         <input class="form-control form-control-sm monoespaciada" id="descripcion"
-               placeholder="GPON0/1:29_040001">
-        <div class="form-text">Sin espacios. Vacío arma una por defecto.</div>
+               placeholder="se arma sola">
+        <div class="form-text" id="pista-descripcion">
+          Sin espacios. Vacío arma <code>GPON0/pon:idx_cliente_CDOx_NAPy</code>.
+        </div>
       </div>
     </div>
 
@@ -141,6 +159,7 @@ const PROTOCOLO = new URLSearchParams(location.search).get('protocolo') || 'ssh'
 let elegida = null;      // la ONU pendiente seleccionada
 let previsto = null;     // la respuesta de la simulación
 let planes = [];         // los nombres de plan que la OLT tiene definidos
+let propuesta = null;    // lo que trajo el sistema comercial del cliente
 
 async function cargar() {
   const olt = await api(`/olts/${OLT_ID}`);
@@ -192,7 +211,7 @@ async function cargarPerfiles() {
     const perfiles = await api(`/olts/${OLT_ID}/perfiles`);
     llenar('perfiles-dba', (perfiles.dba || []).map((p) => p.nombre));
     planes = (perfiles.trafico || []).map((p) => p.nombre);
-    llenar('perfiles-trafico', planes);
+    llenarPlanes();
   } catch (error) {
     avisar(`No se pudieron leer los perfiles: ${error.message}. `
          + 'Se pueden escribir a mano.', 'warning');
@@ -209,9 +228,80 @@ function llenar(id, valores) {
   if (lista) lista.innerHTML = valores.map((v) => `<option value="${escapar(v)}">`).join('');
 }
 
+// Los planes van en un <select> y no en un campo libre: los nombres del equipo
+// no siguen ninguna convención (100M-Dom-DOW, 100M-Pymes-Dowm, 50M-PYMES-DOW) y
+// una letra de diferencia corta el alta a mitad, con la ONU ya declarada.
+function llenarPlanes() {
+  const vacio = '<option value="">— elegir —</option>';
+  const opciones = vacio + planes.map((p) =>
+    `<option value="${escapar(p)}">${escapar(p)}</option>`).join('');
+  for (const id of ['bajada', 'subida']) {
+    document.getElementById(id).innerHTML = opciones;
+  }
+  if (!planes.length) {
+    document.getElementById('motivo-plan').innerHTML =
+      'Esta OLT no tiene planes cargados: corré <code>gpon inventario-cli</code> '
+      + 'o <code>gpon planes --sembrar</code>.';
+  }
+}
+
+async function buscarCliente() {
+  const numero = document.getElementById('nro-cliente').value.trim();
+  const ficha = document.getElementById('ficha-cliente');
+  if (!numero) {
+    ficha.innerHTML = '<span class="text-secondary">Cargá los campos a mano.</span>';
+    return;
+  }
+
+  ficha.textContent = 'Buscando…';
+  let p;
+  try {
+    p = await api(`/olts/${OLT_ID}/clientes/${encodeURIComponent(numero)}`);
+  } catch (error) {
+    ficha.innerHTML = `<span class="text-danger">${escapar(error.message)}</span>`;
+    return;
+  }
+  propuesta = p;
+
+  // Se completan los campos pero no se bloquean: lo que llega del sistema
+  // comercial es una propuesta, y el que autoriza es el que decide.
+  if (p.perfil_onu) document.getElementById('perfil').value = p.perfil_onu;
+  if (p.vlan) document.getElementById('vlan').value = p.vlan;
+  elegirEnLista('bajada', p.trafico_bajada);
+  elegirEnLista('subida', p.trafico_subida);
+  document.getElementById('motivo-plan').textContent =
+    p.motivo_plan ? `Elegido por: ${p.motivo_plan}.` : '';
+  document.getElementById('pista-descripcion').innerHTML =
+    `Vacío arma <code>GPON0/pon:idx_${escapar(p.sufijo_descripcion)}</code>.`;
+
+  const c = p.cliente;
+  ficha.innerHTML = `
+    <div class="fw-semibold text-body">${escapar(c.nombre)}</div>
+    <div>${escapar(c.plan)} · ${escapar(c.estado)} ·
+         ${escapar(c.sitio || 'sin sitio')} CDO ${c.cdo ?? '—'} NAP ${c.nap ?? '—'}</div>
+    <div class="monoespaciada">PPPoE ${escapar(p.pppoe_usuario || '—')}
+         · ONU en Pucará ${escapar(c.numero_serie || '—')}</div>
+    ${(p.advertencias || []).map((a) =>
+      `<div class="text-warning-emphasis mt-1">⚠ ${escapar(a)}</div>`).join('')}`;
+
+  // El serial que el técnico instaló manda sobre el que figura cargado: la ONU
+  // pudo haberse cambiado y Pucará todavía no enterarse.
+  if (elegida && c.numero_serie && c.numero_serie.toUpperCase() !== elegida.serie.toUpperCase()) {
+    ficha.innerHTML += `<div class="text-warning-emphasis mt-1">⚠ En Pucará este cliente
+      figura con la ONU ${escapar(c.numero_serie)}, y se está autorizando
+      ${escapar(elegida.serie)}. Si le cambiaron el equipo, actualizalo en Pucará.</div>`;
+  }
+}
+
+function elegirEnLista(id, valor) {
+  const lista = document.getElementById(id);
+  if (valor && [...lista.options].some((o) => o.value === valor)) lista.value = valor;
+}
+
 function elegir(pon, serie) {
   elegida = { pon, serie };
   previsto = null;
+  propuesta = null;
   document.getElementById('serie-elegida').textContent = serie;
   document.getElementById('pon-elegido').textContent = pon;
   document.getElementById('formulario').classList.remove('d-none');
@@ -237,6 +327,7 @@ function cuerpoDelPedido(dryRun) {
     trafico_subida: document.getElementById('subida').value.trim(),
     trafico_bajada: document.getElementById('bajada').value.trim(),
     descripcion: document.getElementById('descripcion').value.trim(),
+    sufijo_descripcion: propuesta ? propuesta.sufijo_descripcion : '',
     vlan: parseInt(document.getElementById('vlan').value, 10) || 1001,
     usuario: document.getElementById('usuario').value.trim() || 'web',
     protocolo: PROTOCOLO,
@@ -265,6 +356,12 @@ async function previsualizar() {
   const problema = planDesconocido('bajada') || planDesconocido('subida');
   if (problema) {
     avisar(problema, 'warning');
+    return;
+  }
+  if (!document.getElementById('bajada').value !== !document.getElementById('subida').value) {
+    avisar('Faltó uno de los dos planes. Con sólo la bajada, la subida queda con el '
+         + 'ancho de banda del perfil DBA y nadie se entera hasta que el cliente se queje.',
+           'warning');
     return;
   }
   avisar('Consultando el equipo…', 'secondary');

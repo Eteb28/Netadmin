@@ -6,6 +6,7 @@ por dobles en un test, no obliga a tocar la lógica de negocio.
 """
 
 from .base import RepositorioBase
+from .clientes import RepositorioClientesPucara
 from .olt import RepositorioOLTSQL
 from .onu import RepositorioONUSQL, RepositorioPuertoPONSQL
 from .perfiles import RepositorioPerfilesSQL
@@ -20,6 +21,7 @@ from .telemetria import (
 __all__ = [
     "RepositorioAlarmaSQL",
     "RepositorioBase",
+    "RepositorioClientesPucara",
     "RepositorioEventoSQL",
     "RepositorioMetricaSQL",
     "RepositorioOLTSQL",

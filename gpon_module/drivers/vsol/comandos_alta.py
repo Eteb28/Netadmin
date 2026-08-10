@@ -64,6 +64,10 @@ class SolicitudAlta:
     trafico_bajada: str = ""
     vlan: int = 1001
     ranura: int = 0
+    #: ``034716_CDO8_NAP3``: número de cliente y ubicación, que se le pega al
+    #: prefijo del puerto. Va aparte de ``descripcion`` porque el prefijo lo
+    #: sabe recién el alta, cuando ya eligió puerto e índice.
+    sufijo_descripcion: str = ""
 
     def validar(self) -> None:
         """Rechaza todo lo dudoso **antes** de que salga un comando al equipo.
@@ -97,9 +101,12 @@ class SolicitudAlta:
             if valor and not NOMBRE.match(valor):
                 raise ErrorValidacion(f"El {etiqueta} {valor!r} tiene caracteres no admitidos")
 
-        if self.descripcion and not DESCRIPCION.match(self.descripcion):
+        # Se valida la efectiva, que es la que sale al equipo: un sufijo con un
+        # espacio partiría el comando en dos y el resto se interpretaría como
+        # otra cosa.
+        if not DESCRIPCION.match(self.descripcion_efectiva):
             raise ErrorValidacion(
-                f"La descripción {self.descripcion!r} tiene caracteres no admitidos. "
+                f"La descripción {self.descripcion_efectiva!r} tiene caracteres no admitidos. "
                 "Se admiten letras, números, punto, guion, dos puntos y barra."
             )
         if not 1 <= self.vlan <= 4094:
@@ -109,11 +116,15 @@ class SolicitudAlta:
     def descripcion_efectiva(self) -> str:
         """La descripción a aplicar, con el formato que ya usa el parque.
 
-        En ERLAN todas siguen la forma ``GPON0/7:1_032074``: puerto, índice y
-        número de cliente. Si no se indica otra, se arma la parte que el equipo
-        conoce y queda coherente con las 284 que ya están.
+        En ERLAN siguen la forma ``GPON0/2:3_035235_CDO21_NAP2``: puerto,
+        índice, número de cliente y ubicación. El prefijo lo arma el alta
+        porque el puerto y el índice se saben recién acá; el sufijo llega del
+        sistema comercial. Una descripción explícita gana sobre todo eso.
         """
-        return self.descripcion or f"GPON{self.ranura}/{self.pon}:{self.onu_id}"
+        if self.descripcion:
+            return self.descripcion
+        prefijo = f"GPON{self.ranura}/{self.pon}:{self.onu_id}"
+        return f"{prefijo}_{self.sufijo_descripcion}" if self.sufijo_descripcion else prefijo
 
 
 def navegacion_al_puerto(solicitud: SolicitudAlta) -> tuple[str, ...]:
