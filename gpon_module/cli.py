@@ -22,6 +22,7 @@ Comandos disponibles::
     explorar-config   busca los comandos de GPON en los modos de la CLI
     pendientes <id>   ONU detectadas y sin autorizar (AutoFind)
     autorizar <id>    da de alta una ONU (simulado salvo que se pida --aplicar)
+    baja <id>         da de baja una ONU (simulado salvo que se pida --aplicar)
     listar-olts       OLT registradas
     descubrir <id>    descubre e inventaría una OLT
     onus <id>         inventario de ONU de una OLT
@@ -588,10 +589,67 @@ def comando_autorizar(args: argparse.Namespace) -> int:
     if resultado.quedo_a_medias:
         print(
             f"\nATENCIÓN: se alcanzaron a aplicar {len(resultado.comandos_aplicados)} comandos.\n"
-            f"La ONU {solicitud.pon}:{solicitud.onu_id} quedó a medio configurar y hay que\n"
-            "revisarla en el equipo antes de reintentar.",
+            f"La ONU {solicitud.pon}:{solicitud.onu_id} quedó a medio configurar.\n"
+            "Sacala antes de reintentar, o el índice queda ocupado con una ONU sin servicio:\n"
+            f"  gpon baja {args.olt_id} --pon {solicitud.pon} --indice {solicitud.onu_id} "
+            f"--serie {solicitud.numero_serie}",
             file=sys.stderr,
         )
+    return 1
+
+
+def comando_baja(args: argparse.Namespace) -> int:
+    """Da de baja una ONU de un puerto PON.
+
+    Deja al cliente sin servicio en el momento en que se ejecuta, así que
+    también es simulado por defecto: primero muestra qué ONU hay en ese índice
+    y qué comando aplicaría. El uso previsto es limpiar un alta que quedó a
+    medias.
+    """
+    with _sistema(args) as sistema:
+        olt = sistema.servicio_olt.obtener(args.olt_id)
+        _titulo(f"Baja de {args.pon}:{args.indice} en {olt.nombre} ({olt.host})")
+
+        if args.aplicar:
+            print("\033[33mMODO REAL: la ONU se va a borrar del equipo.\033[0m")
+        else:
+            print("Modo simulación: no se envía ningún comando. Agregá --aplicar para hacerlo.")
+
+        try:
+            resultado = sistema.servicio_baja_onu.eliminar(
+                args.olt_id,
+                pon=args.pon,
+                onu_id=args.indice,
+                numero_serie_esperado=args.serie,
+                dry_run=not args.aplicar,
+                protocolo=args.protocolo,
+                timeout=args.timeout,
+                usuario=args.usuario_operacion,
+                ruta_traza=args.traza,
+            )
+        except ErrorAutenticacion as exc:
+            print(f"\n{exc}\n", file=sys.stderr)
+            _ayuda_credenciales(args.olt_id, args.protocolo)
+            return 1
+
+    # Mostrar el serial es lo que le permite al operador frenar a tiempo: el
+    # índice solo no distingue una ONU a medio configurar de la de un vecino.
+    print(f"\nEn ese índice hay: {resultado.numero_serie or '(el equipo no reporta serial)'}")
+
+    _titulo("Comandos" if resultado.simulado else "Comandos enviados")
+    for comando in resultado.comandos:
+        print(f"  {' ' if resultado.simulado else '+'} {comando}")
+
+    if resultado.simulado:
+        print("\nNo se envió ninguno. Para borrarla de verdad, agregá --aplicar.")
+        return 0
+
+    if resultado.ok:
+        print(f"\n\033[32mONU {args.pon}:{args.indice} dada de baja.\033[0m")
+        return 0
+
+    print(f"\n\033[31mEl equipo rechazó: {resultado.comando_que_fallo}\033[0m", file=sys.stderr)
+    print(f"{resultado.error}", file=sys.stderr)
     return 1
 
 
@@ -1077,6 +1135,28 @@ def construir_parser() -> argparse.ArgumentParser:
         "--usuario-operacion", default="", help="quién hace el alta, para la auditoría"
     )
     autorizar.set_defaults(funcion=comando_autorizar)
+
+    baja = sub.add_parser("baja", help="da de baja una ONU de un puerto PON (simulado por defecto)")
+    baja.add_argument("olt_id", type=int)
+    baja.add_argument("--pon", type=int, required=True, help="puerto PON")
+    baja.add_argument("--indice", type=int, required=True, help="índice de ONU dentro del puerto")
+    baja.add_argument(
+        "--serie",
+        default="",
+        help="serial que se espera encontrar; si no coincide, no se borra nada",
+    )
+    baja.add_argument(
+        "--aplicar", action="store_true", help="enviar el comando de verdad al equipo"
+    )
+    baja.add_argument(
+        "--protocolo", default="ssh", choices=list(PROTOCOLOS_CLI), help="canal de la CLI"
+    )
+    baja.add_argument("--timeout", type=float, default=30.0)
+    baja.add_argument("--traza", metavar="ARCHIVO", help="guardar la sesión cruda")
+    baja.add_argument(
+        "--usuario-operacion", default="", help="quién hace la baja, para la auditoría"
+    )
+    baja.set_defaults(funcion=comando_baja)
 
     probar_cli = sub.add_parser(
         "probar-cli", help="sondea los puertos de gestión de una OLT (no envía credenciales)"

@@ -28,6 +28,8 @@ from gpon_module.core.models import (
     Evento,
     Metrica,
     Operacion,
+    Perfiles,
+    PerfilTrafico,
     RefONU,
 )
 from gpon_module.database.repositories import (
@@ -37,6 +39,7 @@ from gpon_module.database.repositories import (
     RepositorioOLTSQL,
     RepositorioONUSQL,
     RepositorioOperacionSQL,
+    RepositorioPerfilesSQL,
 )
 
 CREDENCIALES = CredencialesOLT(
@@ -389,3 +392,50 @@ class TestRepositorioOperacion:
         assert recuperada.usuario == "tecnico1"
         assert recuperada.ref_onu == RefONU(2, 9)
         assert recuperada.simulado is False
+
+
+
+class TestRepositorioPerfiles:
+    """Los planes de tráfico son la lista de la que se elige al dar de alta.
+
+    Que sobrevivan al viaje de ida y vuelta con el nombre intacto es la única
+    razón por la que existen en la base: un nombre normalizado o recortado sería
+    peor que no tenerlo, porque parecería válido.
+    """
+
+    def test_los_planes_de_trafico_vuelven_con_el_nombre_exacto(
+        self, conexion, olt_guardada
+    ) -> None:
+        repositorio = RepositorioPerfilesSQL(conexion)
+        nombres = ("100M-Dom-DOW", "100M-Pymes-Dowm", "50M-PYMES-DOW", "5M-Dom-Up")
+
+        repositorio.reemplazar_de_olt(
+            olt_guardada.id,
+            Perfiles(
+                trafico=tuple(
+                    PerfilTrafico(olt_id=olt_guardada.id, nombre=n, identificador_equipo=str(i))
+                    for i, n in enumerate(nombres, 1)
+                )
+            ),
+        )
+        guardados = repositorio.obtener_de_olt(olt_guardada.id)
+
+        assert sorted(p.nombre for p in guardados.trafico) == sorted(nombres)
+
+    def test_un_plan_borrado_en_el_equipo_desaparece_de_la_base(
+        self, conexion, olt_guardada
+    ) -> None:
+        """Un plan fantasma se ofrecería al dar de alta y el equipo lo rechazaría."""
+        repositorio = RepositorioPerfilesSQL(conexion)
+        repositorio.reemplazar_de_olt(
+            olt_guardada.id,
+            Perfiles(trafico=(PerfilTrafico(nombre="viejo"), PerfilTrafico(nombre="100M-Dom-UP"))),
+        )
+
+        repositorio.reemplazar_de_olt(
+            olt_guardada.id, Perfiles(trafico=(PerfilTrafico(nombre="100M-Dom-UP"),))
+        )
+
+        assert [p.nombre for p in repositorio.obtener_de_olt(olt_guardada.id).trafico] == [
+            "100M-Dom-UP"
+        ]

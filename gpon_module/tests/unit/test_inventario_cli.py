@@ -31,6 +31,9 @@ exit
 profile dba id 1 name Internet
 type 4 maximum 300000
 exit
+!
+profile traffic id 7 name 100M-Dom-DOW
+profile traffic id 8 name 100M-Dom-UP
 """
 
 
@@ -133,6 +136,23 @@ class TestCompletado:
 
         assert [p.nombre for p in perfiles.guardados.dba] == ["Internet"]
         assert [v.vlan_id for v in perfiles.guardados.vlans] == [1001]
+
+    def test_guarda_los_planes_de_trafico_con_el_nombre_exacto(self, armar) -> None:
+        """Sin esto, el plan queda a mano y basta una letra para tumbar un alta.
+
+        Los nombres del equipo no siguen ninguna convención —``100M-Dom-DOW``
+        contra ``100M-Pymes-Dowm``—, así que el nombre tiene que llegar del
+        equipo tal cual, sin normalizar ni corregir.
+        """
+        servicio, _, perfiles = armar([])
+
+        resultado = servicio.aplicar(1, parsear_running_config(CONFIGURACION))
+
+        assert [p.nombre for p in perfiles.guardados.trafico] == [
+            "100M-Dom-DOW",
+            "100M-Dom-UP",
+        ]
+        assert resultado.perfiles_trafico == 2
 
 
 class TestLimites:

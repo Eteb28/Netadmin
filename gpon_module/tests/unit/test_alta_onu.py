@@ -10,7 +10,7 @@ import pytest
 
 from gpon_module.core.enums import Fabricante
 from gpon_module.core.errors import CapacidadNoSoportada, ErrorComando, ErrorValidacion
-from gpon_module.core.models import OLT, CredencialesOLT
+from gpon_module.core.models import OLT, CredencialesOLT, Perfiles, PerfilTrafico
 from gpon_module.core.reloj import RelojFijo
 from gpon_module.services.alta_onu import ServicioAltaONU
 
@@ -83,13 +83,27 @@ class TransporteFalso:
         ]
 
 
+class RepositorioPerfilesFalso:
+    """Los planes tal como los nombra la OLT de ERLAN, con sus rarezas."""
+
+    def __init__(self, nombres: tuple[str, ...] = ()) -> None:
+        self._nombres = nombres
+
+    def obtener_de_olt(self, _olt_id: int) -> Perfiles:
+        return Perfiles(trafico=tuple(PerfilTrafico(nombre=n) for n in self._nombres))
+
+
+PLANES = ("100M-Dom-DOW", "100M-Dom-UP", "50M-PYMES-DOW", "50M-PYMES-UP")
+
+
 @pytest.fixture
 def armar():
-    def _armar(transporte: TransporteFalso):
+    def _armar(transporte: TransporteFalso, planes: tuple[str, ...] = PLANES):
         operaciones = RepositorioOperacionFalso()
         servicio = ServicioAltaONU(
             repositorio_olt=RepositorioOLTFalso(),
             repositorio_operacion=operaciones,
+            repositorio_perfiles=RepositorioPerfilesFalso(planes),
             reloj=RelojFijo(),
             fabrica_transporte=lambda **_kwargs: transporte,
         )
@@ -166,6 +180,105 @@ class TestVerificaciones:
             servicio.autorizar(1, numero_serie="esto no es un serial", perfil_onu="V2802DAC")
 
         assert transporte.escrituras == []
+
+
+class TestPlanesDeTrafico:
+    """Contra la OLT real, un plan mal tipeado dejó una ONU a medio configurar.
+
+    El operador escribió ``100M-Dom-DOWN``; en el equipo el perfil se llama
+    ``100M-Dom-DOW``. El ``traffic-limit`` va sexto en la secuencia: para cuando
+    el equipo lo rechazó, la ONU ya estaba declarada, con tcont y gemport, y sin
+    servicio. Todo esto existe para que eso no vuelva a pasar.
+    """
+
+    def test_un_plan_que_no_existe_se_rechaza_antes_de_abrir_la_sesion(self, armar) -> None:
+        transporte = TransporteFalso()
+        servicio, _ = armar(transporte)
+
+        with pytest.raises(ErrorValidacion, match="no existe"):
+            servicio.autorizar(
+                1,
+                numero_serie="GPON002E64F8",
+                perfil_onu="V2802DAC",
+                trafico_subida="100M-Dom-UP",
+                trafico_bajada="100M-Dom-DOWN",
+                dry_run=False,
+            )
+
+        # Ni siquiera se llegó a mirar el equipo.
+        assert transporte.ejecutados == []
+
+    def test_ofrece_el_nombre_parecido(self, armar) -> None:
+        """Que es casi siempre la respuesta: sobra o falta una letra."""
+        servicio, _ = armar(TransporteFalso())
+
+        with pytest.raises(ErrorValidacion, match="100M-Dom-DOW"):
+            servicio.autorizar(
+                1,
+                numero_serie="GPON002E64F8",
+                perfil_onu="V2802DAC",
+                trafico_bajada="100M-Dom-DOWN",
+                trafico_subida="100M-Dom-UP",
+            )
+
+    def test_la_diferencia_de_mayusculas_tambien_se_rechaza(self, armar) -> None:
+        """``50M-PYMES-DOW`` y ``50m-pymes-dow`` no son el mismo perfil para el equipo."""
+        servicio, _ = armar(TransporteFalso())
+
+        with pytest.raises(ErrorValidacion, match="50M-PYMES-DOW"):
+            servicio.autorizar(
+                1,
+                numero_serie="GPON002E64F8",
+                perfil_onu="V2802DAC",
+                trafico_bajada="50m-pymes-dow",
+                trafico_subida="50M-PYMES-UP",
+            )
+
+    def test_un_plan_valido_pasa(self, armar) -> None:
+        transporte = TransporteFalso()
+        servicio, _ = armar(transporte)
+
+        resultado = servicio.autorizar(
+            1,
+            numero_serie="GPON002E64F8",
+            perfil_onu="V2802DAC",
+            trafico_subida="100M-Dom-UP",
+            trafico_bajada="100M-Dom-DOW",
+            dry_run=False,
+        )
+
+        assert resultado.ok
+
+    def test_sin_inventario_no_se_bloquea_el_alta(self, armar) -> None:
+        """Una base todavía vacía no es motivo para no dejar trabajar.
+
+        Se avisa por log y se manda igual: el equipo sigue siendo el que
+        decide. Bloquear acá convertiría un inventario pendiente en una
+        interrupción del servicio.
+        """
+        transporte = TransporteFalso()
+        servicio, _ = armar(transporte, planes=())
+
+        resultado = servicio.autorizar(
+            1,
+            numero_serie="GPON002E64F8",
+            perfil_onu="V2802DAC",
+            trafico_subida="lo-que-sea",
+            trafico_bajada="tampoco-existe",
+            dry_run=False,
+        )
+
+        assert resultado.ok
+
+    def test_sin_planes_pedidos_no_se_valida_nada(self, armar) -> None:
+        """El límite de tráfico es opcional: sin plan, no hay nada que validar."""
+        transporte = TransporteFalso()
+        servicio, _ = armar(transporte)
+
+        resultado = servicio.autorizar(1, numero_serie="GPON002E64F8", perfil_onu="V2802DAC")
+
+        assert resultado.simulado
+        assert not any("traffic-limit" in c for c in resultado.comandos)
 
 
 class TestEscrituraReal:

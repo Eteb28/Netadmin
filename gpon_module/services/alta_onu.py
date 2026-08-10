@@ -9,6 +9,10 @@ conectados, y está armada en ese entendido:
   puerto, que el índice esté libre, que el serial no esté ya dado de alta. Cada
   una de esas comprobaciones evita un alta que dejaría al cliente sin servicio o
   pisaría a otro.
+* **Los nombres de plan se validan contra la base antes de tocar el equipo.**
+  Un plan mal tipeado es la forma más fácil de que el equipo acepte los primeros
+  comandos y rechace el del medio. Se compara con lo que la OLT declaró, y si no
+  coincide se aborta sin haber enviado nada.
 * **Se aborta en el primer rechazo.** Si el equipo dice que no a un comando del
   medio, no se sigue: seguir es lo que deja la ONU a medio configurar. El
   llamador recibe qué comando falló y qué se alcanzó a aplicar.
@@ -18,6 +22,7 @@ conectados, y está armada en ese entendido:
 
 from __future__ import annotations
 
+import difflib
 import logging
 from dataclasses import dataclass, field
 from typing import Any
@@ -69,11 +74,13 @@ class ServicioAltaONU:
         *,
         repositorio_olt: Any,
         repositorio_operacion: Any = None,
+        repositorio_perfiles: Any = None,
         reloj: Any = None,
         fabrica_transporte: Any = crear_transporte_cli,
     ) -> None:
         self._olts = repositorio_olt
         self._operaciones = repositorio_operacion
+        self._perfiles = repositorio_perfiles
         self._reloj = reloj
         self._fabrica_transporte = fabrica_transporte
 
@@ -105,6 +112,10 @@ class ServicioAltaONU:
         olt = self._olts.obtener(olt_id)
         if olt.fabricante not in FABRICANTES_SOPORTADOS:
             raise CapacidadNoSoportada("alta de ONU por CLI", olt.fabricante)
+
+        # Antes de abrir la sesión: un plan mal escrito se detecta acá, gratis,
+        # en vez de a mitad del alta con la ONU ya declarada en el equipo.
+        self._validar_planes(olt_id, trafico_subida, trafico_bajada)
 
         transporte = self._crear_transporte(olt, olt_id, protocolo, timeout, ruta_traza)
 
@@ -147,6 +158,66 @@ class ServicioAltaONU:
         return resultado
 
     # --- verificaciones previas -------------------------------------------
+
+    def _validar_planes(self, olt_id: int, *nombres: str) -> None:
+        """Rechaza un plan de tráfico que la OLT no tiene definido.
+
+        Los nombres reales no siguen ninguna convención —``100M-Dom-DOW``,
+        ``100M-Pymes-Dowm``, ``50M-PYMES-DOW``—, así que la diferencia entre el
+        que existe y el que uno escribiría de memoria es de una letra. Y el
+        ``traffic-limit`` va sexto en la secuencia: cuando el equipo lo rechaza,
+        la ONU ya quedó declarada, con su tcont y su gemport, y sin servicio.
+
+        Se compara exacto. Si hay algo parecido se ofrece, porque el caso normal
+        es justamente ese: una letra de más o una mayúscula distinta.
+
+        Sólo se valida el tráfico. El perfil de ONU y el DBA salen de listas que
+        el módulo todavía no lee completas, y rechazar un nombre válido por no
+        tenerlo en la base sería peor que no validarlo.
+        """
+        pedidos = [nombre.strip() for nombre in nombres if nombre.strip()]
+        if not pedidos:
+            return
+
+        conocidos = self._planes_conocidos(olt_id)
+        if not conocidos:
+            # Sin inventario no hay con qué comparar. Se avisa, pero no se
+            # bloquea un alta por una base todavía vacía.
+            log.warning(
+                "No hay perfiles de tráfico guardados para la OLT %s: "
+                "los planes van sin validar. Corré 'gpon inventario-cli %s'.",
+                olt_id,
+                olt_id,
+            )
+            return
+
+        for nombre in pedidos:
+            if nombre in conocidos:
+                continue
+            raise ErrorValidacion(
+                f"El plan de tráfico '{nombre}' no existe en esta OLT.\n"
+                f"{self._sugerir(nombre, conocidos)}"
+            )
+
+    def _planes_conocidos(self, olt_id: int) -> tuple[str, ...]:
+        if self._perfiles is None:
+            return ()
+        try:
+            perfiles = self._perfiles.obtener_de_olt(olt_id)
+        except Exception as exc:  # pragma: no cover - base rota o sin migrar
+            log.warning("No se pudieron leer los perfiles de tráfico: %s", exc)
+            return ()
+        return tuple(perfil.nombre for perfil in perfiles.trafico)
+
+    @staticmethod
+    def _sugerir(nombre: str, conocidos: tuple[str, ...]) -> str:
+        """Arma el 'quisiste decir', que acá es casi siempre la respuesta."""
+        parecidos = difflib.get_close_matches(nombre, conocidos, n=2, cutoff=0.6)
+        if not parecidos:
+            parecidos = [c for c in conocidos if c.lower() == nombre.lower()]
+        if parecidos:
+            return "¿Quisiste decir " + " o ".join(f"'{p}'" for p in parecidos) + "?"
+        return "Los definidos son: " + ", ".join(conocidos)
 
     def _ubicar(self, transporte: Any, numero_serie: str, pon: int | None) -> int:
         """Confirma que la ONU está esperando, y en qué puerto.

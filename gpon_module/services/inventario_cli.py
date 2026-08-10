@@ -21,7 +21,7 @@ from typing import Any
 
 from ..core.enums import Fabricante
 from ..core.errors import CapacidadNoSoportada, ErrorValidacion
-from ..core.models import ONU, VLAN, PerfilDBA, Perfiles, RefONU
+from ..core.models import ONU, VLAN, PerfilDBA, Perfiles, PerfilTrafico, RefONU
 from ..drivers.transport import crear_transporte_cli
 from ..drivers.vsol.parser_config import ConfiguracionOLT, parsear_running_config
 
@@ -124,7 +124,7 @@ class ServicioInventarioCLI:
             series_nuevas=series_nuevas,
             onus_solo_en_configuracion=tuple(solo_en_configuracion),
             perfiles_dba=len(perfiles.dba),
-            perfiles_trafico=len(configuracion.perfiles_trafico),
+            perfiles_trafico=len(perfiles.trafico),
             vlans=len(perfiles.vlans),
             pon_sin_autoaprendizaje=configuracion.pon_sin_autoaprendizaje,
         )
@@ -190,6 +190,14 @@ class ServicioInventarioCLI:
                     ancho_banda_maximo_kbps=perfil.maximo_kbps,
                 )
                 for perfil in configuracion.perfiles_dba
+            ),
+            trafico=tuple(
+                PerfilTrafico(
+                    olt_id=olt_id,
+                    nombre=perfil.nombre,
+                    identificador_equipo=str(perfil.identificador),
+                )
+                for perfil in configuracion.perfiles_trafico
             ),
             vlans=tuple(VLAN(olt_id=olt_id, vlan_id=vlan_id) for vlan_id in configuracion.vlans),
         )

@@ -11,6 +11,7 @@ resuelve por el registro.
 """
 
 from .alta_onu import ResultadoAlta, ServicioAltaONU
+from .baja_onu import ResultadoBaja, ServicioBajaONU
 from .captura import Captura, SalidaComando, ServicioCaptura, es_solo_lectura
 from .contenedor import Contenedor, crear_contenedor
 from .descubrimiento import ResultadoDescubrimiento, ServicioDescubrimiento
@@ -35,12 +36,14 @@ __all__ = [
     "FabricaDrivers",
     "PotenciaONU",
     "ResultadoAlta",
+    "ResultadoBaja",
     "ResultadoCarga",
     "ResultadoDescubrimiento",
     "ResultadoInventarioCLI",
     "ResultadoPendientes",
     "SalidaComando",
     "ServicioAltaONU",
+    "ServicioBajaONU",
     "ServicioCaptura",
     "ServicioDescubrimiento",
     "ServicioExploracion",

@@ -259,7 +259,7 @@ eso es lo que hay que ir a revisar.
 
 Todo queda auditado con los comandos exactos y con si fue real o simulada.
 
-### Dos errores que costaron una corrida cada uno
+### Tres errores que costaron una corrida cada uno
 
 La primera versión mandaba `configure terminal` una vez por puerto mientras buscaba el
 serial. Desde el segundo puerto ya se estaba en modo configuración, y el equipo lo rechaza.
@@ -273,6 +273,55 @@ salir y volver a entrar, porque las verificaciones ya la dejaron en el puerto co
 Ahora se aplica desde donde está, y la navegación que efectivamente se ejecutó cuenta como
 aplicada, así lo que se informa sigue siendo lo que salió a la red.
 
+La tercera no fue del código sino de un campo de texto libre. El alta llegó hasta el sexto
+comando y ahí el equipo contestó `Error:`:
+
+```
+onu 29 gemport 1 traffic-limit upstream 100M-Dom-UP downstream 100M-Dom-DOWN
+```
+
+El plan en el equipo se llama `100M-Dom-DOW`, sin la N final. Los 26 planes de esa OLT no
+siguen ninguna convención entre sí —`100M-Dom-DOW`, `100M-Pymes-Dowm`, `50M-PYMES-DOW`,
+`5M-Dom-Dow`—, así que escribirlos de memoria es cuestión de tiempo. Y `traffic-limit` va
+sexto: para cuando el equipo lo rechazó, la ONU ya estaba declarada, con su tcont y su
+gemport, y sin servicio.
+
+La corrección tiene tres partes, porque una sola no alcanzaba:
+
+1. Los planes ahora **se guardan** (tabla `perfiles_trafico`), leídos del `show
+   running-config` como el resto del inventario. El nombre viaja tal cual: normalizarlo o
+   corregirlo sería peor que no tenerlo, porque parecería válido.
+2. El alta **valida contra esa lista antes de abrir la sesión**, y cuando no coincide
+   ofrece el parecido —que es casi siempre la respuesta—:
+   `El plan de tráfico '100M-Dom-DOWN' no existe en esta OLT. ¿Quisiste decir
+   '100M-Dom-DOW'?`. Si la base todavía no tiene planes cargados no se bloquea nada: se
+   avisa por log y decide el equipo. Un inventario pendiente no puede convertirse en una
+   interrupción del servicio.
+3. La web ofrece la lista en un `datalist` y frena antes de pedir la previsualización.
+
+Lo que **no** se valida es el perfil de ONU ni el DBA: salen de listas que el módulo
+todavía no lee completas, y rechazar un nombre válido por no tenerlo en la base sería peor
+que no validarlo.
+
+## Dar de baja: `gpon baja`
+
+Un alta que se aborta a mitad deja el índice ocupado por una ONU sin servicio, y hay que
+sacarla antes de reintentar. `secuencia_baja` ya existía; ahora hay por dónde usarla:
+
+```
+gpon baja 1 --pon 1 --indice 29 --serie GPON002E64F8
+```
+
+Es la operación más destructiva del módulo —deja al cliente sin servicio en el momento en
+que se ejecuta— así que también es simulada por defecto. Antes de borrar lee el puerto y
+**muestra qué ONU hay en ese índice**: el índice solo no distingue un alta a medias de la
+ONU del vecino. Si se pasa `--serie` y no coincide con lo que reporta el equipo, no sale
+ningún comando.
+
+Un índice **vacío** sí se puede borrar: un alta que quedó a medias puede no haber llegado
+a aparecer en el inventario, y ése es justamente el caso que hay que poder limpiar. Lo que
+frena la baja es encontrar *otra* ONU, no no encontrar ninguna.
+
 ## Riesgos
 
 | # | Riesgo | Estado |
@@ -282,3 +331,5 @@ aplicada, así lo que se informa sigue siendo lo que salió a la red.
 | R2 | Comando rechazado tomado por datos | Cubierto: se detecta y aborta la secuencia |
 | R12 | El prompt de un firmware distinto no coincide con el patrón | Abierto. La captura lo detectaría de inmediato: no habría login |
 | R13 | La CLI bloquea la cuenta tras varios intentos fallidos | Mitigado: el protocolo se elige explícitamente, nunca se prueba uno y se cae al otro |
+| R14 | Un nombre de plan mal tipeado corta el alta a mitad | Cubierto: se valida contra los planes guardados antes de abrir la sesión |
+| R15 | Una baja sobre el índice equivocado deja sin servicio a otro cliente | Mitigado: se muestra el serial del índice y `--serie` lo verifica |

@@ -15,6 +15,7 @@ erDiagram
     olts ||--o{ puertos_pon : tiene
     olts ||--o{ onus : contiene
     olts ||--o{ perfiles_dba : define
+    olts ||--o{ perfiles_trafico : define
     olts ||--o{ perfiles_linea : define
     olts ||--o{ perfiles_servicio : define
     olts ||--o{ vlans : define
@@ -50,12 +51,20 @@ campo.
 
 ### Perfiles y servicios
 
-`perfiles_dba`, `perfiles_linea`, `perfiles_servicio`, `vlans`, `service_ports`.
+`perfiles_dba`, `perfiles_trafico`, `perfiles_linea`, `perfiles_servicio`, `vlans`,
+`service_ports`.
 
 Son un **espejo** de lo que tiene la OLT: el equipo es la verdad y la base es la copia
 consultable. Por eso se reemplazan como conjunto en una transacción, en vez de acumular
 altas sueltas. Un perfil borrado en el equipo que sobreviva en la base termina ofrecido en
 la interfaz al autorizar una ONU, y el comando falla contra el equipo.
+
+`perfiles_trafico` —el "plan" que se le aplica a cada ONU— existe por un caso concreto: en
+la OLT de ERLAN hay 26 y sus nombres no son consistentes ni entre sí (`100M-Dom-DOW`,
+`100M-Pymes-Dowm`, `50M-PYMES-DOW`, `5M-Dom-Dow`). Un alta con el nombre mal tipeado se
+corta en el sexto comando, con la ONU ya declarada y sin servicio. Guardarlos es lo que
+permite ofrecerlos y validarlos antes de escribir. El nombre se guarda **exacto**: pasarlo
+por una normalización lo volvería un nombre plausible y falso, que es peor que no tenerlo.
 
 ### Histórico
 

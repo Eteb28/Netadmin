@@ -35,6 +35,7 @@ from ..database.repositories import (
     RepositorioSincronizacionSQL,
 )
 from .alta_onu import ServicioAltaONU
+from .baja_onu import ServicioBajaONU
 from .captura import ServicioCaptura
 from .descubrimiento import ServicioDescubrimiento
 from .exploracion import ServicioExploracion
@@ -75,6 +76,7 @@ class Contenedor:
     servicio_exploracion: ServicioExploracion
     servicio_pendientes: ServicioPendientes
     servicio_alta_onu: ServicioAltaONU
+    servicio_baja_onu: ServicioBajaONU
 
     def cerrar(self) -> None:
         self.conexion.cerrar()
@@ -154,6 +156,12 @@ def crear_contenedor(
         servicio_exploracion=ServicioExploracion(repositorio_olt, reloj=reloj),
         servicio_pendientes=ServicioPendientes(repositorio_olt, reloj=reloj),
         servicio_alta_onu=ServicioAltaONU(
+            repositorio_olt=repositorio_olt,
+            repositorio_operacion=repositorio_operacion,
+            repositorio_perfiles=repositorio_perfiles,
+            reloj=reloj,
+        ),
+        servicio_baja_onu=ServicioBajaONU(
             repositorio_olt=repositorio_olt,
             repositorio_operacion=repositorio_operacion,
             reloj=reloj,

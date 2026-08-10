@@ -403,6 +403,45 @@ def autorizar_onu(olt_id: int):
     )
 
 
+@api.post("/olts/<int:olt_id>/baja-onu")
+def baja_onu(olt_id: int):
+    """Da de baja una ONU. **Simulado salvo que el pedido diga lo contrario.**
+
+    ``numero_serie_esperado`` es opcional pero conviene mandarlo: si en ese
+    índice hay otra ONU, la baja se rechaza sin tocar el equipo. Sin él, lo
+    único que identifica al cliente que se queda sin servicio es el número de
+    índice.
+    """
+    sistema = _sistema()
+    cuerpo: dict[str, Any] = request.get_json(silent=True) or {}
+
+    if cuerpo.get("pon") is None or cuerpo.get("onu_id") is None:
+        raise ErrorValidacion("Faltan el puerto PON y el índice de la ONU")
+
+    pedido = _dry_run_pedido()
+    resultado = sistema.servicio_baja_onu.eliminar(
+        olt_id,
+        pon=int(cuerpo["pon"]),
+        onu_id=int(cuerpo["onu_id"]),
+        numero_serie_esperado=cuerpo.get("numero_serie_esperado", ""),
+        dry_run=True if pedido is None else pedido,
+        usuario=cuerpo.get("usuario", "web"),
+        protocolo=cuerpo.get("protocolo", "ssh"),
+    )
+    return jsonify(
+        {
+            "ok": resultado.ok,
+            "simulado": resultado.simulado,
+            "pon": resultado.pon,
+            "onu_id": resultado.onu_id,
+            "numero_serie": resultado.numero_serie,
+            "comandos": list(resultado.comandos),
+            "comando_que_fallo": resultado.comando_que_fallo,
+            "error": resultado.error,
+        }
+    )
+
+
 # --- bitácoras ------------------------------------------------------------
 
 

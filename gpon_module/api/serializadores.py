@@ -226,6 +226,10 @@ def perfiles(entidad: Perfiles) -> dict[str, Any]:
             }
             for p in entidad.dba
         ],
+        "trafico": [
+            {"nombre": p.nombre, "identificador_equipo": p.identificador_equipo}
+            for p in entidad.trafico
+        ],
         "linea": [
             {
                 "nombre": p.nombre,

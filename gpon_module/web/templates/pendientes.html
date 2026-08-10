@@ -64,7 +64,9 @@
         <input class="form-control form-control-sm monoespaciada" id="bajada" list="perfiles-trafico"
                placeholder="100M-Dom-DOW">
         <datalist id="perfiles-trafico"></datalist>
-        <div class="form-text">Los nombres exactos salen de <code>gpon inventario-cli</code>.</div>
+        <div class="form-text">
+          La lista sale del equipo. Si está vacía, corré <code>gpon inventario-cli</code>.
+        </div>
       </div>
       <div class="col-md-4">
         <label class="form-label small">Plan de subida</label>
@@ -138,6 +140,7 @@ const OLT_ID = {{ olt_id }};
 const PROTOCOLO = new URLSearchParams(location.search).get('protocolo') || 'ssh';
 let elegida = null;      // la ONU pendiente seleccionada
 let previsto = null;     // la respuesta de la simulación
+let planes = [];         // los nombres de plan que la OLT tiene definidos
 
 async function cargar() {
   const olt = await api(`/olts/${OLT_ID}`);
@@ -188,9 +191,8 @@ async function cargarPerfiles() {
   try {
     const perfiles = await api(`/olts/${OLT_ID}/perfiles`);
     llenar('perfiles-dba', (perfiles.dba || []).map((p) => p.nombre));
-    // Los perfiles de tráfico todavía no se guardan en la base; el campo queda
-    // libre y se valida contra el equipo al previsualizar.
-    llenar('perfiles-trafico', (perfiles.trafico || []).map((p) => p.nombre));
+    planes = (perfiles.trafico || []).map((p) => p.nombre);
+    llenar('perfiles-trafico', planes);
   } catch (error) {
     avisar(`No se pudieron leer los perfiles: ${error.message}. `
          + 'Se pueden escribir a mano.', 'warning');
@@ -242,9 +244,27 @@ function cuerpoDelPedido(dryRun) {
   };
 }
 
+// Los nombres de plan de la OLT no siguen ninguna convención (100M-Dom-DOW,
+// 100M-Pymes-Dowm, 50M-PYMES-DOW): la diferencia entre el que existe y el que
+// uno escribiría de memoria es de una letra, y ese comando va sexto en la
+// secuencia — cuando el equipo lo rechaza, la ONU ya quedó a medio configurar.
+function planDesconocido(id) {
+  const valor = document.getElementById(id).value.trim();
+  if (!valor || !planes.length || planes.includes(valor)) return null;
+  const parecido = planes.find((p) => p.toLowerCase() === valor.toLowerCase())
+    || planes.find((p) => p.toLowerCase().startsWith(valor.toLowerCase().slice(0, 6)));
+  return `El plan '${valor}' no existe en esta OLT.`
+       + (parecido ? ` ¿Quisiste decir '${parecido}'?` : '');
+}
+
 async function previsualizar() {
   if (!document.getElementById('perfil').value.trim()) {
     avisar('Falta el perfil de ONU: es el modelo del CPE que se instaló.', 'warning');
+    return;
+  }
+  const problema = planDesconocido('bajada') || planDesconocido('subida');
+  if (problema) {
+    avisar(problema, 'warning');
     return;
   }
   avisar('Consultando el equipo…', 'secondary');

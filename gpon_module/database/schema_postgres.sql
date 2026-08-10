@@ -143,6 +143,14 @@ CREATE TABLE IF NOT EXISTS perfiles_dba (
     UNIQUE (olt_id, nombre)
 );
 
+CREATE TABLE IF NOT EXISTS perfiles_trafico (
+    id                   SERIAL PRIMARY KEY,
+    olt_id               INTEGER NOT NULL REFERENCES olts (id) ON DELETE CASCADE,
+    nombre               TEXT    NOT NULL,
+    identificador_equipo TEXT    NOT NULL DEFAULT '',
+    UNIQUE (olt_id, nombre)
+);
+
 CREATE TABLE IF NOT EXISTS perfiles_linea (
     id                      SERIAL PRIMARY KEY,
     olt_id                  INTEGER NOT NULL REFERENCES olts (id) ON DELETE CASCADE,

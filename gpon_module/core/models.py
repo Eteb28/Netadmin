@@ -284,6 +284,22 @@ class PerfilDBA:
 
 
 @dataclass(frozen=True, slots=True)
+class PerfilTrafico:
+    """Perfil de límite de tráfico: el "plan" que se le aplica a una ONU.
+
+    Se guardan porque elegir uno que no existe es un alta que el equipo rechaza
+    a mitad de camino. En la OLT de ERLAN hay 26, con nombres que ni siquiera
+    son consistentes entre sí —``100M-Dom-DOW``, ``100M-Pymes-Dowm``,
+    ``50M-PYMES-DOW``—, así que escribirlos a mano es pedir problemas.
+    """
+
+    id: int | None = None
+    olt_id: int | None = None
+    nombre: str = ""
+    identificador_equipo: str = ""
+
+
+@dataclass(frozen=True, slots=True)
 class PerfilLinea:
     """Perfil de línea (tcont/gemport) aplicable a una ONU."""
 
@@ -335,6 +351,7 @@ class Perfiles:
     """Todo lo que una OLT tiene definido, leído de una sola pasada."""
 
     dba: tuple[PerfilDBA, ...] = ()
+    trafico: tuple[PerfilTrafico, ...] = ()
     linea: tuple[PerfilLinea, ...] = ()
     servicio: tuple[PerfilServicio, ...] = ()
     vlans: tuple[VLAN, ...] = ()

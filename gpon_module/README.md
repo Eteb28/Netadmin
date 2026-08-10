@@ -95,13 +95,21 @@ saltear:
 
 1. **Ver quién espera.** El equipo se consulta en vivo — es una lista que cambia sola
    cuando un técnico conecta una ONU, así que no tendría sentido servirla de la base.
-2. **Elegir perfil y plan.** Los perfiles DBA se ofrecen desde los que el equipo ya tiene
-   definidos: elegir uno que no existe es un alta que el equipo rechaza a mitad de camino.
+2. **Elegir perfil y plan.** Los perfiles DBA y los planes de tráfico se ofrecen desde los
+   que el equipo ya tiene definidos: elegir uno que no existe es un alta que el equipo
+   rechaza a mitad de camino. Ya pasó una vez —`100M-Dom-DOWN` contra el `100M-Dom-DOW`
+   real— y por eso ahora el nombre se valida contra la lista guardada antes de que se abra
+   la sesión, con el parecido sugerido.
 3. **Mirar los comandos exactos, y recién ahí confirmar.** El botón "Ver los comandos" no
    toca el equipo: sólo consulta en qué puerto está la ONU y qué índice queda libre.
 
+Los planes salen de `gpon inventario-cli`, que los lee del `show running-config`. Si la
+lista aparece vacía, es que esa OLT todavía no se inventarió.
+
 Si el equipo rechaza un comando del medio, la pantalla dice cuál falló y —cuando quedó a
-medias— que esa ONU hay que ir a revisarla antes de reintentar.
+medias— que esa ONU hay que ir a revisarla antes de reintentar. Para sacarla y reintentar
+limpio está `gpon baja <olt> --pon N --indice M --serie ...`, que también es simulado por
+defecto y muestra qué ONU hay en ese índice antes de tocar nada.
 
 Por defecto la web habla SSH. Para una OLT donde SSH no esté habilitado:
 `/olts/1/pendientes?protocolo=telnet`.

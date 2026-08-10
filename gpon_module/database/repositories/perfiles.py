@@ -15,6 +15,7 @@ from ...core.models import (
     Perfiles,
     PerfilLinea,
     PerfilServicio,
+    PerfilTrafico,
     RefONU,
     ServicePort,
 )
@@ -30,6 +31,7 @@ class RepositorioPerfilesSQL:
     def obtener_de_olt(self, olt_id: int) -> Perfiles:
         return Perfiles(
             dba=tuple(self._dba(olt_id)),
+            trafico=tuple(self._trafico(olt_id)),
             linea=tuple(self._linea(olt_id)),
             servicio=tuple(self._servicio(olt_id)),
             vlans=tuple(self._vlans(olt_id)),
@@ -50,6 +52,20 @@ class RepositorioPerfilesSQL:
                 ancho_banda_fijo_kbps=f["ancho_banda_fijo_kbps"],
                 ancho_banda_asegurado_kbps=f["ancho_banda_asegurado_kbps"],
                 ancho_banda_maximo_kbps=f["ancho_banda_maximo_kbps"],
+            )
+            for f in filas
+        ]
+
+    def _trafico(self, olt_id: int) -> list[PerfilTrafico]:
+        filas = self._db.consultar_todos(
+            "SELECT * FROM perfiles_trafico WHERE olt_id = ? ORDER BY nombre", (olt_id,)
+        )
+        return [
+            PerfilTrafico(
+                id=f["id"],
+                olt_id=f["olt_id"],
+                nombre=f["nombre"],
+                identificador_equipo=f["identificador_equipo"],
             )
             for f in filas
         ]
@@ -135,6 +151,7 @@ class RepositorioPerfilesSQL:
         with self._transaccion():
             for tabla in (
                 "perfiles_dba",
+                "perfiles_trafico",
                 "perfiles_linea",
                 "perfiles_servicio",
                 "vlans",
@@ -160,6 +177,15 @@ class RepositorioPerfilesSQL:
                         dba.ancho_banda_asegurado_kbps,
                         dba.ancho_banda_maximo_kbps,
                     ),
+                )
+            for trafico in perfiles.trafico:
+                self._db.ejecutar(
+                    """
+                    INSERT INTO perfiles_trafico (
+                        olt_id, nombre, identificador_equipo
+                    ) VALUES (?,?,?)
+                    """,
+                    (olt_id, trafico.nombre, trafico.identificador_equipo),
                 )
             for linea in perfiles.linea:
                 self._db.ejecutar(
