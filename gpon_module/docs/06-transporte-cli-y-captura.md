@@ -424,16 +424,31 @@ al cliente andando hasta el primer corte de luz. Va a ser el último comando de 
 requería otra corrida, con el equipo del otro lado y una persona esperando — una por nivel
 del árbol.
 
-### La exploración baja sola
+### La exploración recorre el árbol
 
-`explorar-config` ahora recorre las ramas de `onu 1 pri` por su cuenta: pide la ayuda,
-lee las palabras que devolvió y vuelve a preguntar por cada una. Un nivel, con tope de 60
-ramas para que un firmware charlatán no convierta la exploración en media hora.
+`explorar-config` recorre las ramas por su cuenta: pide la ayuda, lee las palabras que
+devolvió y vuelve a preguntar por cada una, recursivamente. Qué ramas se profundizan es una
+lista explícita y no "todo lo que se pueda": el árbol completo son cientos de preguntas y la
+mayoría —VoIP, CATV, tr069— no hacen falta para esto.
 
 Bajar no cambia lo que el servicio *puede* hacer —el `?` sigue sin ejecutar nada y la lista
-blanca sigue en pie—: cambia cuántas preguntas hace en el mismo viaje. Las que se descartan
-son los marcadores de valor (`<1-128>`, `<cr>`, `<onu_list>`): no son ramas por las que
-seguir, son huecos que hay que llenar.
+blanca sigue en pie—: cambia cuántas preguntas hace en el mismo viaje.
+
+**Los rangos numéricos también son camino.** `wifi_ssid <1-8>` no es una rama sino un hueco,
+pero justo detrás están los parámetros de cada SSID. Se llena con el extremo bajo, que
+existe siempre — y sólo cuando la ayuda no ofrece ninguna palabra: si ofrece las dos cosas,
+las palabras son el camino y el número llevaría a preguntar de más. Los otros marcadores
+(`<cr>`, `<onu_list>`, `<A.B.C.D>`) se descartan.
+
+### Un `show` que no empieza con `show`
+
+`onu 1 pri wan_conn show` lee la WAN de una ONU ya configurada —los nombres reales de cada
+parámetro, que es justo lo que hay que saber escribir—. Pero en esta CLI el verbo va al
+final, así que el filtro de sólo lectura, que mira la primera palabra, lo rechazaba.
+
+La excepción es un patrón exacto: `onu <n> pri <cosa> show`, sin nada después. Aflojar la
+regla general a "contiene show" habría dejado pasar `onu 1 pri factory_reset` de un tipeo,
+y ese comando le borra la configuración al CPE de un cliente.
 
 Adivinar la sintaxis es exactamente lo que dejó la ONU 1:29 a medio configurar. Preguntar
 sale barato; suponer salió caro.

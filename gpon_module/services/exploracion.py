@@ -87,38 +87,66 @@ AYUDAS_INTERFAZ_PON: tuple[str, ...] = (
     "onu 1 pri ",
 )
 
-#: Prefijos cuyas ramas se recorren solas, un nivel más abajo.
+#: Prefijos cuyas ramas se recorren solas, un nivel más abajo. Se aplica también
+#: a las ramas que van apareciendo, así que listar un hijo lo hace bajar otro
+#: nivel: es lo que convierte esto en un recorrido del árbol y no en un salto.
 #:
-#: ``onu 1 pri ?`` contestó 34 opciones —entre ellas ``wan_conn``, ``wifi_ssid``
-#: y ``save_config``—, pero para escribir un comando hace falta saber qué va
-#: *después* de cada una. Sin esto haría falta una corrida por nivel, con el
-#: equipo del otro lado y una persona esperando. El ``?`` sigue sin ejecutar
-#: nada, así que bajar un nivel no cambia lo que el servicio puede hacer: sólo
-#: cuántas preguntas hace en el mismo viaje.
-AYUDAS_A_PROFUNDIZAR: tuple[str, ...] = ("onu 1 pri ",)
+#: ``onu 1 pri ?`` contestó 37 opciones y ``wan_conn ?`` otras cuatro, pero para
+#: escribir un comando hace falta llegar hasta las hojas. Sin esto haría falta
+#: una corrida por nivel, con el equipo del otro lado y una persona esperando.
+#: El ``?`` sigue sin ejecutar nada, así que bajar no cambia lo que el servicio
+#: puede hacer: sólo cuántas preguntas hace en el mismo viaje.
+#:
+#: La lista es explícita en vez de "bajá todo lo que puedas" porque el árbol
+#: completo son cientos de preguntas y la mayoría —VoIP, CATV, tr069— no hacen
+#: falta para lo que se está construyendo.
+AYUDAS_A_PROFUNDIZAR: tuple[str, ...] = (
+    "onu 1 pri ",
+    "onu 1 pri wan_conn ",
+    "onu 1 pri wan_adv ",
+    "onu 1 pri wifi_ssid ",
+    "onu 1 pri wifi_switch ",
+    "onu 1 pri username ",
+)
 
 #: Tope de ramas a recorrer por prefijo. Existe para que un firmware con una
 #: ayuda enorme no convierta la exploración en una sesión de media hora.
 MAXIMO_RAMAS = 60
 
-#: Una opción de la ayuda: dos espacios, la palabra, y su descripción. Se
-#: descartan los marcadores ``<1-128>``, ``<cr>`` y ``<onu_list>``: no son
-#: ramas por las que se pueda seguir preguntando, son valores que hay que
-#: poner.
+#: Una opción de la ayuda: dos espacios, la palabra, y su descripción.
 OPCION_AYUDA = re.compile(r"^\s{2,}(?P<palabra>[A-Za-z][\w.\-]*)\s\s+\S")
+
+#: ``  <1-8>  Specify onu wifi ssid number.`` — un rango numérico. No es una
+#: rama, es un hueco; pero sin llenarlo no se puede seguir bajando, y justo
+#: detrás está lo que interesa (los parámetros de cada SSID). Se usa el extremo
+#: bajo, que existe siempre. El ``?`` no ejecuta nada, así que elegir un número
+#: no configura ninguna ONU.
+RANGO_AYUDA = re.compile(r"^\s{2,}<(?P<desde>\d+)-\d+>\s\s+\S")
 
 
 def ramas_de(ayuda: str) -> tuple[str, ...]:
-    """Las palabras por las que se puede seguir bajando en la ayuda."""
-    vistas: list[str] = []
+    """Por dónde se puede seguir bajando en la ayuda.
+
+    Los marcadores de texto —``<cr>``, ``<onu_list>``, ``<A.B.C.D>``— se
+    descartan: son valores que hay que poner, no ramas. Un rango numérico sí se
+    usa, pero **sólo cuando no hay ninguna palabra**: si el equipo ofrece las
+    dos cosas, las palabras son el camino y el número es un atajo que llevaría a
+    preguntar de más.
+    """
+    palabras: list[str] = []
+    rangos: list[str] = []
     for linea in ayuda.splitlines():
-        encontrado = OPCION_AYUDA.match(linea)
-        if encontrado is None:
-            continue
-        palabra = encontrado.group("palabra")
-        if palabra not in vistas:
-            vistas.append(palabra)
-    return tuple(vistas[:MAXIMO_RAMAS])
+        if encontrado := OPCION_AYUDA.match(linea):
+            palabra = encontrado.group("palabra")
+            if palabra not in palabras:
+                palabras.append(palabra)
+        elif encontrado := RANGO_AYUDA.match(linea):
+            desde = encontrado.group("desde")
+            if desde not in rangos:
+                rangos.append(desde)
+
+    elegidas = palabras or rangos
+    return tuple(elegidas[:MAXIMO_RAMAS])
 
 #: Candidatos de sólo lectura a probar dentro de ``interface gpon 0/N``. Es
 #: donde debería estar el listado que la web muestra como "ONU AutoFind".
@@ -133,13 +161,15 @@ CANDIDATOS_INTERFAZ_PON: tuple[tuple[str, str], ...] = (
     ("show onu state", "Estado de cada ONU"),
     ("show onu optical", "Potencias por ONU"),
     ("show onu optical-info", "Variante"),
-    # Cómo ve el equipo la configuración del CPE: es el bloque que la web de la
-    # OLT muestra como "WAN" y "WiFi", y el que hay que saber escribir.
-    ("show onu 1 pri", "Configuración WAN/servicio de una ONU"),
-    ("show onu wan", "Variante"),
-    ("show onu 1 wan", "Variante con índice"),
-    ("show onu wifi", "Configuración WiFi"),
-    ("show onu 1 wifi", "Variante con índice"),
+    # Cómo ve el equipo la configuración del CPE. En esta CLI el 'show' va al
+    # final, así que no empiezan con un verbo permitido: hay una excepción
+    # explícita para esta forma exacta en es_solo_lectura().
+    #
+    # La ONU 1 es un cliente que anda: leerle la WAN muestra los nombres reales
+    # de cada parámetro, que es lo que hay que saber escribir.
+    ("onu 1 pri wan_conn show", "WAN de una ONU ya configurada, con el PPPoE"),
+    ("onu 1 pri wan_adv show", "Parámetros avanzados de esa WAN"),
+    ("onu 1 pri acl show", "Accesos permitidos al CPE"),
 )
 
 
@@ -312,18 +342,26 @@ class ServicioExploracion:
         al_avanzar: Any,
     ) -> None:
         for prefijo in prefijos:
-            resultado = self._una_ayuda(transporte, prefijo, modo)
-            acumulador.append(resultado)
-            if al_avanzar is not None:
-                al_avanzar(resultado)
+            self._bajar(transporte, prefijo, modo, acumulador, al_avanzar)
 
-            if prefijo not in AYUDAS_A_PROFUNDIZAR or not resultado.ok:
-                continue
-            for rama in ramas_de(resultado.salida):
-                hijo = self._una_ayuda(transporte, f"{prefijo}{rama} ", modo)
-                acumulador.append(hijo)
-                if al_avanzar is not None:
-                    al_avanzar(hijo)
+    def _bajar(
+        self,
+        transporte: Any,
+        prefijo: str,
+        modo: str,
+        acumulador: list[SalidaComando],
+        al_avanzar: Any,
+    ) -> None:
+        """Pide la ayuda de un prefijo y sigue por sus ramas si corresponde."""
+        resultado = self._una_ayuda(transporte, prefijo, modo)
+        acumulador.append(resultado)
+        if al_avanzar is not None:
+            al_avanzar(resultado)
+
+        if prefijo not in AYUDAS_A_PROFUNDIZAR or not resultado.ok:
+            return
+        for rama in ramas_de(resultado.salida):
+            self._bajar(transporte, f"{prefijo}{rama} ", modo, acumulador, al_avanzar)
 
     @staticmethod
     def _una_ayuda(transporte: Any, prefijo: str, modo: str) -> SalidaComando:

@@ -22,6 +22,7 @@ que no esté en la lista blanca no sale de acá.
 from __future__ import annotations
 
 import logging
+import re
 import time
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -47,6 +48,14 @@ VERBOS_PERMITIDOS: frozenset[str] = frozenset({"show", "display", "dir", "get"})
 FRAGMENTOS_PROHIBIDOS: tuple[str, ...] = ("|", ">", ";", "&", "\n", "\r", "delete", "erase")
 
 
+#: La excepción de VSOL: ``onu 1 pri wan_conn show`` lee la configuración del
+#: CPE y no empieza con un verbo permitido, porque en esta CLI el ``show`` va al
+#: final. Se admite **sólo esta forma exacta** —``onu <n> pri <cosa> show``, sin
+#: nada después— en vez de aflojar la regla general a "contiene show", que
+#: dejaría pasar ``onu 1 pri factory_reset`` de un tipeo.
+LECTURA_AL_FINAL = re.compile(r"^onu\s+\d+\s+pri\s+[a-z_]+\s+show$", re.IGNORECASE)
+
+
 def es_solo_lectura(comando: str) -> bool:
     """¿Este comando es inofensivo?
 
@@ -58,6 +67,8 @@ def es_solo_lectura(comando: str) -> bool:
         return False
     if any(fragmento in limpio for fragmento in FRAGMENTOS_PROHIBIDOS):
         return False
+    if LECTURA_AL_FINAL.match(limpio):
+        return True
     return limpio.split()[0].lower() in VERBOS_PERMITIDOS
 
 

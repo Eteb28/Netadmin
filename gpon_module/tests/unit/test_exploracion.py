@@ -13,6 +13,7 @@ from gpon_module.core.enums import Fabricante
 from gpon_module.core.errors import ErrorComando, ErrorValidacion
 from gpon_module.core.models import OLT, CredencialesOLT
 from gpon_module.core.reloj import RelojFijo
+from gpon_module.services.captura import es_solo_lectura
 from gpon_module.services.exploracion import (
     CANDIDATOS_INTERFAZ_PON,
     MAXIMO_RAMAS,
@@ -209,3 +210,56 @@ class TestDescensoPorLaAyuda:
     def test_una_linea_sin_descripcion_no_cuenta(self) -> None:
         """El eco del prefijo tipeado no es una opción."""
         assert ramas_de("onu 1 pri \n") == ()
+
+
+class TestRangosNumericos:
+    """``wifi_ssid <1-8>`` no es una rama, pero detrás está lo que interesa.
+
+    Llenar el hueco con el extremo bajo es lo que permite llegar a los
+    parámetros de cada SSID sin pedir otra corrida. El ``?`` no ejecuta nada,
+    así que elegir un número no configura ninguna ONU.
+    """
+
+    def test_un_rango_solo_se_usa_como_rama(self) -> None:
+        ayuda = "onu 1 pri wifi_ssid \n  <1-8>  Specify onu wifi ssid number.\n"
+
+        assert ramas_de(ayuda) == ("1",)
+
+    def test_si_hay_palabras_el_rango_no_se_usa(self) -> None:
+        """Las palabras son el camino; el número llevaría a preguntar de más."""
+        ayuda = (
+            "onu \n"
+            "  <1-128>     Specify onu list.\n"
+            "  add         Add onu to this gpon interface\n"
+        )
+
+        assert ramas_de(ayuda) == ("add",)
+
+    def test_los_marcadores_que_no_son_numeros_se_descartan(self) -> None:
+        ayuda = (
+            "onu 1 pri dhcp_server \n"
+            "  <A.B.C.D>  Specify ONU LAN IP Address.\n"
+            "  ipv6       Specify ONU DHCP Server ipv6.\n"
+        )
+
+        assert ramas_de(ayuda) == ("ipv6",)
+
+
+class TestLecturaConShowAlFinal:
+    """En esta CLI ``onu 1 pri wan_conn show`` lee, y no empieza con 'show'."""
+
+    def test_se_admite_la_forma_exacta(self) -> None:
+        assert es_solo_lectura("onu 1 pri wan_conn show")
+        assert es_solo_lectura("onu 29 pri acl show")
+
+    def test_no_se_afloja_la_regla_para_todo_lo_demas(self) -> None:
+        """"Contiene show" dejaría pasar un factory_reset de un tipeo."""
+        assert not es_solo_lectura("onu 1 pri factory_reset")
+        assert not es_solo_lectura("onu 1 pri wan_conn add")
+        assert not es_solo_lectura("onu 1 pri save_config")
+        assert not es_solo_lectura("onu 1 pri wan_conn show add")
+
+    def test_los_candidatos_de_lectura_pasan_el_filtro(self) -> None:
+        """El invariante del servicio: nada que no sea navegación o lectura."""
+        for comando, _ in CANDIDATOS_INTERFAZ_PON:
+            assert es_permitido(comando), comando
