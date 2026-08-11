@@ -320,7 +320,10 @@ def ayuda_simulada(prefijo: str) -> str:
     if prefijo.endswith("index "):
         return "  <1-8>  Wan index number.\n"
     if prefijo.endswith("index 1 "):
-        return "  bind  B.\n  bridge  B.\n  delete  D.\n  route  R.\n  vlan  V.\n"
+        # Sólo 'wan_adv' ofrece 'bind'; 'wan_conn' no. Es la diferencia que
+        # permite bajar más hondo en uno sin caer en la combinatoria del otro.
+        comun = "  bridge  B.\n  delete  D.\n  route  R.\n  vlan  V.\n"
+        return ("  bind  B.\n" + comun) if "wan_adv" in prefijo else comun
     if " bind " in prefijo:
         usadas = set(prefijo.split())
         return "".join(f"  {i}  Wan bind {i}.\n" for i in INTERFACES if i not in usadas)
@@ -376,6 +379,7 @@ class TestElPozoCombinatorio:
         # A 'bind' se le pregunta —devuelve la lista de interfaces, que sirve—
         # pero no se sigue por cada combinación de ellas.
         binds = [p for p in recorrido if " bind " in p]
+        assert binds, "se tiene que llegar a preguntar por 'bind' una vez"
         assert all(p.endswith("bind ") for p in binds), binds
 
     def test_lo_ancho_se_pregunta_antes_que_lo_hondo(self) -> None:

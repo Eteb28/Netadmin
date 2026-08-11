@@ -490,8 +490,59 @@ Después de cuatro exploraciones, el mapa completo:
 
 El `Country: FCC` no estaba donde se lo buscó —no es del SSID sino de la radio— y aparece
 como una de quince opciones de `wifi_switch <n> enable`, seguida del canal (`auto`,
-`chl_36`, ...). `wifi_switch 1` es 2.4 GHz y `wifi_switch 2` es 5 GHz, que se corresponden
-con SSID1 y SSID5.
+`chl_36`, ...) y del estándar (`80211acanacax` y compañía). `wifi_switch 1` es 2.4 GHz y
+`wifi_switch 2` es 5 GHz, que se corresponden con SSID1 y SSID5.
+
+### La clave del WiFi no existe en esta CLI
+
+Hay que decirlo de frente porque era un requisito. Se recorrió el árbol entero de
+`onu <id> pri` —37 ramas hasta las hojas, y después una búsqueda de texto sobre la captura
+completa— y **no hay `wpa`, ni `psk`, ni `encrypt`, ni `key`, ni `password`** en ninguna
+parte del subárbol del CPE. La cadena del SSID termina acá:
+
+```
+onu <id> pri wifi_ssid <1-8> name <texto> hide <enable|disable>
+```
+
+Nombre y visibilidad. Nada más. De la radio se puede tocar el encendido, el país, el canal
+y el estándar; del SSID, cómo se llama y si se anuncia.
+
+Eso deja el requisito de ERLAN —SSID1 en WPA2PSK+AES y SSID5 en WPAPSK/WPA2PSK+AES, ambas
+con contraseña configurable— **fuera del alcance de esta vía**. Fingir lo contrario sería
+peor que la limitación: quedaría un formulario con un campo de contraseña que no hace nada,
+y alguien lo descubriría con un cliente sin WiFi del otro lado.
+
+Las alternativas reales son otras —OMCI directo (`onu omci` existe en modo configuración),
+TR-069 (`tr069_mng` está en el CPE), o la web del propio CPE— y cuál corresponde depende de
+cómo se configure hoy a mano. Es una pregunta para ERLAN, no algo que se resuelva leyendo
+más ayuda.
+
+### Lo que sí se puede escribir, y está escrito
+
+La WAN sale **verbatim del equipo**, así que el constructor tiene un test que compara su
+salida contra la línea que imprime el firmware para la ONU 1. Si esa comparación se rompe,
+el comando dejó de ser el que el equipo acepta — no es un test contra una expectativa
+escrita a mano.
+
+```
+onu <id> pri wan_conn add route qos enable
+onu <id> pri wan_conn index <n> route internet bind_lan 3 bind_ssid 255 qos enable
+    nat enable mtu 1492 pppoe proxy disable user <cliente> pwd <clave> server FTTH mode auto
+onu <id> pri wan_conn commit
+onu <id> pri wifi_switch 1 enable fcc auto
+onu <id> pri wifi_switch 2 enable fcc auto
+onu <id> pri wifi_ssid 1 name <red> hide disable
+onu <id> pri wifi_ssid 5 name <red-5G> hide disable
+onu <id> pri save_config
+```
+
+Son **tres pasos** para la WAN y el orden importa: crear, configurar y confirmar. El
+`commit` no es decorativo — sin él el equipo se queda con la conexión a medio armar, que es
+la misma clase de problema que ya dejó una ONU sin servicio.
+
+Queda un punto por verificar: la VLAN. El eco del equipo no la incluye en la línea, pero
+`wan_conn index <n> vlan enable` existe y el `show` reporta `wanVlanId: 1001`. No se emite
+un comando de VLAN sin haberlo visto: es exactamente la clase de suposición que costó cara.
 
 **Para lo puntual, `--ayuda-de`.** Cuando falta un pedazo concreto no tiene sentido pagar
 el recorrido entero: `gpon explorar-config 1 --ayuda-de 'onu 1 pri wifi_ssid 1 name '`

@@ -116,7 +116,7 @@ AYUDAS_A_PROFUNDIZAR: tuple[str, ...] = ("onu 1 pri ",)
 #: WiFi es una cadena larga de pares clave-valor —``name <str> auth <modo>
 #: encrypt <tipo> key <clave>``— que hay que recorrer entera.
 SUBARBOLES_A_RECORRER: dict[str, int] = {
-    "onu 1 pri wan_conn ": 3,
+    "onu 1 pri wan_conn ": 5,
     "onu 1 pri wan_adv ": 3,
     "onu 1 pri wifi_ssid ": 8,
     "onu 1 pri wifi_switch ": 4,
