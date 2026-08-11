@@ -512,10 +512,33 @@ con contraseña configurable— **fuera del alcance de esta vía**. Fingir lo co
 peor que la limitación: quedaría un formulario con un campo de contraseña que no hace nada,
 y alguien lo descubriría con un cliente sin WiFi del otro lado.
 
-Las alternativas reales son otras —OMCI directo (`onu omci` existe en modo configuración),
-TR-069 (`tr069_mng` está en el CPE), o la web del propio CPE— y cuál corresponde depende de
-cómo se configure hoy a mano. Es una pregunta para ERLAN, no algo que se resuelva leyendo
-más ayuda.
+**Pero la web de la OLT sí la configura**, según ERLAN. Y eso cambia la conclusión: si la
+web puede, el equipo puede — lo hace por OMCI, que es el protocolo con el que la OLT le
+habla al CPE. Lo que falta no es la capacidad sino la puerta de entrada por CLI.
+
+Dos candidatos, y los dos están ahora en la exploración:
+
+* `onu omci` en modo configuración, que es OMCI crudo;
+* `profile onu id` / `profile onu name`, por si la seguridad del WiFi viaja en el perfil de
+  ONU en vez de por ONU.
+
+Entrar a un perfil (`profile onu id 1`) sí modificaría el equipo —puede crearlo—, así que
+eso no se hace solo: se pide la ayuda, que no ejecuta nada, y se decide después.
+
+### La segunda combinatoria
+
+`wifi_switch <n> enable` ofrece **15 países**, cada uno con ~21 canales, cada uno con 8
+estándares. Son unos 2500 nodos, y se comieron el presupuesto de la cuarta corrida igual
+que el `bind` se había comido el de la tercera: 67 de las 159 preguntas fueron de países y
+canales, y el recorrido no llegó a terminar el WiFi.
+
+El tope de ese subárbol bajó a tres niveles: alcanza para los países y los canales del
+primero —que es todo lo que hace falta para escribir el comando— y el cuarto nivel es el
+que no termina nunca.
+
+La lección se repite y conviene anotarla: **en una CLI, un nivel de ayuda que enumera
+valores suele ser una lista, no una rama**. `bind lan1 lan2 …`, `enable fcc chl_36
+80211acn`: el equipo ofrece lo que queda por elegir, no un árbol que se pueda recorrer.
 
 ### Lo que sí se puede escribir, y está escrito
 

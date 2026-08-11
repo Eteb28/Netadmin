@@ -15,6 +15,8 @@ from gpon_module.core.models import OLT, CredencialesOLT
 from gpon_module.core.reloj import RelojFijo
 from gpon_module.services.captura import es_solo_lectura
 from gpon_module.services.exploracion import (
+    AYUDAS_CONFIGURACION,
+    AYUDAS_INTERFAZ_PON,
     CANDIDATOS_INTERFAZ_PON,
     MAXIMO_NODOS,
     MAXIMO_RAMAS,
@@ -293,14 +295,30 @@ class TestSubarboles:
         assert not _hay_que_bajar("onu 1 pri voip_timer ")
         assert not _hay_que_bajar("show ")
 
-    def test_los_subarboles_declarados_cuelgan_de_pri(self) -> None:
-        """Si alguno no cuelga, no se llega nunca: el padre no lo enumera."""
+    def test_cada_subarbol_cuelga_de_algo_que_se_pregunta(self) -> None:
+        """Si un subárbol no cuelga de un prefijo que se pide, no se llega nunca.
+
+        Casi todos cuelgan de ``onu 1 pri``, que es el CPE. ``onu omci`` no:
+        vive en modo configuración, y está declarado ahí.
+        """
+        raices = set(AYUDAS_INTERFAZ_PON) | set(AYUDAS_CONFIGURACION)
         for subarbol in SUBARBOLES_A_RECORRER:
-            assert subarbol.startswith("onu 1 pri ")
+            assert any(
+                subarbol.startswith(raiz) and raiz for raiz in raices
+            ), f"{subarbol} no cuelga de ninguna ayuda que se pida"
 
 
 #: Las 18 interfaces que ``bind`` ofrece en la OLT real.
 INTERFACES = [f"lan{n}" for n in range(1, 9)] + [f"ssid{n}" for n in range(1, 11)]
+
+#: Los países, canales y estándares de ``wifi_switch``. Multiplicados son miles
+#: de nodos: la segunda combinatoria del árbol, y la que se comió una corrida.
+PAISES = [
+    "fcc", "etsi", "ic", "spain", "france", "mkk", "isreal",
+    "mkk2", "mkk3", "russian", "cn", "global", "mkk1", "ncc",
+]
+CANALES = ["auto"] + [f"chl_{n}" for n in (34, 36, 40, 44, 48, 52, 56, 60, 64, 100)]
+ESTANDARES = ["80211ac0", "80211aca", "80211acn", "80211acan", "80211acnac", "80211acax"]
 
 
 def ayuda_simulada(prefijo: str) -> str:
@@ -333,6 +351,24 @@ def ayuda_simulada(prefijo: str) -> str:
         return "  name  Specify onu wifi ssid name.\n  disable  Disable.\n"
     if prefijo.endswith("wifi_switch "):
         return "  <1-2>  Specify device number.\n"
+    if prefijo.endswith("wifi_switch 1 "):
+        return "  disable  D.\n  enable  E.\n"
+    # La segunda combinatoria: 15 países × 21 canales × 8 estándares. Se comió
+    # el presupuesto de una corrida igual que el 'bind'.
+    if prefijo.endswith("wifi_switch 1 enable "):
+        return "".join(f"  {c}  Specify wlan country.\n" for c in PAISES)
+    if any(prefijo.endswith(f"enable {c} ") for c in PAISES):
+        return "".join(f"  {c}  Specify wlan channel.\n" for c in CANALES)
+    if any(prefijo.endswith(f"{c} ") for c in CANALES):
+        return "".join(f"  {e}  Specify wlan standard.\n" for e in ESTANDARES)
+    if prefijo.endswith("vlan "):
+        return "  disable  D.\n  enable  E.\n"
+    if prefijo.endswith("vlan enable "):
+        return "  <1-4094>  vlan id.\n"
+    if prefijo.endswith("name X "):
+        return "  hide  Specify onu wifi ssid hide.\n"
+    if prefijo.endswith("hide "):
+        return "  enable  E.\n  disable  D.\n"
     return "  <cr>  Just Press Enter!\n"
 
 
@@ -381,6 +417,18 @@ class TestElPozoCombinatorio:
         binds = [p for p in recorrido if " bind " in p]
         assert binds, "se tiene que llegar a preguntar por 'bind' una vez"
         assert all(p.endswith("bind ") for p in binds), binds
+
+    def test_el_wifi_tambien_tiene_su_pozo_y_tampoco_cae(self) -> None:
+        """Con tope 3 se llega a los canales del primer país, que es lo que
+        hace falta para escribir el comando; el cuarto nivel son miles."""
+        recorrido = recorrer()
+
+        assert "onu 1 pri wifi_switch 1 enable fcc " in recorrido
+        assert "onu 1 pri wifi_switch 1 enable fcc auto " not in recorrido
+
+    def test_llega_a_la_vlan_de_la_wan(self) -> None:
+        """El dato que faltaba para cerrar la WAN."""
+        assert "onu 1 pri wan_conn index 1 vlan enable " in recorrer()
 
     def test_lo_ancho_se_pregunta_antes_que_lo_hondo(self) -> None:
         """El orden en que se pide es el orden en que se pierde si algo corta."""
