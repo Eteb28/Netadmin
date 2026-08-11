@@ -68,12 +68,6 @@ AYUDAS_CONFIGURACION: tuple[str, ...] = (
     "profile pri ",
     "profile srv ",
     "profile onu ",
-    # La clave del WiFi no está en 'onu <id> pri' —se recorrió entero— pero la
-    # web de la OLT sí la configura, así que el equipo puede: lo hace por OMCI.
-    # Estos son los dos lugares donde puede estar la puerta.
-    "onu omci ",
-    "profile onu id ",
-    "profile onu name ",
 )
 AYUDAS_INTERFAZ_PON: tuple[str, ...] = (
     "",
@@ -127,9 +121,6 @@ SUBARBOLES_A_RECORRER: dict[str, int] = {
     "onu 1 pri wifi_ssid ": 8,
     "onu 1 pri wifi_switch ": 3,
     "onu 1 pri username ": 4,
-    #: OMCI es la vía por la que la web de la OLT configura el CPE. Se recorre
-    #: en modo configuración, no adentro de un puerto PON.
-    "onu omci ": 3,
 }
 
 #: Tope global de preguntas del recorrido. Es la red de contención que hace

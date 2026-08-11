@@ -512,18 +512,20 @@ con contraseña configurable— **fuera del alcance de esta vía**. Fingir lo co
 peor que la limitación: quedaría un formulario con un campo de contraseña que no hace nada,
 y alguien lo descubriría con un cliente sin WiFi del otro lado.
 
-**Pero la web de la OLT sí la configura**, según ERLAN. Y eso cambia la conclusión: si la
-web puede, el equipo puede — lo hace por OMCI, que es el protocolo con el que la OLT le
-habla al CPE. Lo que falta no es la capacidad sino la puerta de entrada por CLI.
+**La web de la OLT sí la configura**, según ERLAN. Eso hacía pensar que el equipo podía y
+sólo faltaba encontrar la puerta por CLI. Se buscó, y no está:
 
-Dos candidatos, y los dos están ahora en la exploración:
+* `onu omci` resultó ser **sólo heartbeat** —`enable`, `disable`, `clear`, `interval`—, no
+  OMCI crudo;
+* `profile onu` sólo acepta `id` y `name`, como los demás perfiles;
+* una búsqueda de texto sobre las capturas completas no encuentra `wpa`, `psk`, `encrypt`
+  ni `key` en ninguna parte del vocabulario del CPE.
 
-* `onu omci` en modo configuración, que es OMCI crudo;
-* `profile onu id` / `profile onu name`, por si la seguridad del WiFi viaja en el perfil de
-  ONU en vez de por ONU.
-
-Entrar a un perfil (`profile onu id 1`) sí modificaría el equipo —puede crearlo—, así que
-eso no se hace solo: se pide la ayuda, que no ejecuta nada, y se decide después.
+La conclusión, después de cuatro barridos del árbol: **la web de la OLT hace algo que su
+propia CLI no expone.** Su backend arma la trama OMCI directamente. Para que el módulo
+pueda poner la clave del WiFi habría que hablarle a esa web —su API HTTP—, que es una
+integración distinta: otra superficie, otra autenticación, y frágil entre versiones de
+firmware. Es una decisión de alcance, no algo que se resuelva leyendo más ayuda.
 
 ### La segunda combinatoria
 
@@ -563,9 +565,9 @@ Son **tres pasos** para la WAN y el orden importa: crear, configurar y confirmar
 `commit` no es decorativo — sin él el equipo se queda con la conexión a medio armar, que es
 la misma clase de problema que ya dejó una ONU sin servicio.
 
-Queda un punto por verificar: la VLAN. El eco del equipo no la incluye en la línea, pero
-`wan_conn index <n> vlan enable` existe y el `show` reporta `wanVlanId: 1001`. No se emite
-un comando de VLAN sin haberlo visto: es exactamente la clase de suposición que costó cara.
+La VLAN quedó verificada aparte: `wan_conn index <n> vlan enable vid <id>`. Va en su propio
+comando y no en la línea larga —el eco del equipo no la incluye ahí—, y se emite sólo si se
+pide: no ponerla no es lo mismo que ponerle 1001, es dejar la que el equipo tenga.
 
 **Para lo puntual, `--ayuda-de`.** Cuando falta un pedazo concreto no tiene sentido pagar
 el recorrido entero: `gpon explorar-config 1 --ayuda-de 'onu 1 pri wifi_ssid 1 name '`

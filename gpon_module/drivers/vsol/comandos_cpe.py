@@ -88,6 +88,10 @@ class SolicitudWAN:
     pppoe_servicio: str = "FTTH"
     pppoe_modo: str = "auto"
     pppoe_proxy: bool = False
+    #: La VLAN de la WAN. Es **la misma** que la del service-port: tenerla dos
+    #: veces sería tener dos formas de que no coincidan. ``None`` deja la que el
+    #: equipo tenga puesta.
+    vlan: int | None = None
 
     def __repr__(self) -> str:  # pragma: no cover - trivial
         return (
@@ -116,6 +120,8 @@ class SolicitudWAN:
             )
         if not 576 <= self.mtu <= 1500:
             raise ErrorValidacion(f"MTU fuera de rango: {self.mtu}. Con PPPoE se usa 1492.")
+        if self.vlan is not None and not 1 <= self.vlan <= 4094:
+            raise ErrorValidacion(f"VLAN fuera de rango: {self.vlan}")
 
         for etiqueta, valor in (
             ("usuario PPPoE", self.pppoe_usuario),
@@ -159,11 +165,18 @@ def secuencia_wan(solicitud: SolicitudWAN) -> tuple[str, ...]:
         )
     )
 
-    return (
+    comandos = [
         f"onu {onu} pri wan_conn add route qos {_si_no(solicitud.qos)}",
         parametros,
-        f"onu {onu} pri wan_conn commit",
-    )
+    ]
+
+    # La VLAN va en su propio comando: el eco del equipo no la incluye en la
+    # línea larga, y 'wan_conn index <n> vlan enable vid' existe aparte.
+    if solicitud.vlan is not None:
+        comandos.append(f"onu {onu} pri wan_conn index {indice} vlan enable vid {solicitud.vlan}")
+
+    comandos.append(f"onu {onu} pri wan_conn commit")
+    return tuple(comandos)
 
 
 @dataclass(frozen=True, slots=True)

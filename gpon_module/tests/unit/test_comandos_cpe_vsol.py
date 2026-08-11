@@ -64,6 +64,37 @@ class TestLaWANContraElEquipo:
         assert "server FTTH" in aplicado
 
 
+class TestLaVLAN:
+    """``wan_conn index <n> vlan enable vid <id>``, verificado en la ayuda.
+
+    Va en su propio comando y no en la línea larga: el eco del equipo no la
+    incluye ahí, y `vlan enable` existe como rama aparte.
+    """
+
+    def test_la_vlan_va_en_su_propio_comando(self) -> None:
+        con_vlan = secuencia_wan(
+            SolicitudWAN(onu_id=29, pppoe_usuario="034716", pppoe_password="fdcc", vlan=1001)
+        )
+
+        assert len(con_vlan) == 4
+        assert con_vlan[2] == "onu 29 pri wan_conn index 1 vlan enable vid 1001"
+        assert con_vlan[-1].endswith("commit")
+
+    def test_sin_vlan_no_se_emite_el_comando(self) -> None:
+        """Ninguna es dejar la que el equipo tenga; no es lo mismo que 1001."""
+        sin_vlan = secuencia_wan(
+            SolicitudWAN(onu_id=29, pppoe_usuario="034716", pppoe_password="fdcc")
+        )
+
+        assert not any("vlan" in c for c in sin_vlan)
+
+    def test_una_vlan_fuera_de_rango_se_rechaza(self) -> None:
+        with pytest.raises(ErrorValidacion, match="VLAN"):
+            secuencia_wan(
+                SolicitudWAN(onu_id=1, vlan=5000, pppoe_usuario="u", pppoe_password="p")
+            )
+
+
 class TestValidacionDeLaWAN:
     def test_un_usuario_con_espacio_no_llega_a_la_red(self) -> None:
         """Partiría el comando en dos y el resto se leería como otra cosa."""
