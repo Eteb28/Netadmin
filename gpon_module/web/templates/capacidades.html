@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block titulo %}Drivers{% endblock %}
+
+{% block contenido %}
+<h1 class="h4 mb-1">Drivers y capacidades</h1>
+<p class="text-secondary small">
+  Lo que cada equipo <strong>hace de verdad</strong>, comprobado contra el
+  hardware. Lo tachado no es algo pendiente de programar: es algo que ese modelo
+  no expone. La interfaz lo oculta en vez de ofrecerlo y fallar delante de un
+  cliente esperando servicio.
+</p>
+
+<div id="drivers" class="row g-3"></div>
+{% endblock %}
+
+{% block guion %}
+<script>
+async function cargar() {
+  const drivers = await api('/fabricantes');
+  const todas = new Set();
+  drivers.forEach((d) => d.capacidades.forEach((c) => todas.add(c)));
+
+  document.getElementById('drivers').innerHTML = drivers.map((d) => `
+    <div class="col-lg-6">
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>${escapar(d.nombre)}</span>
+          <span class="badge text-bg-secondary">${escapar(d.version)}</span>
+        </div>
+        <div class="card-body">
+          <dl class="row small mb-3">
+            <dt class="col-4 text-secondary fw-normal">Fabricante</dt>
+            <dd class="col-8 monoespaciada">${escapar(d.fabricante)}</dd>
+            <dt class="col-4 text-secondary fw-normal">Modelos</dt>
+            <dd class="col-8">${d.modelos.map(escapar).join(', ') || '—'}</dd>
+            <dt class="col-4 text-secondary fw-normal">Protocolos</dt>
+            <dd class="col-8">${d.protocolos.map(escapar).join(', ') || '—'}</dd>
+          </dl>
+          <div>${[...todas].sort().map((c) => d.capacidades.includes(c)
+            ? `<span class="badge text-bg-success me-1 mb-1">${escapar(c)}</span>`
+            : `<span class="badge text-bg-secondary me-1 mb-1 capacidad-ausente">${escapar(c)}</span>`
+          ).join('')}</div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+cargar().catch((error) => avisar(error.message, 'danger'));
+</script>
+{% endblock %}

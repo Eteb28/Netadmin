@@ -1,0 +1,21 @@
+# Archivos con secretos o con datos del equipo real. Nada de esto va al
+# repositorio: una contraseña de OLT commiteada queda en el historial para
+# siempre, y borrarla después no la borra.
+.env
+equipos.toml
+
+# Capturas de la CLI: pueden incluir contraseñas del equipo y PPPoE de clientes.
+captura*.txt
+
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+*.db
+*.db-wal
+*.db-shm
+.coverage
+htmlcov/

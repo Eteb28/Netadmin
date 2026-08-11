@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+#
+# Atajo para ejecutar el módulo sin acordarse de activar el entorno virtual.
+#
+#     ./gpon web --simulada
+#     ./gpon alta-olt --nombre "OLT Centro" --host 192.168.10.247 --fabricante vsol
+#
+# Existe porque el error más fácil de cometer es el más frustrante: correr
+# `gpon` sin haber activado ./.venv devuelve "Orden «gpon» no encontrada", que
+# no dice nada sobre la causa real. Con el ./ adelante, eso no puede pasar.
+#
+# Funciona en las dos disposiciones posibles: con este script al lado del
+# paquete (dentro de gpon_module/) o un nivel más arriba, como queda en el zip.
+
+set -euo pipefail
+
+propio="$(cd "$(dirname "$0")" && pwd)"
+
+# La raíz es el directorio que *contiene* a gpon_module/.
+if [ -d "$propio/gpon_module" ]; then
+    raiz="$propio"
+elif [ -d "$propio/../gpon_module" ]; then
+    raiz="$(cd "$propio/.." && pwd)"
+else
+    echo "ERROR: no se encontró el paquete gpon_module junto a este script." >&2
+    exit 1
+fi
+
+cd "$raiz"
+
+# Entorno virtual: se busca en la raíz y también dentro del paquete.
+for entorno in "$raiz/.venv" "$raiz/gpon_module/.venv"; do
+    if [ -x "$entorno/bin/python" ]; then
+        exec "$entorno/bin/python" -m gpon_module.cli "$@"
+    fi
+done
+
+# Sin entorno virtual, se prueba con el Python del sistema. Alcanza para
+# `demo`, que no necesita ninguna dependencia externa.
+for candidato in python3.13 python3.12 python3.11 python3; do
+    if command -v "$candidato" >/dev/null 2>&1; then
+        version="$("$candidato" -c 'import sys; print("%d.%d" % sys.version_info[:2])')"
+        if [ "${version%%.*}" -eq 3 ] && [ "${version##*.}" -ge 11 ]; then
+            exec "$candidato" -m gpon_module.cli "$@"
+        fi
+    fi
+done
+
+echo "ERROR: hace falta Python 3.11 o superior, o el entorno ./.venv" >&2
+echo "       Corré primero:  ./instalar.sh" >&2
+exit 1

@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block titulo %}Auditoría{% endblock %}
+
+{% block contenido %}
+<h1 class="h4 mb-1">Auditoría de operaciones</h1>
+<p class="text-secondary small">
+  Toda escritura sobre una OLT queda registrada acá — <strong>incluidas las
+  simuladas</strong>. Qué se pidió, quién lo pidió, qué comandos se armaron y
+  qué contestó el equipo. Es lo que permite reconstruir después qué pasó con el
+  servicio de un cliente.
+</p>
+
+<div class="row g-2 align-items-end mb-3">
+  <div class="col-md-3">
+    <label class="form-label small text-secondary mb-1">OLT</label>
+    <select class="form-select form-select-sm" id="olt"><option value="">Todas</option></select>
+  </div>
+  <div class="col-6 col-md-2">
+    <label class="form-label small text-secondary mb-1">Modo</label>
+    <select class="form-select form-select-sm" id="modo">
+      <option value="">Todos</option>
+      <option value="real">Sólo reales</option>
+      <option value="simulado">Sólo simuladas</option>
+    </select>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-sm mb-0 tabla-compacta">
+      <thead><tr>
+        <th>Cuándo</th><th>Tipo</th><th>ONU</th><th>Usuario</th>
+        <th>Modo</th><th>Resultado</th><th>Duración</th><th></th>
+      </tr></thead>
+      <tbody id="filas"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal fade" id="detalle" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Comandos enviados</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="detalle-cuerpo"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block guion %}
+<script>
+let operaciones = [];
+
+async function iniciar() {
+  const olts = await api('/olts');
+  const selector = document.getElementById('olt');
+  olts.forEach((o) => selector.add(new Option(o.nombre, o.id)));
+  ['olt', 'modo'].forEach((id) =>
+    document.getElementById(id).addEventListener('change', cargar));
+  cargar();
+}
+
+async function cargar() {
+  const olt = document.getElementById('olt').value;
+  const modo = document.getElementById('modo').value;
+  const consulta = new URLSearchParams({ limite: 250 });
+  if (olt) consulta.set('olt_id', olt);
+
+  operaciones = await api(`/operaciones?${consulta}`);
+  if (modo === 'real') operaciones = operaciones.filter((o) => !o.simulado);
+  if (modo === 'simulado') operaciones = operaciones.filter((o) => o.simulado);
+
+  document.getElementById('filas').innerHTML = operaciones.map((o, indice) => `
+    <tr>
+      <td class="text-nowrap">${fecha(o.ejecutada_en)}</td>
+      <td>${escapar(o.tipo)}</td>
+      <td class="monoespaciada">${valor(o.ref)}</td>
+      <td>${escapar(o.usuario)}</td>
+      <td>${o.simulado
+            ? '<span class="badge text-bg-info">simulada</span>'
+            : '<span class="badge text-bg-danger">REAL</span>'}</td>
+      <td>${o.ok
+            ? '<span class="text-success">ok</span>'
+            : `<span class="text-danger">${escapar(o.error || 'falló')}</span>`}</td>
+      <td class="text-end">${valor(o.duracion_ms, ' ms')}</td>
+      <td class="text-end">
+        <button class="btn btn-sm btn-outline-secondary" onclick="verDetalle(${indice})">Ver</button>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="8" class="text-center text-secondary py-4">Sin operaciones</td></tr>';
+}
+
+function verDetalle(indice) {
+  const o = operaciones[indice];
+  document.getElementById('detalle-cuerpo').innerHTML = `
+    <p class="small text-secondary mb-2">
+      ${escapar(o.tipo)} · ${escapar(o.usuario)} · ${fecha(o.ejecutada_en)} ·
+      ${o.simulado ? 'no se envió al equipo' : 'ejecutada contra el equipo'}
+    </p>
+    <div class="bloque-comandos">${o.comandos.map(escapar).join('\n') || '(sin comandos)'}</div>
+    ${o.salida ? `<p class="small text-secondary mt-3 mb-1">Respuesta del equipo</p>
+      <div class="bloque-comandos">${escapar(o.salida)}</div>` : ''}
+    ${o.error ? `<div class="alert alert-danger mt-3 mb-0 py-2 small">${escapar(o.error)}</div>` : ''}`;
+  new bootstrap.Modal(document.getElementById('detalle')).show();
+}
+
+iniciar().catch((error) => avisar(error.message, 'danger'));
+</script>
+{% endblock %}

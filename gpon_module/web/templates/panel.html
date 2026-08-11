@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block titulo %}Panel{% endblock %}
+
+{% block contenido %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h4 mb-0">Panel</h1>
+  <button class="btn btn-sm btn-outline-secondary" onclick="cargarPanel()">Actualizar</button>
+</div>
+
+<div id="sin-olts" class="alert alert-info d-none">
+  <strong>No hay ninguna OLT registrada todavía.</strong>
+  <p class="mb-0 mt-2">
+    Se dan de alta desde la línea de comandos:
+    <code>gpon alta-olt --nombre "OLT Centro" --host 192.168.1.10 --fabricante vsol</code>
+  </p>
+</div>
+
+<div class="row g-3 mb-4" id="cifras"></div>
+
+<div id="sin-motivo" class="alert alert-secondary small d-none">
+  Este equipo <strong>no publica el motivo de caída</strong> de las ONU, así que no se puede
+  separar un corte de luz en el domicilio de una fibra cortada. Es una limitación del
+  firmware, no un dato en cero.
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-header">Estado del parque</div>
+      <div class="card-body"><canvas id="grafico-estados" height="180"></canvas></div>
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <div class="card h-100">
+      <div class="card-header">
+        OLT administradas
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover table-compacta mb-0 tabla-compacta">
+          <thead><tr>
+            <th>Nombre</th><th>Dirección</th><th>Fabricante</th><th>Estado</th>
+            <th class="text-end">PON</th><th class="text-end">ONU</th><th>Última lectura</th>
+          </tr></thead>
+          <tbody id="filas-olts"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mt-1">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">Últimos eventos</div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0 tabla-compacta">
+          <thead><tr><th>Cuándo</th><th>Tipo</th><th>ONU</th><th>Descripción</th></tr></thead>
+          <tbody id="filas-eventos"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block guion %}
+<script>
+let graficoEstados = null;
+
+async function cargarPanel() {
+  let olts = [];
+  try {
+    olts = await api('/olts');
+  } catch (error) {
+    avisar(`No se pudo leer la lista de OLT: ${error.message}`, 'danger');
+    return;
+  }
+
+  document.getElementById('sin-olts').classList.toggle('d-none', olts.length > 0);
+
+  const cuerpo = document.getElementById('filas-olts');
+  cuerpo.innerHTML = olts.map((olt) => `
+    <tr onclick="location.href='/olts/${olt.id}'">
+      <td>${escapar(olt.nombre)}</td>
+      <td class="monoespaciada">${escapar(olt.host)}</td>
+      <td>${escapar(olt.fabricante)}</td>
+      <td>${insigniaEstado(olt.estado)}</td>
+      <td class="text-end">${olt.cantidad_pon}</td>
+      <td class="text-end">${olt.cantidad_onus}</td>
+      <td>${fecha(olt.ultima_sincronizacion)}</td>
+    </tr>`).join('') || '<tr><td colspan="7" class="text-center text-secondary py-3">Sin OLT</td></tr>';
+
+  // Las cifras del panel se acumulan sobre todas las OLT.
+  let total = 0, enLinea = 0, fueraDeLinea = 0, cortesDeLuz = 0, fibraCortada = 0;
+  let informaMotivo = false;
+  for (const olt of olts) {
+    try {
+      const resumen = await api(`/olts/${olt.id}/resumen`);
+      total += resumen.total_onus;
+      enLinea += resumen.por_estado.en_linea || 0;
+      fueraDeLinea += resumen.por_estado.fuera_de_linea || 0;
+      cortesDeLuz += resumen.por_motivo_caida.apagado || 0;
+      fibraCortada += resumen.por_motivo_caida.perdida_senal || 0;
+      // El equipo informa el motivo sólo si publica alguno distinto de "desconocido".
+      informaMotivo = informaMotivo ||
+        Object.keys(resumen.por_motivo_caida).some((m) => m !== 'desconocido');
+    } catch (error) {
+      avisar(`OLT ${olt.nombre}: ${error.message}`, 'warning');
+    }
+  }
+
+  const porcentaje = total ? ((enLinea / total) * 100).toFixed(1) : '—';
+  document.getElementById('cifras').innerHTML = `
+    ${tarjeta('OLT', olts.length, 'info')}
+    ${tarjeta('ONU totales', total, 'info')}
+    ${tarjeta('En línea', `${enLinea} <small class="fs-6 text-secondary">${porcentaje}%</small>`, 'success')}
+    ${tarjeta('Fuera de línea', fueraDeLinea, 'danger')}
+    ${informaMotivo
+        ? tarjeta('Cortes de luz', cortesDeLuz, 'secondary', 'Dying gasp: no hay nada que hacer en la red') +
+          tarjeta('Fibra cortada', fibraCortada, 'warning', 'Pérdida de señal: requiere cuadrilla')
+        : ''}
+  `;
+
+  // Mostrar "0 cortes de luz" cuando el equipo no publica el motivo se leería
+  // como "no hay ninguno". Si no lo informa, no se muestra la cifra.
+  document.getElementById('sin-motivo').classList.toggle('d-none', informaMotivo || !fueraDeLinea);
+
+  dibujarEstados(enLinea, fueraDeLinea, total - enLinea - fueraDeLinea);
+
+  try {
+    const eventos = await api('/eventos?limite=12');
+    document.getElementById('filas-eventos').innerHTML = eventos.map((e) => `
+      <tr>
+        <td class="text-nowrap">${fecha(e.ocurrido_en)}</td>
+        <td><span class="badge text-bg-secondary">${escapar(e.tipo)}</span></td>
+        <td class="monoespaciada">${valor(e.ref)}</td>
+        <td>${escapar(e.descripcion)}</td>
+      </tr>`).join('') || '<tr><td colspan="4" class="text-center text-secondary py-3">Sin eventos</td></tr>';
+  } catch (error) {
+    avisar(`Eventos: ${error.message}`, 'warning');
+  }
+}
+
+function tarjeta(etiqueta, cifra, tono, ayuda = '') {
+  return `
+    <div class="col-6 col-md-4 col-xl-2">
+      <div class="card tarjeta-cifra h-100" style="border-left-color: var(--bs-${tono})" ${ayuda ? `title="${escapar(ayuda)}"` : ''}>
+        <div class="card-body py-3">
+          <div class="etiqueta text-secondary">${escapar(etiqueta)}</div>
+          <div class="cifra text-${tono}">${cifra}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function dibujarEstados(enLinea, fuera, otros) {
+  const lienzo = document.getElementById('grafico-estados');
+  if (graficoEstados) graficoEstados.destroy();
+  graficoEstados = new Chart(lienzo, {
+    type: 'doughnut',
+    data: {
+      labels: ['En línea', 'Fuera de línea', 'Otros'],
+      datasets: [{
+        data: [enLinea, fuera, Math.max(otros, 0)],
+        backgroundColor: ['#4ade80', '#f87171', '#6c757d'],
+        borderWidth: 0,
+      }],
+    },
+    options: {
+      plugins: { legend: { position: 'bottom', labels: { color: '#adb5bd' } } },
+      maintainAspectRatio: false,
+    },
+  });
+}
+
+cargarPanel();
+</script>
+{% endblock %}

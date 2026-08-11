@@ -1,0 +1,49 @@
+# Inventario de OLT del módulo GPON.
+#
+# Copiá este archivo como 'equipos.toml', completalo, y aplicalo con:
+#
+#     gpon cargar-equipos
+#
+# Es idempotente: identifica cada equipo por su dirección, crea el que falta y
+# actualiza el que ya está. Correrlo dos veces no duplica nada, y corregir una
+# contraseña es editar acá y volver a correrlo.
+#
+# ATENCIÓN: este archivo tiene contraseñas de equipos.
+#
+#     chmod 600 equipos.toml
+#
+# El .gitignore del módulo ya lo excluye del control de versiones. Si trabajás
+# en un servidor compartido, dejá las contraseñas en variables de entorno y
+# referencialas con 'password_entorno' en vez de escribirlas acá.
+
+[[olt]]
+nombre = "OLT Belgrano"
+host = "192.168.10.247"
+fabricante = "vsol"          # vsol | simulado  (zte llega en la Fase 6)
+descripcion = "Zona Barrio Belgrano"
+
+# Credenciales de la CLI (Telnet/SSH). Son las del equipo, no las de Pucará.
+usuario = "admin"
+password = "cambiar-esto"
+# password_enable = ""       # sólo si el modo privilegiado pide otra contraseña
+
+# En un servidor compartido, mejor así: la contraseña queda fuera del archivo.
+# password_entorno = "GPON_PASSWORD_BELGRANO"
+
+# SNMP, que es por donde va toda la lectura.
+comunidad = "public"
+
+# Puertos, sólo si no son los de fábrica.
+# puerto_snmp = 161
+# puerto_telnet = 23
+# puerto_ssh = 22
+
+# Cada equipo adicional va en su propio bloque:
+#
+# [[olt]]
+# nombre = "OLT Centro"
+# host = "192.168.10.248"
+# fabricante = "vsol"
+# usuario = "admin"
+# password = "…"
+# comunidad = "public"

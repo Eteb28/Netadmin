@@ -1,0 +1,453 @@
+{% extends "base.html" %}
+{% block titulo %}Alta de ONU{% endblock %}
+
+{% block contenido %}
+<nav aria-label="ruta"><ol class="breadcrumb small">
+  <li class="breadcrumb-item"><a href="/olts" class="link-secondary">OLT</a></li>
+  <li class="breadcrumb-item"><a href="/olts/{{ olt_id }}" class="link-secondary" id="miga-olt">…</a></li>
+  <li class="breadcrumb-item active">Alta de ONU</li>
+</ol></nav>
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+  <div>
+    <h1 class="h4 mb-1">ONU esperando autorización</h1>
+    <div class="text-secondary small">
+      Lo que el equipo detectó y todavía no está dado de alta. Es la pantalla
+      <em>ONU AutoFind</em> de la OLT.
+    </div>
+  </div>
+  <button class="btn btn-sm btn-outline-secondary text-nowrap" onclick="cargar()">Actualizar</button>
+</div>
+
+<div class="card mb-4">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 tabla-compacta">
+      <thead><tr>
+        <th>PON</th><th>Número de serie</th><th>Estado</th><th class="text-end">Acción</th>
+      </tr></thead>
+      <tbody id="filas-pendientes">
+        <tr><td colspan="4" class="text-center text-secondary py-4">Consultando el equipo…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="avisos-puertos"></div>
+
+<!-- Paso 1: elegir qué se le va a configurar -->
+<div class="card mb-4 d-none" id="formulario">
+  <div class="card-header">
+    Dar de alta <span class="monoespaciada fw-semibold" id="serie-elegida"></span>
+    <span class="text-secondary">en el PON <span id="pon-elegido"></span></span>
+  </div>
+  <div class="card-body">
+    <!-- Paso 1a: el número de cliente trae todo lo demás -->
+    <div class="row g-3 align-items-end mb-3 pb-3 border-bottom">
+      <div class="col-md-4">
+        <label class="form-label small fw-semibold">Número de cliente</label>
+        <div class="input-group input-group-sm">
+          <input class="form-control monoespaciada" id="nro-cliente" placeholder="034716"
+                 onkeydown="if(event.key==='Enter'){event.preventDefault();buscarCliente();}">
+          <button class="btn btn-outline-primary" onclick="buscarCliente()">Buscar</button>
+        </div>
+        <div class="form-text">Completa el plan, la descripción y el PPPoE desde Pucará.</div>
+      </div>
+      <div class="col-md-8">
+        <div id="ficha-cliente" class="small text-secondary">
+          Opcional: si lo dejás vacío, cargá los campos a mano.
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label small">Perfil de ONU</label>
+        <input class="form-control form-control-sm monoespaciada" id="perfil" list="perfiles-onu"
+               placeholder="V2802DAC">
+        <datalist id="perfiles-onu"></datalist>
+        <div class="form-text">El modelo del CPE que instaló el técnico.</div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small">Perfil DBA</label>
+        <input class="form-control form-control-sm monoespaciada" id="dba" list="perfiles-dba"
+               value="Internet">
+        <datalist id="perfiles-dba"></datalist>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small">VLAN</label>
+        <input class="form-control form-control-sm monoespaciada" id="vlan" value="1001">
+        <div class="form-text">1001 por defecto. Es la misma que va en la WAN del CPE.</div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small">Plan de bajada</label>
+        <select class="form-select form-select-sm monoespaciada" id="bajada"></select>
+        <div class="form-text" id="motivo-plan">
+          La lista sale del equipo. Si está vacía, corré <code>gpon inventario-cli</code>.
+        </div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small">Plan de subida</label>
+        <select class="form-select form-select-sm monoespaciada" id="subida"></select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small">Descripción</label>
+        <input class="form-control form-control-sm monoespaciada" id="descripcion"
+               placeholder="se arma sola">
+        <div class="form-text" id="pista-descripcion">
+          Sin espacios. Vacío arma <code>GPON0/pon:idx_cliente_CDOx_NAPy</code>.
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-3 d-flex gap-2">
+      <button class="btn btn-sm btn-primary" onclick="previsualizar()">Ver los comandos</button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="cancelar()">Cancelar</button>
+    </div>
+    <div class="form-text mt-2">
+      Ver los comandos <strong>no toca el equipo</strong>: sólo consulta en qué puerto está la
+      ONU y qué índice queda libre.
+    </div>
+  </div>
+</div>
+
+<!-- Paso 2: mirar exactamente qué se va a enviar, y recién ahí decidir -->
+<div class="card border-warning mb-4 d-none" id="previsualizacion">
+  <div class="card-header bg-warning-subtle">
+    Esto es lo que se le va a enviar al equipo
+  </div>
+  <div class="card-body">
+    <div class="row g-3 mb-3 small">
+      <div class="col-auto"><span class="text-secondary">PON</span> <span id="p-pon" class="fw-semibold"></span></div>
+      <div class="col-auto"><span class="text-secondary">Índice ONU</span> <span id="p-indice" class="fw-semibold"></span></div>
+      <div class="col-auto"><span class="text-secondary">Serie</span> <span id="p-serie" class="fw-semibold monoespaciada"></span></div>
+      <div class="col-auto"><span class="text-secondary">Descripción</span> <span id="p-desc" class="fw-semibold monoespaciada"></span></div>
+    </div>
+
+    <pre class="bg-body-tertiary border rounded p-3 small mb-3 monoespaciada" id="p-comandos"></pre>
+
+    <div class="alert alert-warning py-2 small">
+      Al confirmar, estos comandos salen a una OLT con clientes conectados. Si el equipo
+      rechaza alguno, la secuencia se corta ahí y te decimos cuál falló.
+    </div>
+
+    <div class="d-flex gap-2 align-items-center">
+      <button class="btn btn-sm btn-danger" onclick="aplicar()" id="boton-aplicar">
+        Confirmar y aplicar
+      </button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="cancelar()">Cancelar</button>
+      <input class="form-control form-control-sm ms-auto" style="max-width: 14rem"
+             id="usuario" placeholder="quién autoriza (auditoría)">
+    </div>
+  </div>
+</div>
+
+<!-- Paso 3: qué pasó -->
+<div class="card d-none mb-4" id="resultado">
+  <div class="card-header" id="resultado-titulo"></div>
+  <div class="card-body">
+    <pre class="bg-body-tertiary border rounded p-3 small mb-0 monoespaciada" id="resultado-detalle"></pre>
+  </div>
+</div>
+{% endblock %}
+
+{% block guion %}
+<script>
+const OLT_ID = {{ olt_id }};
+// El canal por defecto es SSH. Se puede forzar con ?protocolo=telnet para una
+// OLT donde SSH no esté habilitado.
+const PROTOCOLO = new URLSearchParams(location.search).get('protocolo') || 'ssh';
+let elegida = null;      // la ONU pendiente seleccionada
+let previsto = null;     // la respuesta de la simulación
+let planes = [];         // los nombres de plan que la OLT tiene definidos
+let propuesta = null;    // lo que trajo el sistema comercial del cliente
+
+async function cargar() {
+  const olt = await api(`/olts/${OLT_ID}`);
+  document.getElementById('miga-olt').textContent = olt.nombre;
+
+  await cargarPerfiles();
+
+  const cuerpo = document.getElementById('filas-pendientes');
+  cuerpo.innerHTML = '<tr><td colspan="4" class="text-center text-secondary py-4">' +
+    'Consultando el equipo…</td></tr>';
+
+  let datos;
+  try {
+    datos = await api(`/olts/${OLT_ID}/pendientes?protocolo=${PROTOCOLO}`);
+  } catch (error) {
+    cuerpo.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-4">
+      No se pudo consultar el equipo: ${escapar(error.message)}</td></tr>`;
+    return;
+  }
+
+  cuerpo.innerHTML = datos.pendientes.map((p) => `
+    <tr>
+      <td>${p.pon}</td>
+      <td class="monoespaciada fw-semibold">${escapar(p.numero_serie)}</td>
+      <td><span class="badge text-bg-secondary">${escapar(p.estado || 'sin autorizar')}</span></td>
+      <td class="text-end">
+        <button class="btn btn-sm btn-outline-primary"
+                onclick="elegir(${p.pon}, '${escapar(p.numero_serie)}')">Dar de alta</button>
+      </td>
+    </tr>`).join('') || `<tr><td colspan="4" class="text-center text-secondary py-4">
+      No hay ninguna ONU esperando autorización.</td></tr>`;
+
+  // Un puerto que no se pudo leer no es un puerto sin ONU nuevas. Decirlo
+  // importa: si no, el operador deja de buscar.
+  document.getElementById('avisos-puertos').innerHTML = datos.puertos_con_falla.length
+    ? `<div class="alert alert-warning small">
+         <strong>No se pudieron leer todos los puertos.</strong>
+         Puede haber ONU esperando que no aparecen en esta lista.
+         <ul class="mb-0 mt-2">${datos.puertos_con_falla.map((f) =>
+           `<li class="monoespaciada">${escapar(f.pon)}: ${escapar(f.motivo)}</li>`).join('')}</ul>
+       </div>`
+    : '';
+}
+
+async function cargarPerfiles() {
+  // Los perfiles se ofrecen desde lo que el equipo ya tiene definido: elegir uno
+  // que no existe es un alta que el equipo rechaza a mitad de camino.
+  try {
+    const perfiles = await api(`/olts/${OLT_ID}/perfiles`);
+    llenar('perfiles-dba', (perfiles.dba || []).map((p) => p.nombre));
+    planes = (perfiles.trafico || []).map((p) => p.nombre);
+    llenarPlanes();
+  } catch (error) {
+    avisar(`No se pudieron leer los perfiles: ${error.message}. `
+         + 'Se pueden escribir a mano.', 'warning');
+  }
+  try {
+    const onus = await api(`/olts/${OLT_ID}/onus?limite=500`);
+    const usados = [...new Set((onus.onus || onus).map((o) => o.perfil_servicio).filter(Boolean))];
+    llenar('perfiles-onu', usados);
+  } catch (error) { /* los perfiles de ONU se pueden tipear igual */ }
+}
+
+function llenar(id, valores) {
+  const lista = document.getElementById(id);
+  if (lista) lista.innerHTML = valores.map((v) => `<option value="${escapar(v)}">`).join('');
+}
+
+// Los planes van en un <select> y no en un campo libre: los nombres del equipo
+// no siguen ninguna convención (100M-Dom-DOW, 100M-Pymes-Dowm, 50M-PYMES-DOW) y
+// una letra de diferencia corta el alta a mitad, con la ONU ya declarada.
+function llenarPlanes() {
+  const vacio = '<option value="">— elegir —</option>';
+  const opciones = vacio + planes.map((p) =>
+    `<option value="${escapar(p)}">${escapar(p)}</option>`).join('');
+  for (const id of ['bajada', 'subida']) {
+    document.getElementById(id).innerHTML = opciones;
+  }
+  if (!planes.length) {
+    document.getElementById('motivo-plan').innerHTML =
+      'Esta OLT no tiene planes cargados: corré <code>gpon inventario-cli</code> '
+      + 'o <code>gpon planes --sembrar</code>.';
+  }
+}
+
+async function buscarCliente() {
+  const numero = document.getElementById('nro-cliente').value.trim();
+  const ficha = document.getElementById('ficha-cliente');
+  if (!numero) {
+    ficha.innerHTML = '<span class="text-secondary">Cargá los campos a mano.</span>';
+    return;
+  }
+
+  ficha.textContent = 'Buscando…';
+  let p;
+  try {
+    p = await api(`/olts/${OLT_ID}/clientes/${encodeURIComponent(numero)}`);
+  } catch (error) {
+    ficha.innerHTML = `<span class="text-danger">${escapar(error.message)}</span>`;
+    return;
+  }
+  propuesta = p;
+
+  // Se completan los campos pero no se bloquean: lo que llega del sistema
+  // comercial es una propuesta, y el que autoriza es el que decide.
+  if (p.perfil_onu) document.getElementById('perfil').value = p.perfil_onu;
+  if (p.vlan) document.getElementById('vlan').value = p.vlan;
+  elegirEnLista('bajada', p.trafico_bajada);
+  elegirEnLista('subida', p.trafico_subida);
+  document.getElementById('motivo-plan').textContent =
+    p.motivo_plan ? `Elegido por: ${p.motivo_plan}.` : '';
+  document.getElementById('pista-descripcion').innerHTML =
+    `Vacío arma <code>GPON0/pon:idx_${escapar(p.sufijo_descripcion)}</code>.`;
+
+  const c = p.cliente;
+  ficha.innerHTML = `
+    <div class="fw-semibold text-body">${escapar(c.nombre)}</div>
+    <div>${escapar(c.plan)} · ${escapar(c.estado)} ·
+         ${escapar(c.sitio || 'sin sitio')} CDO ${c.cdo ?? '—'} NAP ${c.nap ?? '—'}</div>
+    <div class="monoespaciada">PPPoE ${escapar(p.pppoe_usuario || '—')}
+         · ONU en Pucará ${escapar(c.numero_serie || '—')}</div>
+    ${(p.advertencias || []).map((a) =>
+      `<div class="text-warning-emphasis mt-1">⚠ ${escapar(a)}</div>`).join('')}`;
+
+  // El serial que el técnico instaló manda sobre el que figura cargado: la ONU
+  // pudo haberse cambiado y Pucará todavía no enterarse.
+  if (elegida && c.numero_serie && c.numero_serie.toUpperCase() !== elegida.serie.toUpperCase()) {
+    ficha.innerHTML += `<div class="text-warning-emphasis mt-1">⚠ En Pucará este cliente
+      figura con la ONU ${escapar(c.numero_serie)}, y se está autorizando
+      ${escapar(elegida.serie)}. Si le cambiaron el equipo, actualizalo en Pucará.</div>`;
+  }
+}
+
+function elegirEnLista(id, valor) {
+  const lista = document.getElementById(id);
+  if (valor && [...lista.options].some((o) => o.value === valor)) lista.value = valor;
+}
+
+function elegir(pon, serie) {
+  elegida = { pon, serie };
+  previsto = null;
+  propuesta = null;
+  document.getElementById('serie-elegida').textContent = serie;
+  document.getElementById('pon-elegido').textContent = pon;
+  document.getElementById('formulario').classList.remove('d-none');
+  document.getElementById('previsualizacion').classList.add('d-none');
+  document.getElementById('resultado').classList.add('d-none');
+  document.getElementById('formulario').scrollIntoView({ behavior: 'smooth' });
+}
+
+function cancelar() {
+  elegida = null;
+  previsto = null;
+  for (const id of ['formulario', 'previsualizacion']) {
+    document.getElementById(id).classList.add('d-none');
+  }
+}
+
+function cuerpoDelPedido(dryRun) {
+  return {
+    numero_serie: elegida.serie,
+    pon: elegida.pon,
+    perfil_onu: document.getElementById('perfil').value.trim(),
+    perfil_dba: document.getElementById('dba').value.trim() || 'Internet',
+    trafico_subida: document.getElementById('subida').value.trim(),
+    trafico_bajada: document.getElementById('bajada').value.trim(),
+    descripcion: document.getElementById('descripcion').value.trim(),
+    sufijo_descripcion: propuesta ? propuesta.sufijo_descripcion : '',
+    vlan: parseInt(document.getElementById('vlan').value, 10) || 1001,
+    usuario: document.getElementById('usuario').value.trim() || 'web',
+    protocolo: PROTOCOLO,
+    dry_run: dryRun,
+  };
+}
+
+// Los nombres de plan de la OLT no siguen ninguna convención (100M-Dom-DOW,
+// 100M-Pymes-Dowm, 50M-PYMES-DOW): la diferencia entre el que existe y el que
+// uno escribiría de memoria es de una letra, y ese comando va sexto en la
+// secuencia — cuando el equipo lo rechaza, la ONU ya quedó a medio configurar.
+function planDesconocido(id) {
+  const valor = document.getElementById(id).value.trim();
+  if (!valor || !planes.length || planes.includes(valor)) return null;
+  const parecido = planes.find((p) => p.toLowerCase() === valor.toLowerCase())
+    || planes.find((p) => p.toLowerCase().startsWith(valor.toLowerCase().slice(0, 6)));
+  return `El plan '${valor}' no existe en esta OLT.`
+       + (parecido ? ` ¿Quisiste decir '${parecido}'?` : '');
+}
+
+async function previsualizar() {
+  if (!document.getElementById('perfil').value.trim()) {
+    avisar('Falta el perfil de ONU: es el modelo del CPE que se instaló.', 'warning');
+    return;
+  }
+  const problema = planDesconocido('bajada') || planDesconocido('subida');
+  if (problema) {
+    avisar(problema, 'warning');
+    return;
+  }
+  if (!document.getElementById('bajada').value !== !document.getElementById('subida').value) {
+    avisar('Faltó uno de los dos planes. Con sólo la bajada, la subida queda con el '
+         + 'ancho de banda del perfil DBA y nadie se entera hasta que el cliente se queje.',
+           'warning');
+    return;
+  }
+  avisar('Consultando el equipo…', 'secondary');
+  try {
+    previsto = await api(`/olts/${OLT_ID}/autorizar`, {
+      method: 'POST',
+      body: JSON.stringify(cuerpoDelPedido(true)),
+    });
+  } catch (error) {
+    avisar(error.message, 'danger');
+    return;
+  }
+
+  document.getElementById('p-pon').textContent = previsto.pon;
+  document.getElementById('p-indice').textContent = previsto.onu_id;
+  document.getElementById('p-serie').textContent = previsto.numero_serie;
+  document.getElementById('p-desc').textContent = previsto.descripcion;
+  document.getElementById('p-comandos').textContent = previsto.comandos.join('\n');
+  document.getElementById('previsualizacion').classList.remove('d-none');
+  document.getElementById('previsualizacion').scrollIntoView({ behavior: 'smooth' });
+  avisar('No se envió nada todavía. Revisá los comandos.', 'info');
+}
+
+async function aplicar() {
+  if (!previsto) return;
+  const boton = document.getElementById('boton-aplicar');
+  boton.disabled = true;
+  boton.textContent = 'Aplicando…';
+
+  let resultado;
+  try {
+    resultado = await api(`/olts/${OLT_ID}/autorizar`, {
+      method: 'POST',
+      body: JSON.stringify(cuerpoDelPedido(false)),
+    });
+  } catch (error) {
+    avisar(error.message, 'danger');
+    boton.disabled = false;
+    boton.textContent = 'Confirmar y aplicar';
+    return;
+  }
+
+  // El último aviso visible tiene que decir lo que realmente pasó: dejar el
+  // "no se envió nada" de la previsualización sería decir lo contrario.
+  avisar(
+    resultado.ok
+      ? `ONU ${resultado.numero_serie} autorizada en ${resultado.pon}:${resultado.onu_id}.`
+      : `El equipo rechazó: ${resultado.comando_que_fallo}`,
+    resultado.ok ? 'success' : 'danger');
+
+  mostrarResultado(resultado);
+  boton.disabled = false;
+  boton.textContent = 'Confirmar y aplicar';
+  document.getElementById('previsualizacion').classList.add('d-none');
+  document.getElementById('formulario').classList.add('d-none');
+  cargar();
+}
+
+function mostrarResultado(r) {
+  const tarjeta = document.getElementById('resultado');
+  const titulo = document.getElementById('resultado-titulo');
+  const detalle = document.getElementById('resultado-detalle');
+
+  tarjeta.classList.remove('d-none', 'border-success', 'border-danger');
+  if (r.ok) {
+    tarjeta.classList.add('border-success');
+    titulo.innerHTML = `<span class="text-success fw-semibold">ONU ${escapar(r.numero_serie)}
+      autorizada en ${r.pon}:${r.onu_id}</span>`;
+    detalle.textContent = r.comandos_aplicados.join('\n');
+  } else {
+    tarjeta.classList.add('border-danger');
+    titulo.innerHTML = `<span class="text-danger fw-semibold">El equipo rechazó un comando</span>`;
+    // Si quedó a medias hay que decirlo con todas las letras: alguien tiene
+    // que ir a mirar esa ONU antes de reintentar.
+    detalle.textContent =
+      `Falló: ${r.comando_que_fallo}\n${r.error}\n\n` +
+      (r.quedo_a_medias
+        ? `ATENCIÓN: se alcanzaron a aplicar ${r.comandos_aplicados.length} comandos.\n` +
+          `La ONU ${r.pon}:${r.onu_id} quedó a medio configurar y hay que revisarla\n` +
+          `en el equipo antes de reintentar.\n\n`
+        : 'No se alcanzó a aplicar ningún cambio.\n\n') +
+      r.comandos_aplicados.join('\n');
+  }
+  tarjeta.scrollIntoView({ behavior: 'smooth' });
+}
+
+cargar().catch((error) => avisar(error.message, 'danger'));
+</script>
+{% endblock %}

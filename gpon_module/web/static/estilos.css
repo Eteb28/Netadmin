@@ -1,0 +1,56 @@
+/* Estilos propios del módulo GPON.
+ *
+ * Lo mínimo sobre Bootstrap 5: los colores de clasificación óptica y de estado,
+ * que son los que hacen que el operador entienda una tabla de 473 filas de un
+ * vistazo. Todo lo demás es Bootstrap sin tocar.
+ */
+
+:root {
+  --optica-saturada: #e35d6a;
+  --optica-optima: #4ade80;
+  --optica-aceptable: #a3e635;
+  --optica-baja: #fbbf24;
+  --optica-critica: #f87171;
+  --optica-sin-lectura: #6c757d;
+}
+
+/* Clasificación óptica. La saturada va en rojo igual que la crítica: demasiada
+ * luz daña el receptor, no es un valor bueno. */
+.optica-saturada    { color: var(--optica-saturada); font-weight: 600; }
+.optica-optima      { color: var(--optica-optima); }
+.optica-aceptable   { color: var(--optica-aceptable); }
+.optica-baja        { color: var(--optica-baja); font-weight: 600; }
+.optica-critica     { color: var(--optica-critica); font-weight: 600; }
+.optica-sin_lectura { color: var(--optica-sin-lectura); font-style: italic; }
+
+/* Ausencia de dato. Se muestra "—" y no un cero: un cero parece una medición. */
+.sin-dato { color: var(--bs-secondary-color); }
+
+.tarjeta-cifra { border-left: 3px solid var(--bs-info); }
+.tarjeta-cifra .cifra { font-size: 2rem; font-weight: 600; line-height: 1.1; }
+.tarjeta-cifra .etiqueta { font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+
+.tabla-compacta td, .tabla-compacta th { padding: .35rem .5rem; font-size: .875rem; }
+.tabla-compacta tbody tr { cursor: pointer; }
+
+.monoespaciada { font-family: var(--bs-font-monospace); font-size: .82rem; }
+
+.bloque-comandos {
+  background: var(--bs-tertiary-bg);
+  border-radius: .375rem;
+  padding: .75rem 1rem;
+  font-family: var(--bs-font-monospace);
+  font-size: .82rem;
+  white-space: pre-wrap;
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+/* Una capacidad ausente no se tacha ni se esconde del todo: se muestra apagada,
+ * para que quede claro que el equipo no puede, y no que falta implementarlo. */
+.capacidad-ausente { opacity: .45; text-decoration: line-through; }
+
+.cargando { opacity: .45; pointer-events: none; }
+
+th[data-orden] { cursor: pointer; user-select: none; }
+th[data-orden]::after { content: " ⇅"; opacity: .3; font-size: .8em; }
