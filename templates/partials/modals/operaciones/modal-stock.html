@@ -1,0 +1,23 @@
+<div id="modal-stock" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-stock')">
+<div class="modal">
+  <div class="modal-hd"><span>Agregar Stock</span><button class="modal-close" onclick="closeModal('modal-stock')">×</button></div>
+  <div class="modal-bd">
+    <input type="hidden" id="mstock-id">
+    <div class="form-row">
+      <div><label>Modelo *</label><input id="mstock-modelo" placeholder="RouterBoard 941..."></div>
+      <div><label>Marca</label><input id="mstock-marca" placeholder="MikroTik, ZTE..."></div>
+    </div>
+    <div class="form-row">
+      <div><label>Tipo</label>
+        <select id="mstock-tipo"><option value="inalambrico">Inalámbrico</option><option value="fibra">Fibra / FTTH</option><option value="accesorio">Accesorio</option></select>
+      </div>
+      <div><label>Cantidad</label><input id="mstock-cant" type="number" value="0" min="0"></div>
+    </div>
+    <div><label>Descripción</label><input id="mstock-desc" placeholder="Notas..."></div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-gray" onclick="closeModal('modal-stock')">Cancelar</button>
+    <button class="btn btn-prim" onclick="saveStock()">💾 Guardar</button>
+  </div>
+</div>
+</div>

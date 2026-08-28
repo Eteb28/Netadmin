@@ -1,0 +1,19 @@
+<div class="page" id="page-incidencias">
+  <div class="card">
+    <div class="stitle">🚨 Incidencias de Red <button class="btn btn-rj btn-sm" style="margin-left:auto" onclick="openModalIncidencia()">+ Nueva Incidencia</button></div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.7rem">
+      <select id="inc-estado" onchange="loadIncidencias()"><option value="">Todas</option><option value="abierta">Abiertas</option><option value="en_proceso">En proceso</option><option value="cerrada">Cerradas</option></select>
+      <select id="inc-tipo" onchange="loadIncidencias()">
+        <option value="">Todos los tipos</option>
+        <option value="torre_sin_servicio">Torre sin servicio</option>
+        <option value="ap_caido">AP Caído</option>
+        <option value="nap_sin_luz">NAP sin luz</option>
+        <option value="corte_fibra">Corte de fibra</option>
+        <option value="olt_offline">OLT offline</option>
+        <option value="masivo">Masivo</option>
+        <option value="otro">Otro</option>
+      </select>
+    </div>
+    <div id="inc-list"></div>
+  </div>
+</div>

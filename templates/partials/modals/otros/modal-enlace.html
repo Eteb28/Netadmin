@@ -1,0 +1,21 @@
+<div id="modal-enlace" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-enlace')">
+  <div class="modal-box">
+    <div class="modal-hd"><span id="menl-title">Nuevo enlace</span><button class="modal-close" onclick="closeModal('modal-enlace')">×</button></div>
+    <div class="modal-bd">
+      <input type="hidden" id="menl-id">
+      <div><label>Nombre (opcional)</label><input id="menl-nombre" placeholder="Ej: Centro → Norte"></div>
+      <div class="form-row" style="margin-top:.4rem">
+        <div><label>Extremo A *</label><select id="menl-eq-a"></select></div>
+        <div><label>Extremo B *</label><select id="menl-eq-b"></select></div>
+      </div>
+      <div style="margin-top:.4rem"><label>Estado</label><select id="menl-estado">
+        <option value="activo">Activo</option><option value="inactivo">Inactivo</option>
+      </select></div>
+      <div style="margin-top:.4rem"><label>Observaciones</label><textarea id="menl-obs" rows="2"></textarea></div>
+      <div style="display:flex;gap:.5rem;margin-top:.8rem">
+        <button class="btn btn-prim" onclick="guardarEnlace()">Guardar</button>
+        <button class="btn btn-rj" id="menl-del" style="display:none" onclick="borrarEnlace()">Eliminar</button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,37 @@
+/* ========================================================
+   main.css — extraído de templates/index.html
+   ERLAN NetAdmin v7 (refactor etapa 1: separación de CSS)
+   ======================================================== */
+
+:root{
+  --az:#2d5a8e;--az2:#1a3d6b;--az3:#4d7fb5;
+  --vd:#2a6632;--vd2:#439952;
+  --rj:#8b1f1f;--rj2:#b03030;
+  --am:#8c4a12;--am2:#bf6d1e;
+  --gris:#4a5c6a;--fondo:#e6eaf0;
+  --brd:#c2ccda;--card:#f3f6fa;--surf2:#eaeff5;--tint-verde:#e8f5e9;--tint-rojo:#fdecec;--tint-azul:#e8f0fb;--tint-ambar:#fff8e1;
+  --txt:#1a2a3a;--txt2:#4a5c6a;
+  --nav-h:54px;--side-w:210px;
+}
+@keyframes pulse-inc{0%,100%{box-shadow:0 0 0 0 rgba(255,0,0,.5)}50%{box-shadow:0 0 12px 4px rgba(255,0,0,.3)}}
+/* ── NAV ── */
+:root{--nav-h:50px}
+.nav::-webkit-scrollbar{width:6px}
+.nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);border-radius:3px}
+.nav-links::-webkit-scrollbar{display:none}
+@keyframes mdIn{from{transform:translateY(-20px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--brd);border-radius:4px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Animación NAP en alerta (etapa sprint v7) ── */
+@keyframes pulse-alert {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220,53,69,.7); transform: scale(1); }
+  50%      { box-shadow: 0 0 14px 6px rgba(220,53,69,.4); transform: scale(1.08); }
+}
+
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,87,34,.5)}70%{box-shadow:0 0 0 12px rgba(255,87,34,0)}100%{box-shadow:0 0 0 0 rgba(255,87,34,0)}}

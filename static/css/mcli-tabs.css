@@ -1,0 +1,61 @@
+/* ══════════════════════════════════════════════════════════════════
+   Pestañas del modal de cliente (General / Administrativo / Técnico / Monitoreo)
+   Usa SOLO variables del tema (--txt, --txt2, --brd, --surf2, --az3), así se
+   adapta a claro y oscuro sin reglas duplicadas.
+   El <link> va DESPUÉS de tema-oscuro.css para ganar por orden de carga.
+   ══════════════════════════════════════════════════════════════════ */
+
+#mcli-tabs.mcli-tabs{
+  display:flex;
+  gap:.15rem;
+  flex-wrap:wrap;
+  align-items:flex-end;
+  border-bottom:2px solid var(--brd);
+  margin:0 0 1rem 0;
+  padding:0;
+  background:transparent;
+}
+
+.mcli-tabs .mcli-tab{
+  appearance:none;
+  -webkit-appearance:none;
+  background:transparent;
+  border:none;
+  border-bottom:3px solid transparent;
+  margin-bottom:-2px;                 /* pisa el borde del contenedor */
+  padding:.5rem .85rem;
+  font-family:inherit;
+  font-size:.83rem;
+  font-weight:600;
+  line-height:1.2;
+  color:var(--txt2);                  /* inactiva: texto secundario */
+  cursor:pointer;
+  border-radius:7px 7px 0 0;
+  transition:background .15s, color .15s, border-color .15s;
+  white-space:nowrap;
+  display:inline-flex;
+  align-items:center;
+  gap:.3rem;
+  box-shadow:none;
+  outline:none;
+}
+
+.mcli-tabs .mcli-tab:hover{
+  background:var(--surf2);
+  color:var(--txt);
+}
+
+.mcli-tabs .mcli-tab.active{
+  color:var(--txt);                   /* activa: máximo contraste en ambos temas */
+  border-bottom-color:var(--az3);     /* acento legible en claro y oscuro */
+  font-weight:700;
+  background:transparent;
+}
+
+.mcli-tabs .mcli-tab:focus-visible{
+  box-shadow:0 0 0 2px var(--az3);
+  border-radius:7px;
+}
+
+/* Paneles: un respiro debajo de la barra */
+.mcli-pane{ padding-top:.1rem; }

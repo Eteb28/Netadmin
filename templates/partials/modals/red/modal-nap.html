@@ -1,0 +1,67 @@
+<div id="modal-nap" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-nap')">
+<div class="modal" style="max-width:650px">
+  <div class="modal-hd"><span id="mnap-title">Nueva NAP</span><button class="modal-close" onclick="closeModal('modal-nap')">×</button></div>
+  <div class="modal-bd">
+    <input type="hidden" id="mnap-id">
+    <div style="background:var(--tint-azul);border:1px solid #b3d4fc;border-radius:8px;padding:.6rem .8rem;margin-bottom:.8rem;font-size:.78rem;color:#1a3d6b">
+      <b>📋 Nomenclatura normalizada:</b> El nombre se genera automáticamente como <code>RED - CDO X - NAP Y</code>
+    </div>
+    <div class="form-row" style="grid-template-columns:1fr 1fr 1fr">
+      <div><label>Red *</label>
+        <div style="display:flex;gap:.3rem">
+          <select id="mnap-red" style="flex:1" onchange="generarNombreNap()">
+            <option value="">— Seleccionar red —</option>
+          </select>
+          <button class="btn btn-gray btn-xs" onclick="promptNuevaRed()" title="Agregar nueva red" style="flex-shrink:0;padding:.3rem .5rem">+</button>
+        </div>
+      </div>
+      <div><label>CDO *</label><input id="mnap-cdo" placeholder="Ej: 1, 2, 3..." oninput="generarNombreNap()"></div>
+      <div><label>NAP (1–8) *</label>
+        <select id="mnap-nap-num" onchange="generarNombreNap()">
+          <option value="">—</option>
+          <option value="1">1</option><option value="2">2</option>
+          <option value="3">3</option><option value="4">4</option>
+          <option value="5">5</option><option value="6">6</option>
+          <option value="7">7</option><option value="8">8</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div><label>Nombre generado</label><input id="mnap-nombre" readonly style="background:#172838;font-weight:700;font-family:monospace"></div>
+      <div><label>Localidad</label><input id="mnap-loc" placeholder="Localidad" list="loc-datalist"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Capacidad (puertos)</label><input id="mnap-cap" type="number" value="8" min="1" max="8" readonly style="background:#172838"></div>
+      <div><label>Estado</label>
+        <select id="mnap-estado">
+          <option value="activo">✓ Activo</option>
+          <option value="mantenimiento">🔧 Mantenimiento</option>
+          <option value="alerta">⚠️ Alerta</option>
+          <option value="inactivo">⊘ Inactivo</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div><label>Latitud</label><input id="mnap-lat" placeholder="-31.7345 o 31°44'04.2&quot;S"></div>
+      <div><label>Longitud</label><input id="mnap-lng" placeholder="-60.5280 o 60°31'41.0&quot;W"></div>
+    </div>
+    <div style="display:flex;gap:.4rem;align-items:center;margin:-.2rem 0 .6rem">
+      <button type="button" class="btn btn-gray btn-sm" onclick="elegirUbicacionNapEnMapa()">
+        📍 Elegir en el mapa</button>
+      <span style="font-size:.73rem;color:var(--txt2)">
+        También podés pegar las coordenadas de Google Maps, en decimal o en grados.</span>
+    </div>
+    <div class="form-row">
+      <div><label>Señal de instalación (dBm) <span style="color:#8FA6BF;font-size:.75rem;font-weight:400">(se registra con timestamp al alta)</span></label>
+        <input id="mnap-senal" placeholder="-23.5" style="font-family:monospace">
+      </div>
+      <div></div>
+    </div>
+    <div><label>Descripción</label><input id="mnap-desc" placeholder="Ubicación, calle..."></div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-gray" onclick="closeModal('modal-nap')">Cancelar</button>
+    <button class="btn btn-prim" onclick="saveNap()">💾 Guardar</button>
+  </div>
+</div>
+</div>

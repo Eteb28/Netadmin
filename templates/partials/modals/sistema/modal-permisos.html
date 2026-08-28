@@ -1,0 +1,61 @@
+<div id="modal-permisos" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-permisos')">
+<div class="modal" style="max-width:780px">
+  <div class="modal-hd" style="background:#1565c0;color:#fff">
+    <span id="mperm-title">🔐 Permisos de usuario</span>
+    <button class="modal-close" onclick="closeModal('modal-permisos')" style="color:#fff">×</button>
+  </div>
+  <div class="modal-bd">
+    <input type="hidden" id="mperm-uid">
+    <div id="mperm-user-info" style="background:var(--surf2);padding:.6rem;border-radius:6px;margin-bottom:.7rem;font-size:.85rem"></div>
+    
+    <div class="form-row">
+      <div><label>Rol</label>
+        <select id="mperm-rol" onchange="aplicarTemplateRol()">
+          <option value="admin">admin</option>
+          <option value="administrativo">administrativo</option>
+          <option value="tecnico">técnico</option>
+          <option value="lectura">solo lectura</option>
+          <option value="custom">personalizado</option>
+        </select>
+      </div>
+      <div><label>Estado</label>
+        <select id="mperm-activo">
+          <option value="1">Activo</option>
+          <option value="0">Inactivo</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin:.6rem 0">
+      <button type="button" class="btn btn-am btn-sm" onclick="aplicarTemplateRol(true)">↻ Restablecer al template del rol</button>
+    </div>
+    
+    <hr class="sep">
+    
+    <!-- Wildcard: acceso total -->
+    <div style="background:var(--tint-ambar);padding:.5rem;border-radius:4px;margin-bottom:.6rem">
+      <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer">
+        <input type="checkbox" id="mperm-wildcard" onchange="onWildcardChange()">
+        <span><b>🔓 Acceso total</b> (todos los módulos, todas las acciones — equivalente a admin)</span>
+      </label>
+    </div>
+    
+    <!-- Matriz de módulos x acciones -->
+    <div id="mperm-matriz-container" style="margin-top:.5rem">
+      <div style="font-weight:600;margin-bottom:.3rem">Matriz de permisos</div>
+      <div style="overflow-x:auto;max-height:50vh">
+        <table id="mperm-matriz" style="width:100%;font-size:.82rem;border-collapse:collapse">
+          <!-- Se llena dinámicamente -->
+        </table>
+      </div>
+    </div>
+    
+    <hr class="sep">
+    <div style="font-weight:600;margin-bottom:.3rem">Permisos especiales</div>
+    <div id="mperm-flags" style="display:grid;grid-template-columns:1fr 1fr;gap:.3rem"></div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-gray" onclick="closeModal('modal-permisos')">Cancelar</button>
+    <button class="btn btn-prim" onclick="guardarPermisos()">💾 Guardar permisos</button>
+  </div>
+</div>
+</div>

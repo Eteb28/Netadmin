@@ -1,0 +1,28 @@
+<div id="modal-generar-guardias" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-generar-guardias')">
+  <div class="modal">
+    <div class="modal-hd"><span>🔄 Generar rotación de guardias</span><button class="modal-close" onclick="closeModal('modal-generar-guardias')">×</button></div>
+    <div class="modal-bd">
+      <div style="font-size:.85rem;color:var(--txt2);margin-bottom:.6rem">
+        Asigna los titulares en rotación (uno por sábado, en orden) sobre el rango elegido. El refuerzo se carga a mano después.
+      </div>
+      <div class="form-row">
+        <div><label>Desde</label><input type="date" id="gen-desde"></div>
+        <div><label>Hasta</label><input type="date" id="gen-hasta"></div>
+      </div>
+      <label style="margin-top:.5rem;display:block">Orden de rotación (agregá los titulares en el orden que rotan)</label>
+      <div id="gen-rotacion-list" style="margin:.4rem 0"></div>
+      <div style="display:flex;gap:.4rem;align-items:center">
+        <select id="gen-add-emp" style="flex:1;padding:.4rem;border:1px solid var(--brd);border-radius:6px"></select>
+        <button class="btn btn-gray btn-sm" onclick="addRotacionEmp()">+ Agregar</button>
+      </div>
+      <div style="margin-top:.7rem;display:flex;align-items:center;gap:.5rem">
+        <input type="checkbox" id="gen-sobrescribir" style="width:auto">
+        <label for="gen-sobrescribir" style="margin:0;font-size:.85rem">Sobrescribir guardias ya cargadas en el rango</label>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-gray" onclick="closeModal('modal-generar-guardias')">Cancelar</button>
+      <button class="btn btn-prim" onclick="generarGuardias()">🔄 Generar</button>
+    </div>
+  </div>
+</div>

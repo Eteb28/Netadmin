@@ -1,0 +1,34 @@
+<div id="modal-inv-item" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-inv-item')">
+<div class="modal" style="max-width:420px">
+  <div class="modal-hd"><span id="inv-modal-title">Agregar ítem</span><button class="modal-close" onclick="closeModal('modal-inv-item')">×</button></div>
+  <div class="modal-bd">
+    <input type="hidden" id="inv-id">
+    <label style="display:block;margin-bottom:.5rem">Nombre<input id="inv-nombre" style="width:100%" placeholder="Ej: Bobina 1 core x 1000mts"></label>
+    <div class="form-grid">
+      <label>Columna<select id="inv-categoria">
+        <option value="inalambrico">Inalámbrico</option>
+        <option value="fibra">Fibra</option>
+        <option value="varios">Varios</option>
+      </select></label>
+      <label>Origen<select id="inv-origen" onchange="toggleInvOrigen()">
+        <option value="manual">Manual (cargo la cantidad)</option>
+        <option value="auto">Automático (cuenta del stock por serie)</option>
+      </select></label>
+      <label>Cantidad<input type="number" id="inv-cantidad" min="0" value="0"></label>
+      <label>Unidad<input id="inv-unidad" value="u" placeholder="u, mts, cajas..."></label>
+    </div>
+    <div id="inv-auto-fields" style="display:none;background:#152438;padding:.5rem;border-radius:6px;margin-top:.5rem">
+      <small style="color:#1565c0">Para conteo automático, indicá qué buscar en el stock por serie (depósito):</small>
+      <div class="form-grid" style="margin-top:.4rem">
+        <label>Marca (opcional)<input id="inv-serie-marca" placeholder="Ej: Ubiquiti"></label>
+        <label>Tipo/Modelo<input id="inv-serie-tipo" placeholder="Ej: LocoM2"></label>
+      </div>
+    </div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-rj" id="inv-del" style="margin-right:auto;display:none" onclick="eliminarInvItem()">🗑 Eliminar</button>
+    <button class="btn btn-gray" onclick="closeModal('modal-inv-item')">Cancelar</button>
+    <button class="btn btn-prim" onclick="guardarInvItem()">Guardar</button>
+  </div>
+</div>
+</div>

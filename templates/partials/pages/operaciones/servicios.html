@@ -1,0 +1,91 @@
+<div class="page" id="page-servicios">
+  <div class="tabs" style="display:flex;gap:.3rem;margin-bottom:.7rem;border-bottom:2px solid var(--brd)">
+    <button class="svc-tab active" id="svctab-ordenes" onclick="cambiarTabServicios('ordenes')" style="padding:.5rem 1rem;border:none;background:none;cursor:pointer;font-weight:600;border-bottom:3px solid transparent">🔧 Órdenes de Servicio</button>
+    <button class="svc-tab" id="svctab-interior" onclick="cambiarTabServicios('interior')" style="padding:.5rem 1rem;border:none;background:none;cursor:pointer;font-weight:600;border-bottom:3px solid transparent">👷 Técnicos interior</button>
+    <button class="svc-tab" id="svctab-stats" onclick="cambiarTabServicios('stats')" style="padding:.5rem 1rem;border:none;background:none;cursor:pointer;font-weight:600;border-bottom:3px solid transparent">📊 Estadísticas</button>
+  </div>
+
+  <div id="svc-pane-ordenes">
+  <div class="card">
+    <div class="stitle">🔧 Órdenes de Servicio</div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.7rem">
+      <select id="svc-estado" onchange="loadServicios()"><option value="">Todos los estados</option><option value="pendiente">Pendiente</option><option value="asignado">Asignado</option><option value="en_camino">En camino</option><option value="en_proceso">En proceso</option><option value="requiere_seguimiento">Requiere seguimiento</option><option value="cerrado">Cerrado</option><option value="cancelado">Cancelado</option></select>
+      <select id="svc-tipo" onchange="loadServicios()">
+        <option value="">Todos los tipos</option>
+        <option value="reparacion_fibra">Reparación Fibra</option>
+        <option value="reparacion_inalambrico">Reparación Inalámbrico</option>
+        <option value="migracion_ftth">Migración a FTTH</option>
+        <option value="cambio_domicilio">Cambio de Domicilio</option>
+        <option value="instalacion">Nueva Instalación</option>
+        <option value="retiro_equipo">Retiro de Equipo</option>
+        <option value="service_con_costo">Service con Costo</option>
+      </select>
+      <select id="svc-tecnico" onchange="loadServicios()"><option value="">Todos los técnicos</option></select>
+      <select id="svc-prioridad" onchange="loadServicios()"><option value="">Todas las prioridades</option><option value="urgente">Urgente</option><option value="alta">Alta</option><option value="normal">Normal</option><option value="baja">Baja</option></select>
+      <button class="btn btn-prim" onclick="openModalServicio()">+ Nueva Orden</button>
+      <button class="btn btn-gray" onclick="toggleProductividad()">📊 Productividad técnicos</button>
+    </div>
+    <div id="svc-productividad" style="display:none"></div>
+    <div id="svc-list"></div>
+  </div>
+  </div>
+
+  <div id="svc-pane-interior" style="display:none">
+    <div class="card">
+      <div class="stitle">👷 Trabajos de técnicos externos
+        <button class="btn btn-prim btn-sm" style="margin-left:auto" onclick="openModalTITrabajo()">+ Cargar trabajo</button>
+        <button class="btn btn-gray btn-sm" onclick="openTIPersonal()">👥 Técnicos</button>
+        <button class="btn btn-gray btn-sm" onclick="openTITarifas()">💲 Tarifas</button>
+      </div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.7rem">
+        <select id="ti-filtro-tecnico" onchange="loadTITrabajos()"><option value="">Todos los técnicos</option></select>
+        <input type="month" id="ti-filtro-mes" onchange="loadTITrabajos()">
+        <select id="ti-filtro-pago" onchange="loadTITrabajos()">
+          <option value="">Pagados y pendientes</option>
+          <option value="0">Solo pendientes de pago</option>
+          <option value="1">Solo pagados</option>
+        </select>
+        <button class="btn btn-vd btn-sm" onclick="verReporteTI()">📋 Reporte de pago</button>
+        <input type="date" id="ti-hist-fecha" title="Filtrar pagos por día" style="font-size:.82rem">
+        <button class="btn btn-gray btn-sm" onclick="verHistorialPagos()">💰 Historial de pagos</button>
+      </div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.7rem;padding:.5rem;background:#152438;border-radius:8px;align-items:center">
+        <b style="font-size:.82rem">🧾 Pre-pago (conciliación):</b>
+        <span style="font-size:.78rem;color:var(--txt2)">Desde</span>
+        <input type="date" id="ti-prepago-desde" style="font-size:.82rem">
+        <span style="font-size:.78rem;color:var(--txt2)">Hasta</span>
+        <input type="date" id="ti-prepago-hasta" style="font-size:.82rem">
+        <button class="btn btn-am btn-sm" onclick="verPrePago()">📄 Generar pre-pago</button>
+        <span style="font-size:.72rem;color:var(--txt2)">Genera el comprobante sin registrar el pago, para que el técnico concilie antes.</span>
+      </div>
+      <div id="ti-prepago-resultado" style="display:none"></div>
+      <div id="ti-reporte" style="display:none"></div>
+      <div id="ti-historial" style="display:none"></div>
+      <div id="ti-trabajos-list"></div>
+    </div>
+  </div>
+
+  <div id="svc-pane-stats" style="display:none">
+    <div class="card">
+      <div class="stitle">📊 Estadísticas por diagnóstico y solución
+        <select id="stats-periodo" onchange="loadStatsServicios()" style="margin-left:auto;font-size:.82rem">
+          <option value="3">Últimos 3 meses</option>
+          <option value="6">Últimos 6 meses</option>
+          <option value="12" selected>Últimos 12 meses</option>
+          <option value="todo">Todo el historial</option>
+        </select>
+      </div>
+      <div id="stats-cobertura" style="font-size:.8rem;color:var(--txt2);margin-bottom:.7rem"></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1rem">
+        <div>
+          <b style="font-size:.88rem">🔍 Diagnósticos más frecuentes</b>
+          <div id="stats-diagnosticos" style="margin-top:.5rem"></div>
+        </div>
+        <div>
+          <b style="font-size:.88rem">🔧 Soluciones más aplicadas</b>
+          <div id="stats-soluciones" style="margin-top:.5rem"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

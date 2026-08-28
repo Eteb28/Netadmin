@@ -1,0 +1,90 @@
+<div id="modal-servicio" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-servicio')">
+<div class="modal" style="max-width:650px">
+  <div class="modal-hd"><span id="msvc-title">Nueva Orden de Servicio</span><button class="modal-close" onclick="closeModal('modal-servicio')">×</button></div>
+  <div class="modal-bd">
+    <input type="hidden" id="msvc-id">
+    <div class="form-row">
+      <div>
+        <label>Cliente *</label>
+        <div style="position:relative">
+          <input id="msvc-cli-q" placeholder="Buscar cliente..." oninput="searchClienteForSvc()" autocomplete="off">
+          <div id="msvc-cli-drop" style="display:none;position:absolute;top:100%;left:0;width:100%;background:#111E2D;border:1.5px solid var(--brd);border-radius:0 0 8px 8px;box-shadow:0 8px 20px rgba(0,0,0,.15);z-index:600;max-height:160px;overflow-y:auto"></div>
+        </div>
+        <input type="hidden" id="msvc-cli-id">
+      </div>
+      <div><label>Tipo de servicio</label>
+        <select id="msvc-tipo" onchange="svcTipoChange()">
+          <option value="servicio_tecnico">Servicio técnico</option>
+          <option value="reparacion_fibra">Reparación — Fibra</option>
+          <option value="reparacion_inalambrico">Reparación — Inalámbrico</option>
+          <option value="instalacion">Instalación</option>
+          <option value="mantenimiento">Mantenimiento</option>
+          <option value="calculo_enlace">Cálculo de enlace</option>
+          <option value="migracion_ftth">Migración a FTTH</option>
+          <option value="cambio_domicilio">Cambio de domicilio</option>
+          <option value="retiro_equipo">Retiro de Equipo</option>
+          <option value="service_con_costo">Service con Costo</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div><label>Técnico asignado</label><input id="msvc-tecnico" placeholder="Nombre del técnico" list="tecnico-datalist"></div>
+      <div><label>Prioridad</label>
+        <select id="msvc-prioridad">
+          <option value="normal">Normal</option>
+          <option value="alta">Alta</option>
+          <option value="urgente">Urgente</option>
+          <option value="baja">Baja</option>
+        </select>
+      </div>
+    </div>
+    <div id="svc-costo-row" style="display:none" class="form-row">
+      <div><label>Costo ($)</label><input id="msvc-costo" type="number" step="0.01" value="0" placeholder="0.00"></div>
+      <div></div>
+    </div>
+    <div><label>Descripción del problema</label><textarea id="msvc-desc" rows="3" placeholder="Detallá el servicio a realizar..."></textarea></div>
+    <div class="form-row" style="margin-top:.5rem">
+      <div><label>Diagnóstico</label>
+        <select id="msvc-diagnostico"><option value="">— Seleccionar —</option></select>
+      </div>
+      <div><label>Solución aplicada</label>
+        <select id="msvc-solucion"><option value="">— Seleccionar —</option></select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:.5rem">
+      <div><label>Estado</label>
+        <select id="msvc-estado">
+          <option value="pendiente">Pendiente</option>
+          <option value="asignado">Asignado</option>
+          <option value="en_camino">En camino</option>
+          <option value="en_proceso">En proceso</option>
+          <option value="requiere_seguimiento">Requiere seguimiento</option>
+          <option value="completado">Realizado / Cerrado</option>
+          <option value="cancelado">Cancelado</option>
+        </select>
+      </div>
+      <div><label>Observaciones</label><input id="msvc-obs" placeholder="Notas adicionales"></div>
+    </div>
+
+    <!-- Materiales consumidos (solo en edición) -->
+    <div id="msvc-materiales" style="display:none;margin-top:.8rem;border-top:1px solid var(--brd);padding-top:.7rem">
+      <div style="font-weight:600;font-size:.9rem;margin-bottom:.5rem">🧵 Materiales usados en esta orden</div>
+      <div style="display:flex;gap:.4rem;align-items:flex-end;flex-wrap:wrap">
+        <div style="flex:1;min-width:180px"><label>Material</label>
+          <select id="msvc-mat-sel"></select>
+        </div>
+        <div style="width:90px"><label>Cantidad</label>
+          <input id="msvc-mat-cant" type="number" min="1" step="1" value="1">
+        </div>
+        <button type="button" class="btn btn-prim btn-sm" onclick="agregarMaterialServicio()">+ Agregar</button>
+      </div>
+      <div id="msvc-mat-list" style="margin-top:.5rem"></div>
+    </div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-gray" onclick="closeModal('modal-servicio')">Cancelar</button>
+    <button class="btn btn-prim" onclick="saveServicio()">💾 Guardar</button>
+  </div>
+</div>
+</div>

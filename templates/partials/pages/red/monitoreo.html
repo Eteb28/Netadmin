@@ -1,0 +1,14 @@
+<div class="page" id="page-monitoreo">
+  <div class="card">
+    <div class="stitle">📡 Monitoreo de Red
+      <button class="btn btn-prim btn-sm" style="margin-left:auto" onclick="openModalMonitoreo()">+ Agregar IP</button>
+    </div>
+    <div id="mon-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;margin-bottom:.8rem"></div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Dispositivo</th><th>Tipo</th><th>IP</th><th>Estado</th><th>Latencia</th><th>Último check</th><th>Acciones</th></tr></thead>
+        <tbody id="mon-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
