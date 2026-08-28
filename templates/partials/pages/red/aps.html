@@ -1,0 +1,12 @@
+<div class="page" id="page-aps">
+  <div class="card">
+    <div class="stitle">📡 Vista de APs
+      <small style="margin-left:auto;color:var(--txt2);font-weight:400">Clientes conectados a cada AP, según el último sondeo</small>
+    </div>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-bottom:.8rem">
+      <input type="text" id="ap-buscar" placeholder="🔍 Filtrar por SSID o MAC..." oninput="filtrarAPs()" style="flex:1;min-width:200px;padding:.45rem .7rem;border:1px solid var(--brd);border-radius:6px">
+      <span id="ap-resumen" style="font-size:.85rem;color:var(--txt2)"></span>
+    </div>
+    <div id="aps-lista"></div>
+  </div>
+</div>

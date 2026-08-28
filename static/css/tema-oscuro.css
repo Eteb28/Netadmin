@@ -1,0 +1,111 @@
+/* ═══════════════════════════════════════════════════════════════
+   tema-oscuro.css — Reskin NOC de Pucará (reversible)
+   Se carga DESPUÉS de main.css. Para volver al tema claro:
+   quitar el <link> de este archivo. No modifica main.css.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── 1. Tokens de paleta (voltean el 60-70% que usa variables) ── */
+:root{
+  --fondo:#0A131E;      /* fondo general */
+  --card:#111E2D;       /* superficie de tarjetas */
+  --brd:#243A52;        /* bordes / líneas */
+  --txt:#EAF1F8;        /* texto principal */
+  --txt2:#8FA6BF;       /* texto secundario */
+  --gris:#8FA6BF;
+  /* acentos ajustados para contraste sobre oscuro */
+  --az:#3d6fa8; --az2:#2d5a8e; --az3:#4d7fb5;
+  --vd:#3E9B6B; --vd2:#4FB88A;
+  --rj:#C24B4B; --rj2:#E08063;
+  --am:#B9852A; --am2:#E0A838;
+  /* tokens nuevos del tema NOC (para lo que barramos a mano) */
+  --surf2:#172838;
+  --tint-verde:rgba(79,184,138,.13); --tint-rojo:rgba(224,128,99,.14); --tint-azul:rgba(93,127,181,.16); --tint-ambar:rgba(224,168,56,.14); --surf3:#1E3247; --faint:#566B84; --signal:#4FB3AA;
+}
+
+/* fondo con leve gradiente ambiental (como informes) */
+body{
+  background:#0A131E;
+  background-image:radial-gradient(760px 440px at 82% -8%,rgba(79,179,170,.045),transparent 60%);
+}
+
+/* ── 2. Sidebar: el shell profundo ── */
+.nav{
+  background:linear-gradient(180deg,#0D1927,#0A131E) !important;
+  border-right:1px solid var(--brd);
+  box-shadow:none;
+}
+.nav a{color:#8FA6BF}
+.nav a:hover{background:#172838;color:#EAF1F8}
+.nav a.active,.nav a.on{background:linear-gradient(90deg,rgba(79,179,170,.14),rgba(79,179,170,.03)) !important;color:#EAF1F8 !important;box-shadow:inset 2px 0 0 var(--signal)}
+.nav-drawer{background:linear-gradient(180deg,#0D1927,#0A131E)}
+.nav-drawer a{color:#8FA6BF}
+.nav-drawer a:hover,.nav-drawer a.active{background:#172838;color:#EAF1F8}
+.nav-group-menu{background:#0D1927}
+
+/* ── 3. Tarjetas: gradiente sutil para dar profundidad (específico del tema) ── */
+.card{background:linear-gradient(180deg,#111E2D,#0F1B29)}
+
+/* ── 4. Inputs: solo el foco y placeholder (el resto lo dan las variables) ── */
+input::placeholder,textarea::placeholder{color:var(--faint)}
+select option{background:var(--card);color:var(--txt)}
+input:focus,select:focus,textarea:focus{border-color:var(--signal) !important}
+
+/* ── 5. Modal overlay (rgba especial, no es una variable) ── */
+.modal-overlay,.modal-bg{background:rgba(6,12,20,.72)}
+
+/* NOTA: tablas, inputs, modales, botones y toolbars ya NO se sobrescriben acá.
+   main.css los define con var(--card/--txt/--brd/--az), que este :root vuelve oscuros. */
+
+/* ── 6. Scrollbars (no son variable-driven) ── */
+::-webkit-scrollbar-track{background:var(--fondo)}
+::-webkit-scrollbar-thumb{background:var(--brd)}
+::-webkit-scrollbar-thumb:hover{background:#315679}
+
+/* ── 7. NAP / rankings / badges que usan claro ── */
+.nap-group-bar{background:#1E3247}
+.top-nap-rank{background:#2d5a8e}
+
+/* ── 12. Global filter (barra superior de filtros) ── */
+.global-filter{background:#111E2D;border-color:var(--brd)}
+.global-filter select{background:#0F1B29 !important;color:#EAF1F8 !important;border-color:var(--brd)}
+
+/* ── 13. Fuentes del tema (headings con carácter) ── */
+.stitle,.card h3,.page h1,.page h2{font-family:'Space Grotesk','Segoe UI',system-ui,sans-serif}
+
+/* ── 14. Ajustes de contraste para texto tenue heredado ── */
+.muted,.text-muted,small{color:#8FA6BF}
+
+/* ── 15. Tarjetas KPI del dashboard ── */
+.kpi{background:linear-gradient(180deg,#111E2D,#0F1B29) !important;border:1px solid var(--brd);box-shadow:none}
+.kpi-label{color:#8FA6BF}
+.kpi-value{color:#EAF1F8}
+.stat{background:#111E2D;box-shadow:none;border-left-color:var(--signal)}
+
+/* ── 16. Tarjetas de finanzas (variantes de color → oscuro con acento) ── */
+.fin-card.green{background:rgba(79,184,138,.10) !important;border-left-color:#4FB88A}
+.fin-card.blue{background:rgba(77,127,181,.12) !important;border-left-color:#4d7fb5}
+.fin-card.orange{background:rgba(224,168,56,.10) !important;border-left-color:#E0A838}
+.fin-card.red{background:rgba(224,128,99,.10) !important;border-left-color:#E08063}
+.fin-section{background:#111E2D !important;box-shadow:none}
+
+/* ── 17. Badges de estado (fondo tintado oscuro + texto claro, mismo tono) ── */
+/* verdes */
+.b-activo,.b-pte_cambio,.b-cerrado{background:rgba(79,184,138,.15) !important;color:#5FD09A !important}
+/* ámbar/naranja */
+.b-suspendido,.b-pte_calculo,.b-pte_suspension,.b-pendiente,.b-alta,.b-media{background:rgba(224,168,56,.15) !important;color:#E8BC5A !important}
+/* rojos */
+.b-pte_rescision,.b-rescision,.b-sin_contrato,.b-urgente{background:rgba(224,128,99,.16) !important;color:#EC9077 !important}
+/* azules */
+.b-pte_instalacion,.b-calculado,.b-fibra,.b-en_proceso{background:rgba(93,127,181,.18) !important;color:#8FB4E0 !important}
+/* violeta */
+.b-inalambrico{background:rgba(139,128,216,.16) !important;color:#A99CE8 !important}
+/* grises */
+.b-baja,.b-borrador,.b-normal{background:rgba(143,166,191,.13) !important;color:#A6BAD0 !important}
+/* crítica ya es oscura, se deja */
+
+/* ── Clases puntuales de main.css con color oscuro/claro fijo (override desde CSS) ── */
+.svc-tab{color:#8FA6BF !important}
+.svc-tab.active{color:#EAF1F8 !important}
+/* Títulos de sección: el azul #2d5a8e es muy oscuro sobre fondo oscuro → aclararlo */
+.section-title,.stitle{color:#7FB0D8 !important}
+.stat-val{color:#EAF1F8 !important}

@@ -1,0 +1,21 @@
+<div class="page" id="page-capacidad-aps">
+  <div class="card">
+    <div class="stitle">📊 Capacidad de APs
+      <small style="margin-left:auto;color:var(--txt2);font-weight:400">Saturación y salud de cada AP según su perfil y clientes por SNMP</small>
+    </div>
+    <div id="cap-resumen" style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.8rem"></div>
+    <div style="margin-bottom:.6rem;display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-gray btn-sm" onclick="cargarCapacidad()">🔄 Refrescar</button>
+      <select id="cap-filtro" onchange="renderCapacidad()" style="padding:.4rem;border:1px solid var(--brd);border-radius:6px">
+        <option value="">Todos los estados</option>
+        <option value="critico">🔴 Críticos</option>
+        <option value="advertencia">🟡 Advertencia</option>
+        <option value="normal">🟢 Normales</option>
+        <option value="sin_datos">⚫ Sin datos</option>
+        <option value="desbalanceado">⚖ Desbalanceados</option>
+        <option value="sin_perfil">⚠ Sin perfil técnico</option>
+      </select>
+    </div>
+    <div id="cap-lista"><div style="color:var(--txt2)">Cargando…</div></div>
+  </div>
+</div>

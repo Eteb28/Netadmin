@@ -1,0 +1,58 @@
+<div class="page" id="page-rrhh">
+  <div class="card" style="margin-bottom:.7rem">
+    <div class="stitle">🧑‍💼 Recursos Humanos
+      <button class="btn btn-prim btn-sm" style="margin-left:auto" onclick="openModalEmpleado()">+ Nuevo empleado</button>
+    </div>
+    <div id="rrhh-resumen" class="fin-grid" style="margin-bottom:.7rem"></div>
+    <div style="display:flex;gap:.5rem;margin-bottom:.5rem">
+      <input id="rrhh-q" placeholder="Buscar nombre, DNI, legajo..." oninput="loadEmpleadosLista()" style="flex:1;max-width:300px;padding:.4rem .6rem;border:1px solid var(--brd);border-radius:6px">
+      <select id="rrhh-area" onchange="loadEmpleadosLista()" style="padding:.4rem">
+        <option value="">Todas las áreas</option>
+        <option value="Técnica">Técnica</option>
+        <option value="Administración">Administración</option>
+        <option value="Ventas">Ventas</option>
+        <option value="Gerencia">Gerencia</option>
+      </select>
+    </div>
+    <div id="rrhh-list"></div>
+  </div>
+
+  <div class="card" id="rrhh-solicitudes-card" style="display:none">
+    <div class="stitle">⏳ Solicitudes de vacaciones pendientes</div>
+    <div id="rrhh-solicitudes"></div>
+  </div>
+
+  <div class="card">
+    <div class="stitle">📅 Calendario de ausencias
+      <div style="margin-left:auto;display:flex;gap:.4rem;align-items:center">
+        <button class="btn btn-gray btn-xs" onclick="cambiarMesAusencias(-1)">‹</button>
+        <span id="rrhh-cal-mes" style="font-weight:600;min-width:120px;text-align:center"></span>
+        <button class="btn btn-gray btn-xs" onclick="cambiarMesAusencias(1)">›</button>
+      </div>
+    </div>
+    <div id="rrhh-calendario"></div>
+  </div>
+
+  <div class="card">
+    <div class="stitle">📖 Historial de vacaciones y ausencias</div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.6rem">
+      <select id="hist-anio" onchange="loadHistorialAusencias()" style="padding:.4rem;border:1px solid var(--brd);border-radius:6px">
+        <option value="">Todos los años</option>
+      </select>
+      <select id="hist-tipo" onchange="loadHistorialAusencias()" style="padding:.4rem;border:1px solid var(--brd);border-radius:6px">
+        <option value="">Todos los tipos</option>
+        <option value="vacaciones">Vacaciones</option>
+        <option value="licencia">Licencia</option>
+        <option value="enfermedad">Enfermedad</option>
+        <option value="franco">Franco</option>
+      </select>
+      <select id="hist-estado" onchange="loadHistorialAusencias()" style="padding:.4rem;border:1px solid var(--brd);border-radius:6px">
+        <option value="">Todos los estados</option>
+        <option value="autorizada">Autorizadas</option>
+        <option value="pendiente">Pendientes</option>
+        <option value="rechazada">Rechazadas</option>
+      </select>
+    </div>
+    <div id="rrhh-historial"></div>
+  </div>
+</div>

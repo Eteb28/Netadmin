@@ -1,0 +1,63 @@
+/* ── CAROUSEL ── */
+.carousel{background:var(--az2);border-radius:10px;padding:.6rem 1rem;color:#fff;display:flex;align-items:center;gap:.8rem;min-height:44px;overflow:hidden}
+.carousel-icon{font-size:1.1rem;flex-shrink:0}
+.carousel-content{flex:1;overflow:hidden}
+.carousel-slide{display:none;animation:slideIn .4s ease}
+.carousel-slide.active{display:flex;align-items:center;gap:.6rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.carousel-title{font-weight:700;font-size:.82rem;flex-shrink:0}
+.carousel-text{font-size:.79rem;opacity:.9;overflow:hidden;text-overflow:ellipsis}
+.carousel-badge{background:rgba(255,255,255,.2);border-radius:20px;padding:.1rem .5rem;font-size:.7rem;font-weight:700;flex-shrink:0}
+.carousel-nav{display:flex;gap:.3rem}
+.carousel-nav button{background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:4px;padding:.2rem .45rem;cursor:pointer;font-size:.7rem}
+/* ── SERVICE CARD ── */
+.svc-card{border-radius:8px;border:1px solid var(--brd);padding:.7rem;background:var(--card);transition:.15s}
+.svc-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.1)}
+.svc-header{display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem}
+.svc-tipo{font-weight:700;font-size:.82rem}
+.svc-cliente{font-size:.78rem;color:var(--txt2)}
+/* ── FTTH PANEL ── */
+.olt-card{background:var(--card);border-radius:10px;border:1px solid var(--brd);padding:.9rem;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.olt-hd{display:flex;align-items:center;gap:.5rem;margin-bottom:.7rem}
+.olt-name{font-weight:800;font-size:.9rem;color:var(--az2)}
+.olt-ip{font-size:.72rem;color:var(--txt2);font-family:monospace}
+.pon-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:.4rem}
+.pon-port{border-radius:7px;padding:.4rem .5rem;text-align:center;border:1.5px solid var(--brd);cursor:pointer;transition:.15s}
+.pon-port:hover{border-color:var(--az3)}
+.pon-port .pon-num{font-size:.65rem;color:var(--txt2);font-weight:700}
+.pon-port .pon-cnt{font-size:1.1rem;font-weight:800;color:var(--az2)}
+.pon-port.vacio{background:var(--card)}
+.pon-port.lleno{background:#ffebee;border-color:var(--rj2)}
+.pon-port.casi{background:#fff8e1;border-color:var(--am2)}
+/* ── STOCK ── */
+.stock-row{display:flex;align-items:center;gap:.6rem;padding:.5rem .7rem;border-radius:7px;background:var(--card);border:1px solid var(--brd);margin-bottom:.4rem}
+.stock-icn{font-size:1.3rem}
+.stock-info{flex:1}
+.stock-modelo{font-weight:700;font-size:.84rem}
+.stock-marca{font-size:.74rem;color:var(--txt2)}
+.stock-cnt{background:var(--az2);color:#fff;border-radius:20px;padding:.2rem .6rem;font-size:.8rem;font-weight:700;min-width:36px;text-align:center}
+/* ── INCIDENCIA CARD ── */
+.inc-card{border-radius:8px;border-left:4px solid var(--az3);background:var(--card);padding:.7rem;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+.inc-card.critica{border-color:var(--rj)}
+.inc-card.alta{border-color:var(--am)}
+.inc-card.media{border-color:var(--az3)}
+
+/* Incidencias compact */
+.inc-list-compact .inc{display:flex;align-items:center;gap:.5rem;padding:.45rem 0;border-bottom:1px solid var(--brd);font-size:.8rem}
+.inc-list-compact .inc:last-child{border:0}
+.inc-prio{width:8px;height:32px;border-radius:2px;flex-shrink:0}
+.inc-prio.critica{background:var(--rj)}
+.inc-prio.alta{background:var(--am)}
+.inc-prio.media{background:var(--am2)}
+.inc-info{flex:1;min-width:0}
+.inc-titulo{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.inc-meta{font-size:.7rem;color:var(--txt2)}
+
+/* ── Carrusel ancho (sprint v7) ── */
+.carousel-wide {
+  min-height: 70px;
+  padding: 1rem 1.4rem;
+  font-size: 1.02rem;
+}
+.carousel-wide .carousel-icon { font-size: 1.6rem; }
+.carousel-wide .carousel-title { font-size: 1.1rem; font-weight: 700; }
+.carousel-wide .carousel-text { font-size: .98rem; }

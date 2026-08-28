@@ -1,0 +1,27 @@
+<div id="modal-ti-trabajo" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-ti-trabajo')">
+<div class="modal" style="max-width:480px">
+  <div class="modal-hd"><span id="tit-modal-title">Cargar trabajo</span><button class="modal-close" onclick="closeModal('modal-ti-trabajo')">×</button></div>
+  <div class="modal-bd">
+    <input type="hidden" id="ti-trabajo-id">
+    <div class="form-grid">
+      <label>Técnico<select id="tit-tecnico"></select></label>
+      <label>Tipo de trabajo<select id="tit-tipo" onchange="actualizarMontoTI()"></select></label>
+      <label>Fecha<input type="date" id="tit-fecha"></label>
+      <label id="tit-metros-wrap" style="display:none">Metros de FO tendidos<input type="number" id="tit-metros" min="0" step="any" oninput="actualizarMontoTI()" placeholder="ej: 120"></label>
+      <label>Monto<input type="number" id="tit-monto" min="0" step="any"></label>
+      <label>Cliente (buscá por N° o nombre)
+        <input id="tit-cliente" autocomplete="off" oninput="buscarClienteTI(this.value)" placeholder="ej: 038080 o apellido">
+        <input type="hidden" id="tit-cliente-id">
+        <div id="tit-cliente-drop" style="display:none;position:absolute;z-index:100;background:#111E2D;border:1px solid var(--brd);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.15);max-height:180px;overflow-y:auto;min-width:280px"></div>
+      </label>
+      <label>Localidad (opcional)<input id="tit-localidad"></label>
+    </div>
+    <label style="display:block;margin-top:.5rem">Descripción (opcional)<textarea id="tit-desc" rows="2" style="width:100%"></textarea></label>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-rj" id="tit-del" style="margin-right:auto;display:none" onclick="eliminarTITrabajo()">🗑 Eliminar</button>
+    <button class="btn btn-gray" onclick="closeModal('modal-ti-trabajo')">Cancelar</button>
+    <button class="btn btn-prim" onclick="guardarTITrabajo()">Guardar</button>
+  </div>
+</div>
+</div>

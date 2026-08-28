@@ -1,0 +1,18 @@
+/* ========================================================
+   login.css — extraído de templates/login.html
+   ERLAN NetAdmin v7 (refactor etapa 1: separación de CSS)
+   ======================================================== */
+
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#1a237e 0%,#0d47a1 50%,#01579b 100%);min-height:100vh;display:flex;align-items:center;justify-content:center}
+.card{background:#fff;border-radius:16px;padding:2.5rem 2rem;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.logo{text-align:center;margin-bottom:1.8rem}
+.logo h1{color:#0d47a1;font-size:2rem;font-weight:800;letter-spacing:2px}
+.logo p{color:#546e7a;font-size:.82rem;margin-top:.2rem}
+label{display:block;font-size:.8rem;color:#546e7a;margin-bottom:.3rem;font-weight:600}
+input{width:100%;padding:.7rem .9rem;border:1.5px solid #e0e0e0;border-radius:8px;font-size:.95rem;margin-bottom:1rem;transition:.2s;outline:none;color:#222}
+input:focus{border-color:#0d47a1;box-shadow:0 0 0 3px rgba(13,71,161,.12)}
+button{width:100%;padding:.8rem;background:#0d47a1;color:#fff;border:none;border-radius:8px;font-size:1rem;font-weight:700;cursor:pointer;transition:.2s;letter-spacing:.5px}
+button:hover{background:#1565c0;transform:translateY(-1px)}
+.err{background:#ffebee;color:#c62828;border-radius:8px;padding:.6rem .9rem;font-size:.83rem;margin-bottom:.8rem;display:none}
+.ver{text-align:center;margin-top:1rem;font-size:.75rem;color:#bdbdbd}

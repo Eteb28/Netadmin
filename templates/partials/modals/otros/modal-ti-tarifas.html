@@ -1,0 +1,17 @@
+<div id="modal-ti-tarifas" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-ti-tarifas')">
+<div class="modal" style="max-width:460px">
+  <div class="modal-hd"><span>💲 Tarifas por tipo de trabajo</span><button class="modal-close" onclick="closeModal('modal-ti-tarifas')">×</button></div>
+  <div class="modal-bd">
+    <div id="ti-tarifas-list" style="margin-bottom:.8rem"></div>
+    <div style="border-top:1px solid var(--brd);padding-top:.6rem">
+      <b style="font-size:.85rem">Agregar tipo de trabajo</b>
+      <div style="display:flex;gap:.4rem;margin-top:.4rem">
+        <input id="nueva-tarifa-tipo" placeholder="Tipo de trabajo" style="flex:1;padding:.4rem;border:1px solid var(--brd);border-radius:5px">
+        <input id="nueva-tarifa-monto" type="number" placeholder="Monto" min="0" style="width:110px;padding:.4rem;border:1px solid var(--brd);border-radius:5px">
+        <label style="display:flex;align-items:center;gap:.3rem;font-size:.78rem;white-space:nowrap"><input type="checkbox" id="nueva-tarifa-pormetro"> por metro</label>
+        <button class="btn btn-prim btn-sm" onclick="agregarTITarifa()">+</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div>

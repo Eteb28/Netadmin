@@ -1,0 +1,101 @@
+<div class="page" id="page-informes">
+<div class="inf-root">
+  <div class="inf-head">
+    <div>
+      <h1 class="inf-title">Informes <em>· Inteligencia de negocio</em></h1>
+      <div class="inf-live"><span class="inf-dot"></span> datos reales · <span id="inf-updated">—</span></div>
+    </div>
+    <div class="inf-seg" id="inf-seg">
+      <button data-d="90" class="on">90 días</button>
+      <button data-d="180">6 meses</button>
+      <button data-d="365">12 meses</button>
+    </div>
+  </div>
+
+  <div class="inf-banner">
+    <span style="font-size:1.05rem">✓</span>
+    <div>Métricas calculadas sobre datos reales de Pucará. Rentabilidad, egresos y ganancia ajustada por inflación requieren cargar datos que hoy no se registran — quedan para una etapa siguiente.</div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="inf-kpis" id="inf-kpis">
+    <div class="inf-loading">Cargando métricas…</div>
+  </div>
+
+  <!-- Altas y bajas -->
+  <div class="inf-sh"><span class="inf-ey">01 · Clientes</span><h2>Altas y bajas</h2><div class="inf-rule"></div></div>
+  <div class="inf-grid inf-two">
+    <div class="inf-card">
+      <h3>Movimiento de clientes</h3>
+      <p class="inf-sub">Altas contra bajas por mes. La línea es el crecimiento neto acumulado.</p>
+      <svg class="inf-chart" id="inf-churn" viewBox="0 0 720 260" height="260"></svg>
+      <div class="inf-leg">
+        <span><i class="inf-sw" style="background:#4FB3AA"></i> Altas</span>
+        <span><i class="inf-sw" style="background:#E08063"></i> Bajas</span>
+        <span><i class="inf-sw" style="background:#E0A838"></i> Neto acumulado</span>
+      </div>
+    </div>
+    <div class="inf-card">
+      <h3>Resumen del período</h3>
+      <p class="inf-sub" id="inf-ab-sub">—</p>
+      <div class="inf-pills" id="inf-ab-pills"></div>
+    </div>
+  </div>
+
+  <!-- Vendedores -->
+  <div class="inf-sh"><span class="inf-ey">02 · Comercial</span><h2>Desempeño de vendedores</h2><div class="inf-rule"></div></div>
+  <div class="inf-grid inf-two-b">
+    <div class="inf-card">
+      <h3>Altas por vendedor <span class="inf-badge-req" style="float:right">▲ parcial</span></h3>
+      <p class="inf-sub">Clientes ingresados por agente en el período.</p>
+      <div class="inf-rank" id="inf-vend"></div>
+      <div class="inf-note">▲ Mide altas, no ventas con monto. Para comisiones falta registrar el valor del plan vendido.</div>
+    </div>
+    <div class="inf-card">
+      <h3>Rendimiento de técnicos</h3>
+      <p class="inf-sub">Técnico interior · trabajos realizados en el período.</p>
+      <div class="inf-rank" id="inf-tec"></div>
+    </div>
+  </div>
+
+  <!-- Facturación -->
+  <div class="inf-sh"><span class="inf-ey">03 · Finanzas</span><h2>Facturación y cobranza</h2><div class="inf-rule"></div></div>
+  <div class="inf-grid inf-two">
+    <div class="inf-card">
+      <h3>Ingresos mensuales <small style="color:#566B84;font-family:monospace">ARS · cobrado del ERP</small></h3>
+      <p class="inf-sub">Recibos pagados sincronizados del ERP, por mes.</p>
+      <svg class="inf-chart" id="inf-fact" viewBox="0 0 720 240" height="240"></svg>
+    </div>
+    <div class="inf-card">
+      <h3>Cobrabilidad</h3>
+      <p class="inf-sub">Recibos pagados sobre el total, últimos 30 días.</p>
+      <svg class="inf-chart" id="inf-gauge" viewBox="0 0 220 140" height="150" style="margin:0 auto;max-width:240px"></svg>
+      <div class="inf-pills" id="inf-cob-pills"></div>
+    </div>
+  </div>
+
+  <!-- Próximamente -->
+  <div class="inf-sh"><span class="inf-ey">04 · Rentabilidad</span><h2>Ingresos, egresos y ganancia real</h2><div class="inf-rule"></div></div>
+  <div class="inf-card" id="inf-rent-card">
+    <h3>Ingresos vs egresos · últimos 12 meses</h3>
+    <div class="inf-sub">Ingresos cobrados del ERP contra egresos cargados en Contabilidad.</div>
+    <svg class="inf-chart" id="inf-rent" viewBox="0 0 720 260" height="260"></svg>
+    <div class="inf-leg">
+      <span><i class="inf-sw" style="background:#4FB3AA"></i> Ingresos</span>
+      <span><i class="inf-sw" style="background:#E08063"></i> Egresos</span>
+      <span><i class="inf-sw" style="background:#E0A838"></i> Ganancia</span>
+    </div>
+    <div class="inf-pills" id="inf-rent-pills"></div>
+  </div>
+  <div class="inf-card inf-soon" id="inf-rent-empty" style="display:none">
+    <div style="font-size:1.6rem;margin-bottom:.4rem">▲</div>
+    <h3>Todavía no hay egresos cargados</h3>
+    <p class="inf-sub" style="max-width:560px;margin:.4rem auto 1rem">Los ingresos ya salen del ERP. Para calcular rentabilidad real y ganancia, cargá egresos (gastos operativos, sueldos, compras, tránsito IP) y el índice de inflación mensual en Contabilidad.</p>
+    <div class="inf-soon-tags">
+      <span>Gastos operativos</span><span>Sueldos y honorarios</span><span>Compras e inversión</span><span>Tránsito IP mayorista</span><span>Índice de inflación (IPC)</span>
+    </div>
+    <button class="btn btn-prim btn-sm" style="margin-top:1rem" onclick="navGo('contabilidad')">Ir a Contabilidad →</button>
+  </div>
+
+</div>
+</div>

@@ -1,0 +1,20 @@
+<div class="page" id="page-naps">
+  <div class="card">
+    <div class="stitle">🔌 NAPs <button class="btn btn-prim btn-sm" style="margin-left:auto" onclick="openModalNap()" id="btn-nueva-nap">+ Nueva NAP</button></div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.7rem">
+      <input type="text" id="nap-q" placeholder="🔍 Buscar NAP por nombre, localidad, sitio..." style="flex:1;min-width:200px" oninput="debouncedLoadNaps()">
+      <select id="nap-fil-loc" onchange="renderNapsTable()"><option value="">Todas las localidades</option></select>
+      <select id="nap-fil-olt" onchange="renderNapsTable()"><option value="">Todas las OLTs</option></select>
+    </div>
+    <div id="naps-filter-bar" style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.7rem">
+      <!-- los filtros se renderizan dinámicamente desde loadNaps() -->
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Nombre</th><th>Localidad</th><th>Cap.</th><th>Ocupación</th><th>Activos</th><th>Susp.</th><th>Rescisión</th><th>OLT/PON</th><th>Señal</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody id="nap-tbody"></tbody>
+      </table>
+    </div>
+    <div style="margin-top:.5rem;font-size:.78rem;color:var(--txt2)">Mostrando <b id="nap-total">0</b> NAPs</div>
+  </div>
+</div>

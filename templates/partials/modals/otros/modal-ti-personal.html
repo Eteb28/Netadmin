@@ -1,0 +1,17 @@
+<div id="modal-ti-personal" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-ti-personal')">
+<div class="modal" style="max-width:440px">
+  <div class="modal-hd"><span>👥 Técnicos externos</span><button class="modal-close" onclick="closeModal('modal-ti-personal')">×</button></div>
+  <div class="modal-bd">
+    <div id="ti-personal-list" style="margin-bottom:.8rem"></div>
+    <div style="border-top:1px solid var(--brd);padding-top:.6rem">
+      <b style="font-size:.85rem">Agregar técnico</b>
+      <div class="form-grid" style="margin-top:.4rem">
+        <label>Nombre<input id="tip-nombre"></label>
+        <label>Teléfono<input id="tip-tel"></label>
+        <label>Localidad<input id="tip-loc"></label>
+      </div>
+      <button class="btn btn-prim btn-sm" style="margin-top:.5rem" onclick="agregarTIPersonal()">+ Agregar</button>
+    </div>
+  </div>
+</div>
+</div>

@@ -1,0 +1,39 @@
+<div class="page" id="page-reclamos">
+  <div class="card">
+    <div class="stitle">📋 Reclamos (Tero HelpDesk)
+      <select id="rec-dias" onchange="loadReclamos()" style="margin-left:auto;padding:.3rem .5rem;border-radius:6px;background:var(--card);color:var(--tx);border:1px solid var(--brd)">
+        <option value="30">Últimos 30 días</option>
+        <option value="7">Últimos 7 días</option>
+        <option value="90" selected>Últimos 90 días</option>
+        <option value="365">Último año</option>
+      </select>
+      <button class="btn btn-gray btn-sm" style="margin-left:.5rem" onclick="syncTero()">🔄 Sincronizar</button>
+    </div>
+    <div id="rec-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:.7rem;margin-bottom:1rem"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <div id="rec-operadores"></div>
+      <div>
+        <div id="rec-categorias"></div>
+        <div id="rec-canales" style="margin-top:1rem"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Motor de análisis de reclamos técnicos (fase 3, /api/v2) -->
+  <div class="card" style="margin-top:.8rem">
+    <div class="stitle">🔎 Analítica de reclamos técnicos
+      <select id="rta-dias" onchange="loadAnaliticaReclamos()" style="margin-left:auto;max-width:170px">
+        <option value="30">Últimos 30 días</option>
+        <option value="90" selected>Últimos 90 días</option>
+        <option value="365">Último año</option>
+        <option value="">Todo el histórico</option>
+      </select>
+      <button class="btn btn-gray btn-sm" style="margin-left:.4rem" onclick="loadAnaliticaReclamos()">🔄</button>
+    </div>
+    <div style="font-size:.76rem;color:var(--txt2);margin-bottom:.7rem">
+      Se calcula sobre los reclamos cargados en la ficha del cliente (con causa y resolución),
+      no sobre los tickets de Tero. Sirve para ver dónde se concentran las fallas de la red.
+    </div>
+    <div id="rta-cont"><div style="color:var(--txt2);padding:.5rem">Cargando…</div></div>
+  </div>
+</div>

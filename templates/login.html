@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pucara — Acceso</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+<style>
+  /* Fondo con el logo Pucara como marca de agua */
+  body{
+    position:relative;
+    background:#13294a;
+  }
+  body::before{
+    content:'';
+    position:fixed;inset:0;
+    background:url("{{ url_for('static', filename='img/logo.svg') }}") no-repeat center 38%;
+    background-size:min(70vw, 620px);
+    opacity:.10;
+    pointer-events:none;
+  }
+  .card{position:relative;z-index:1}
+  .modo-sel{margin:.6rem 0}
+  .modo-btns{display:flex;gap:.5rem}
+  .modo-btn{
+    flex:1;padding:.6rem;border:2px solid #ccc;border-radius:8px;
+    background:#f5f5f5;color:#555;cursor:pointer;font-size:.85rem;font-weight:600;
+    transition:.15s;
+  }
+  .modo-btn.active{
+    border-color:#1565c0;background:#e3f2fd;color:#1565c0;
+  }
+  .modo-btn:hover{border-color:#1565c0}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="Pucara" style="max-width:240px;width:100%;height:auto;background:#1a3d6b;padding:18px 24px;border-radius:12px">
+    <p>Pucara — Sistema Integral de Gestión ISP</p>
+  </div>
+  <div class="err" id="err"></div>
+  <label>Usuario</label>
+  <input type="text" id="user" autocomplete="username" placeholder="usuario">
+  <label>Contraseña</label>
+  <input type="password" id="pass" autocomplete="current-password" placeholder="••••••••">
+
+  <div class="modo-sel">
+    <label style="margin-bottom:.3rem">Ingresar como</label>
+    <div class="modo-btns">
+      <button type="button" class="modo-btn active" id="modo-desktop" onclick="setModo('desktop')">🖥 Escritorio</button>
+      <button type="button" class="modo-btn" id="modo-mobile" onclick="setModo('mobile')">📱 Móvil</button>
+    </div>
+  </div>
+
+  <button onclick="doLogin()">Ingresar</button>
+  <div class="ver">ERLAN Telecomunicaciones S.A. © 2025</div>
+</div>
+<script>
+let _modo = localStorage.getItem('erlan_modo') || 'desktop';
+function setModo(m){
+  _modo = m;
+  document.getElementById('modo-desktop').classList.toggle('active', m==='desktop');
+  document.getElementById('modo-mobile').classList.toggle('active', m==='mobile');
+  localStorage.setItem('erlan_modo', m);
+}
+// Aplicar el modo recordado al cargar
+setModo(_modo);
+
+document.getElementById('pass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+async function doLogin(){
+  const btn = document.querySelector('button[onclick="doLogin()"]');
+  btn.textContent='Ingresando...'; btn.disabled=true;
+  const err = document.getElementById('err');
+  err.style.display='none';
+  try {
+    const r = await fetch('/login',{method:'POST',headers:{'Content-Type':'application/json'},
+      credentials:'same-origin',
+      body:JSON.stringify({username:document.getElementById('user').value,
+                           password:document.getElementById('pass').value})});
+    const d = await r.json();
+    if(d.ok){
+      window.location.href = _modo==='mobile' ? '/mobile' : '/';
+    }
+    else { err.textContent=d.error||'Error'; err.style.display='block'; }
+  } catch(e){ err.textContent='Error de conexión'; err.style.display='block'; }
+  btn.textContent='Ingresar'; btn.disabled=false;
+}
+</script>
+</body>
+</html>

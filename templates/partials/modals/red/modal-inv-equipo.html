@@ -1,0 +1,98 @@
+<div id="modal-inv-equipo" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-inv-equipo')">
+<div class="modal" style="max-width:560px">
+  <div class="modal-hd"><span id="minv-title">Equipo</span><button class="modal-close" onclick="closeModal('modal-inv-equipo')">×</button></div>
+  <div class="modal-bd">
+    <input type="hidden" id="minv-id">
+    <input type="hidden" id="minv-torre-id">
+    <div class="form-row">
+      <div><label>Tipo *</label><select id="minv-tipo"></select></div>
+      <div><label>Estado</label><select id="minv-estado">
+        <option value="operativo">Operativo</option>
+        <option value="en_reparacion">En reparación</option>
+        <option value="repuesto">Repuesto (stock)</option>
+        <option value="de_baja">De baja</option>
+      </select></div>
+    </div>
+    <div class="form-row">
+      <div><label>Fabricante</label><input id="minv-fabricante" placeholder="Ubiquiti, MikroTik, Cambium..."></div>
+      <div><label>Modelo</label><input id="minv-modelo" placeholder="Rocket M5, RB4011..."></div>
+    </div>
+    <div class="form-row">
+      <div><label>N° de serie</label><input id="minv-serie"></div>
+      <div><label>Firmware</label><input id="minv-firmware"></div>
+    </div>
+    <div class="form-row">
+      <div><label>MAC</label><input id="minv-mac" placeholder="AA:BB:CC:DD:EE:FF" style="font-family:monospace"></div>
+      <div><label>IP de gestión</label><input id="minv-ip" placeholder="192.168.1.1" style="font-family:monospace"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Fecha de compra</label><input id="minv-fecha-compra" type="date"></div>
+      <div><label>Ubicación (rack/mástil)</label><input id="minv-ubicacion"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Costo de adquisición ($)</label><input id="minv-costo" type="number" min="0" step="0.01" placeholder="Lo que se pagó"></div>
+      <div><label>Valor actual estimado ($)</label><input id="minv-valor" type="number" min="0" step="0.01" placeholder="Valor hoy"></div>
+    </div>
+    <div style="margin-top:.4rem"><label>Observaciones</label><textarea id="minv-obs" rows="2"></textarea></div>
+
+    <!-- Monitoreo SNMP (Fase 8) -->
+    <div style="margin-top:.7rem;border-top:1px dashed var(--brd);padding-top:.6rem">
+      <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-weight:600">
+        <input type="checkbox" id="minv-es-ap" onchange="minvToggleSnmp()"> 📡 Es un AP a monitorear por SNMP
+      </label>
+      <div id="minv-snmp-fields" style="display:none;margin-top:.5rem">
+        <div class="form-row">
+          <div><label>Adaptador</label><select id="minv-snmp-fab">
+            <option value="ubiquiti">Ubiquiti airOS</option>
+            <option value="cambium">Cambium ePMP</option>
+          </select></div>
+          <div><label>Versión SNMP</label><select id="minv-snmp-ver">
+            <option value="1">v1</option>
+            <option value="2c">v2c</option>
+            <option value="3" disabled>v3 (próx.)</option>
+          </select></div>
+          <div><label>Community</label><input id="minv-snmp-comm" value="public"></div>
+        </div>
+        <div><label>IP SNMP (si difiere de la de gestión)</label><input id="minv-snmp-ip" placeholder="Opcional" style="font-family:monospace"></div>
+        <div style="display:flex;gap:.4rem;margin-top:.5rem;flex-wrap:wrap">
+          <button type="button" class="btn btn-prim btn-sm" onclick="detectarEquipoSnmp()">🔎 Detectar y autocompletar</button>
+          <button type="button" class="btn btn-gray btn-sm" onclick="probarSnmpEquipo()">📡 Probar clientes (sondeo)</button>
+          <button type="button" class="btn btn-gray btn-sm" onclick="verInterfacesLan()">🔌 Ver LAN</button>
+        </div>
+        <div id="minv-snmp-detect" style="margin-top:.5rem"></div>
+        <div id="minv-snmp-result" style="margin-top:.5rem"></div>
+      </div>
+    </div>
+
+    <!-- Cobertura / datos físicos (Prioridad 1) -->
+    <div style="margin-top:.7rem;border-top:1px dashed var(--brd);padding-top:.6rem">
+      <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-weight:600">
+        <input type="checkbox" id="minv-mostrar-cobertura"> 📶 Mostrar cobertura teórica en el mapa
+      </label>
+      <div style="font-size:.72rem;color:var(--txt2);margin:.2rem 0 .5rem">Representación geométrica teórica (no es cobertura real).</div>
+      <div class="form-row">
+        <div><label>Perfil técnico (modelo)</label><select id="minv-perfil" onchange="_actualizarCoberturaEfectiva()"><option value="">— Ninguno —</option></select></div>
+        <div><label>Azimut (°)</label><input id="minv-azimut" type="number" min="0" max="360" placeholder="0=N 90=E 180=S 270=O"></div>
+      </div>
+      <div class="form-row">
+        <div><label>Apertura H (°) <small style="color:var(--txt2)">override</small></label><input id="minv-apertura" type="number" oninput="_actualizarCoberturaEfectiva()" placeholder="usa perfil si vacío"></div>
+        <div><label>Alcance (m) <small style="color:var(--txt2)">override</small></label><input id="minv-alcance" type="number" oninput="_actualizarCoberturaEfectiva()" placeholder="usa perfil si vacío"></div>
+      </div>
+      <div class="form-row">
+        <div><label>Altura (m)</label><input id="minv-altura" type="number" step="0.1"></div>
+        <div><label>Tilt (°)</label><input id="minv-tilt" type="number" step="0.1" placeholder="- = hacia abajo"></div>
+        <div><label>Polarización</label><select id="minv-polarizacion">
+          <option value="">—</option><option value="vertical">Vertical</option>
+          <option value="horizontal">Horizontal</option><option value="dual">Dual</option>
+        </select></div>
+      </div>
+      <div id="minv-cobertura-efectiva" style="font-size:.75rem;color:var(--txt2);margin-top:.3rem"></div>
+    </div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-rj btn-sm" id="minv-del" style="margin-right:auto;display:none" onclick="borrarEquipoInv()">🗑 Eliminar</button>
+    <button class="btn btn-gray" onclick="closeModal('modal-inv-equipo')">Cancelar</button>
+    <button class="btn btn-prim" onclick="guardarEquipoInv()">💾 Guardar</button>
+  </div>
+</div>
+</div>
