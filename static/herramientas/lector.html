@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0A131E">
+<title>Lector de equipos — prueba de campo · Pucará</title>
+<!--
+  ════════════════════════════════════════════════════════════════════
+  PRUEBA DE CAMPO — no es el módulo de inventario todavía.
+
+  Para qué existe: antes de construir el registro de equipos por escaneo
+  hay una pregunta que no se contesta desde el escritorio — si la cámara
+  del teléfono llega a leer las etiquetas REALES de ERLAN, muchas
+  gastadas, sucias o dentro de un rack sin luz. Esta página lo prueba
+  contra los equipos que ya están instalados.
+
+  Qué hace: abre la cámara, lee códigos, dice qué formato era y arma una
+  lista exportable. NO guarda nada en la base ni habla con el servidor.
+
+  Cómo usarla: desde el teléfono, en la red de ERLAN,
+      https://192.168.10.9:5000/static/herramientas/lector.html
+  Hay que aceptar el aviso del certificado una vez por teléfono; sin eso
+  el navegador no da permiso de cámara.
+
+  Es un archivo suelto en static/: no toca app.py, no toca la base, y
+  borrarlo no rompe nada.
+  ════════════════════════════════════════════════════════════════════
+-->
+<style>
+/* Tema oscuro fijo, a propósito: esto se usa dentro de un rack sin luz y
+   arriba de una torre de noche. Un fondo claro encandila y borra el visor. */
+:root{
+  --fondo:#0A131E; --card:#111E2D; --surf:#172838; --brd:#243A52;
+  --txt:#EAF1F8; --txt2:#8FA6BF; --faint:#566B84;
+  --az:#5D8FC4; --ok:#4FB89E; --mal:#E0765C; --am:#E0A838;
+  --mono:'Spline Sans Mono',ui-monospace,'Cascadia Mono',Consolas,monospace;
+  --ui:'Instrument Sans','Segoe UI',system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--fondo);color:var(--txt);font-family:var(--ui);
+  line-height:1.45;overscroll-behavior-y:contain}
+body{padding:0 0 env(safe-area-inset-bottom)}
+:focus-visible{outline:2px solid var(--az);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+header{background:#0D1927;border-bottom:1px solid var(--brd);padding:.7rem 16px;
+  display:flex;align-items:center;gap:.6rem;position:sticky;top:0;z-index:9}
+.marca{font-weight:800;font-size:.98rem;letter-spacing:.02em}
+.marca span{opacity:.5;font-weight:400}
+.tag{margin-left:auto;font-size:.64rem;font-weight:700;letter-spacing:.07em;
+  text-transform:uppercase;padding:.22rem .5rem;border-radius:20px;
+  background:rgba(224,168,56,.16);color:var(--am);border:1px solid rgba(224,168,56,.4)}
+
+main{max-width:640px;margin:0 auto;padding:16px;padding-block:1rem 2rem;
+  display:flex;flex-direction:column;gap:1rem}
+
+/* ── Visor ── */
+.visor{position:relative;background:#000;border:1px solid var(--brd);border-radius:14px;
+  overflow:hidden;aspect-ratio:4/3;max-width:100%}
+video{width:100%;height:100%;object-fit:cover;display:block}
+.mira{position:absolute;inset:14% 8%;border:2px solid rgba(234,241,248,.5);border-radius:10px;
+  pointer-events:none;box-shadow:0 0 0 100vmax rgba(0,0,0,.28)}
+.mira::after{content:'';position:absolute;left:0;right:0;top:50%;height:2px;
+  background:var(--mal);opacity:.75}
+.visor.leyo .mira{border-color:var(--ok);box-shadow:0 0 0 100vmax rgba(79,184,158,.16)}
+.apagado{position:absolute;inset:0;display:grid;place-items:center;text-align:center;
+  padding:1.5rem;color:var(--txt2);font-size:.9rem;gap:.8rem}
+.apagado[hidden]{display:none}
+
+.acciones{display:flex;gap:.6rem;flex-wrap:wrap}
+button{font-family:var(--ui);font-size:.92rem;font-weight:700;border-radius:11px;
+  border:1px solid var(--brd);background:var(--surf);color:var(--txt);
+  padding:.78rem 1rem;cursor:pointer;min-height:46px}
+button:disabled{opacity:.4;cursor:not-allowed}
+.pri{background:var(--az);border-color:var(--az);color:#0A131E}
+.crece{flex:1}
+.chico{font-size:.82rem;padding:.5rem .7rem;min-height:38px;font-weight:600}
+
+/* ── Diagnóstico ── */
+.diag{background:var(--card);border:1px solid var(--brd);border-radius:14px;padding:.85rem 1rem}
+.diag h2{font-size:.74rem;letter-spacing:.07em;text-transform:uppercase;color:var(--txt2);
+  margin:0 0 .6rem;font-weight:700}
+.dl{display:flex;gap:.5rem;padding:.3rem 0;font-size:.85rem;align-items:flex-start}
+.dl b{margin-left:auto;text-align:right;font-family:var(--mono);font-size:.8rem;
+  overflow-wrap:anywhere}
+.si{color:var(--ok)} .no{color:var(--mal)} .duda{color:var(--am)}
+
+/* ── Lecturas ── */
+.lista{background:var(--card);border:1px solid var(--brd);border-radius:14px;overflow:hidden}
+.lh{display:flex;align-items:center;gap:.5rem;padding:.8rem 1rem;border-bottom:1px solid var(--brd)}
+.lh h2{font-size:.95rem;margin:0;font-weight:700}
+.cuenta{font-family:var(--mono);font-size:.8rem;color:var(--txt2)}
+.it{display:flex;gap:.75rem;padding:.7rem 1rem;border-bottom:1px solid #1C2E42;align-items:flex-start}
+.it:last-child{border-bottom:0}
+.n{font-family:var(--mono);font-size:.78rem;color:var(--faint);padding-top:.15rem;min-width:1.6em}
+.cuerpo{flex:1;min-width:0}
+.val{font-family:var(--mono);font-size:.95rem;font-weight:600;overflow-wrap:anywhere}
+.meta{display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.25rem;align-items:center}
+.pill{font-size:.68rem;font-weight:700;letter-spacing:.03em;padding:.13rem .42rem;border-radius:5px;
+  background:var(--surf);color:var(--txt2);border:1px solid var(--brd)}
+.pill.fmt{background:rgba(93,143,196,.16);color:var(--az);border-color:transparent}
+.pill.tipo{background:rgba(79,184,158,.15);color:var(--ok);border-color:transparent}
+.pill.man{background:rgba(224,168,56,.15);color:var(--am);border-color:transparent}
+.hora{font-family:var(--mono);font-size:.7rem;color:var(--faint);margin-left:auto}
+.borrar{background:none;border:0;color:var(--faint);font-size:1.1rem;padding:.2rem .4rem;
+  min-height:auto;cursor:pointer;line-height:1}
+.borrar:hover{color:var(--mal)}
+.vacio{padding:1.6rem 1rem;text-align:center;color:var(--faint);font-size:.87rem}
+
+.pieles{display:flex;gap:.6rem;padding:.8rem 1rem;border-top:1px solid var(--brd);flex-wrap:wrap}
+input[type=text]{flex:1;min-width:0;font-family:var(--mono);font-size:.9rem;color:var(--txt);
+  background:var(--surf);border:1px solid var(--brd);border-radius:10px;padding:.6rem .7rem}
+input::placeholder{color:var(--faint);font-family:var(--ui)}
+.nota{font-size:.8rem;color:var(--txt2);background:var(--card);border:1px solid var(--brd);
+  border-left:3px solid var(--am);border-radius:0 12px 12px 0;padding:.8rem 1rem}
+.nota b{color:var(--txt)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="marca">Pucará<span> · Lector</span></div>
+  <span class="tag">Prueba de campo</span>
+</header>
+
+<main>
+
+  <div class="visor" id="visor">
+    <video id="vid" playsinline muted autoplay></video>
+    <div class="mira" id="mira" hidden></div>
+    <div class="apagado" id="apagado">
+      <div style="font-size:2rem" aria-hidden="true">📷</div>
+      <div>Apuntá la cámara a la etiqueta del equipo.<br>Tocá <b>Encender cámara</b> para empezar.</div>
+    </div>
+  </div>
+
+  <div class="acciones">
+    <button class="pri crece" id="btn-cam">Encender cámara</button>
+    <button id="btn-luz" disabled>Linterna</button>
+  </div>
+
+  <div class="lista">
+    <div class="lh">
+      <h2>Lecturas</h2>
+      <span class="cuenta" id="cuenta">0</span>
+      <button class="chico" id="btn-copiar" style="margin-left:auto">Copiar</button>
+      <button class="chico" id="btn-bajar">Descargar</button>
+    </div>
+    <div id="items"><div class="vacio">Todavía no se leyó ningún código.</div></div>
+    <div class="pieles">
+      <input type="text" id="manual" placeholder="…o escribilo a mano si no se puede leer" autocomplete="off" spellcheck="false">
+      <button class="chico" id="btn-manual">Agregar</button>
+    </div>
+  </div>
+
+  <div class="nota">
+    <b>Qué estamos probando.</b> Que la cámara lea las etiquetas <b>como están hoy</b>: gastadas,
+    sucias, tapadas o dentro del rack. Probá con lo peor que tengas — una ONU vieja, un radio de
+    torre, una etiqueta despegada. Lo que <b>no</b> se pueda leer también es un resultado: son los
+    equipos que van a necesitar una etiqueta nueva de Pucará.
+  </div>
+
+  <div class="diag">
+    <h2>Diagnóstico del teléfono</h2>
+    <div id="diag"></div>
+  </div>
+
+</main>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   Lectura con BarcodeDetector, la API nativa del navegador. Sin
+   librerías a propósito: si esto alcanza en los teléfonos del equipo,
+   el módulo definitivo no necesita descargar ningún lector, que en una
+   torre con señal mala es la diferencia entre que abra y que no.
+
+   Chrome en Android la trae. Safari en iPhone NO — ahí el diagnóstico
+   de abajo lo va a decir con todas las letras en vez de fallar callado,
+   porque justamente eso es lo que necesitamos saber antes de construir.
+   ══════════════════════════════════════════════════════════════════ */
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const hora = d => [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2,'0')).join(':');
+
+/* Formatos que aparecen en los equipos de ERLAN: MikroTik y Ubiquiti usan
+   Code128, las ONU VSOL traen el SN en Code128 y a veces un QR, y las
+   Cambium ePMP imprimen MSN y MAC como Code128. Se piden también QR y
+   DataMatrix porque los equipos nuevos ya vienen así. */
+const FORMATOS = ['code_128','code_39','qr_code','data_matrix','ean_13','itf','codabar'];
+
+let detector = null, stream = null, track = null, corriendo = false, luz = false;
+const lecturas = [];
+const vistos = new Map();      // valor → ms de la última vez, para no repetir
+
+/* ── Qué clase de dato es lo que se leyó ───────────────────────────
+   Un escaneo devuelve una cadena pelada. Distinguir MAC de número de
+   serie de SN GPON es lo que después permite cruzarlo contra lo que la
+   red ya reporta (onu_senal.serial_onu, snmp_estaciones.mac) sin que
+   nadie lo escriba a mano. */
+function clasificar(v){
+  const s = v.trim().toUpperCase();
+  const hex = s.replace(/[^0-9A-F]/g,'');
+  if (/^([0-9A-F]{2}[:\-. ]?){6}$/.test(s) && hex.length === 12) return 'MAC';
+  // SN GPON: 4 letras de fabricante + 8 hex (VSOL, HWTC, ZTEG, CIGG…)
+  if (/^[A-Z]{4}[0-9A-F]{8}$/.test(s)) return 'SN GPON';
+  if (/^[0-9A-F]{12}$/.test(s)) return 'MAC o serie';
+  if (/^\d{13}$/.test(s)) return 'EAN (envase)';
+  return 'serie';
+}
+
+function pintar(){
+  $('#cuenta').textContent = lecturas.length;
+  if (!lecturas.length){
+    $('#items').innerHTML = '<div class="vacio">Todavía no se leyó ningún código.</div>';
+    return;
+  }
+  $('#items').innerHTML = lecturas.map((l,i) => `
+    <div class="it">
+      <span class="n">${i+1}</span>
+      <div class="cuerpo">
+        <div class="val">${esc(l.v)}</div>
+        <div class="meta">
+          <span class="pill ${l.fmt === 'manual' ? 'man' : 'fmt'}">${esc(l.fmt)}</span>
+          <span class="pill tipo">${esc(l.tipo)}</span>
+          <span class="hora">${l.t}</span>
+        </div>
+      </div>
+      <button class="borrar" data-i="${i}" aria-label="Borrar lectura ${i+1}">✕</button>
+    </div>`).join('');
+  $('#items').querySelectorAll('.borrar').forEach(b => b.onclick = () => {
+    lecturas.splice(+b.dataset.i, 1); pintar();
+  });
+}
+
+function agregar(valor, fmt){
+  const v = valor.trim();
+  if (!v) return false;
+  const ahora = Date.now();
+  // Un código queda en cuadro varios segundos: sin esto se agrega 30 veces.
+  if (vistos.has(v) && ahora - vistos.get(v) < 4000) return false;
+  vistos.set(v, ahora);
+  lecturas.unshift({ v, fmt, tipo: clasificar(v), t: hora(new Date()) });
+  pintar();
+  if (navigator.vibrate) navigator.vibrate(60);
+  const vis = $('#visor');
+  vis.classList.add('leyo');
+  setTimeout(() => vis.classList.remove('leyo'), 350);
+  return true;
+}
+
+/* ── Diagnóstico: lo que realmente queremos saber de cada teléfono ── */
+async function diagnostico(){
+  const filas = [];
+  const li = (k, val, clase) => filas.push(
+    `<div class="dl"><span>${k}</span><b class="${clase||''}">${esc(val)}</b></div>`);
+
+  li('Conexión segura', isSecureContext ? 'sí' : 'NO — la cámara no va a abrir',
+     isSecureContext ? 'si' : 'no');
+  const hayCam = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  li('Cámara accesible', hayCam ? 'sí' : 'no', hayCam ? 'si' : 'no');
+
+  if ('BarcodeDetector' in window){
+    let sop = [];
+    try { sop = await BarcodeDetector.getSupportedFormats(); } catch(e){}
+    li('Lector nativo', 'sí', 'si');
+    const utiles = FORMATOS.filter(f => sop.includes(f));
+    li('Formatos que lee', utiles.length ? utiles.join(', ') : 'ninguno de los que usamos',
+       utiles.length ? 'si' : 'no');
+    const faltan = FORMATOS.filter(f => !sop.includes(f));
+    if (faltan.length) li('No soporta', faltan.join(', '), 'duda');
+  } else {
+    li('Lector nativo', 'NO — hace falta un lector por software', 'no');
+  }
+  li('Navegador', navigator.userAgent.replace(/^Mozilla\/5\.0 /,'').slice(0,72));
+  $('#diag').innerHTML = filas.join('');
+}
+
+/* ── Cámara ── */
+async function encender(){
+  if (corriendo) return apagar();
+  try {
+    if ('BarcodeDetector' in window){
+      const sop = await BarcodeDetector.getSupportedFormats();
+      detector = new BarcodeDetector({ formats: FORMATOS.filter(f => sop.includes(f)) });
+    } else {
+      alert('Este navegador no trae lector de códigos.\n\nProbá con Chrome en Android. '
+          + 'Igual podés cargar los códigos a mano abajo — anotá cuáles no se pudieron leer.');
+      return;
+    }
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' },
+               width: { ideal: 1920 }, height: { ideal: 1080 } },
+      audio: false
+    });
+    $('#vid').srcObject = stream;
+    await $('#vid').play();
+    track = stream.getVideoTracks()[0];
+
+    const cap = track.getCapabilities ? track.getCapabilities() : {};
+    $('#btn-luz').disabled = !cap.torch;
+    if (!cap.torch) $('#btn-luz').textContent = 'Sin linterna';
+
+    corriendo = true;
+    $('#apagado').hidden = true;
+    $('#mira').hidden = false;
+    $('#btn-cam').textContent = 'Apagar cámara';
+    bucle();
+  } catch (e){
+    const m = e && e.name === 'NotAllowedError'
+      ? 'El navegador no dio permiso de cámara.\n\nSi apareció el aviso de certificado, hay que '
+      + 'aceptarlo primero y recargar la página.'
+      : 'No se pudo abrir la cámara: ' + (e && e.message ? e.message : e);
+    alert(m);
+  }
+}
+
+function apagar(){
+  corriendo = false;
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  stream = track = null; luz = false;
+  $('#vid').srcObject = null;
+  $('#apagado').hidden = false;
+  $('#mira').hidden = true;
+  $('#btn-cam').textContent = 'Encender cámara';
+  $('#btn-luz').disabled = true;
+}
+
+/* Se lee cada ~180 ms y no en cada cuadro: a 30 fps el teléfono se
+   calienta y la batería no aguanta una recorrida de torres. */
+async function bucle(){
+  while (corriendo){
+    try {
+      const found = await detector.detect($('#vid'));
+      for (const c of found) agregar(c.rawValue, c.format);
+    } catch (e){ /* un cuadro fallado no corta el bucle */ }
+    await new Promise(r => setTimeout(r, 180));
+  }
+}
+
+$('#btn-luz').onclick = async () => {
+  if (!track) return;
+  luz = !luz;
+  try {
+    await track.applyConstraints({ advanced: [{ torch: luz }] });
+    $('#btn-luz').textContent = luz ? 'Apagar luz' : 'Linterna';
+  } catch (e){ $('#btn-luz').disabled = true; }
+};
+$('#btn-cam').onclick = encender;
+
+$('#btn-manual').onclick = () => {
+  if (agregar($('#manual').value, 'manual')) $('#manual').value = '';
+};
+$('#manual').addEventListener('keydown', e => {
+  if (e.key === 'Enter'){ e.preventDefault(); $('#btn-manual').click(); }
+});
+
+/* ── Sacar los datos del teléfono ──
+   Es el resultado de la prueba: sin esto la recorrida no sirve de nada. */
+function comoTexto(){
+  const f = new Date().toISOString().slice(0,16).replace('T',' ');
+  return 'Lector Pucara - prueba de campo - ' + f + '\n'
+       + 'valor;formato;tipo;hora\n'
+       + lecturas.slice().reverse()
+           .map(l => [l.v, l.fmt, l.tipo, l.t].join(';')).join('\n');
+}
+$('#btn-copiar').onclick = async () => {
+  if (!lecturas.length) return;
+  const txt = comoTexto();
+  try { await navigator.clipboard.writeText(txt); $('#btn-copiar').textContent = 'Copiado'; }
+  catch (e){ prompt('Copiá esto:', txt); }
+  setTimeout(() => $('#btn-copiar').textContent = 'Copiar', 1600);
+};
+$('#btn-bajar').onclick = () => {
+  if (!lecturas.length) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([comoTexto()], { type:'text/csv;charset=utf-8' }));
+  a.download = 'lecturas-' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+};
+
+diagnostico();
+pintar();
+</script>
+</body>
+</html>
