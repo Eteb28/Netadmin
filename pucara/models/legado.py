@@ -59,6 +59,13 @@ class Cliente(BaseLegado):
     nap: Mapped[str | None] = mapped_column(Text)
     torre_id: Mapped[int | None] = mapped_column(Integer)
     ap_nombre: Mapped[str | None] = mapped_column(Text)
+    # Equipo que el padrón le asigna al cliente. Es el lado "registro" contra
+    # el que se concilia lo que la OLT y los AP reportan de verdad.
+    equipo_marca: Mapped[str | None] = mapped_column(Text)
+    equipo_modelo: Mapped[str | None] = mapped_column(Text)
+    equipo_serie: Mapped[str | None] = mapped_column(Text)
+    mac_address: Mapped[str | None] = mapped_column(Text)
+    ip_asignada: Mapped[str | None] = mapped_column(Text)
     olt_nombre: Mapped[str | None] = mapped_column(Text)
     olt_puerto: Mapped[str | None] = mapped_column(Text)
     lat: Mapped[float | None] = mapped_column(Float)
@@ -172,11 +179,96 @@ class TareaUsuario(BaseLegado):
     completada: Mapped[int | None] = mapped_column(Integer)
 
 
+class Torre(BaseLegado):
+    __tablename__ = "torres"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    nombre: Mapped[str] = mapped_column(Text, nullable=False)
+    localidad: Mapped[str | None] = mapped_column(Text)
+    estado: Mapped[str | None] = mapped_column(Text)
+
+
+class TorreEquipo(BaseLegado):
+    """Equipo físico montado en una torre: radio, switch, UPS, antena.
+
+    `ultimo_snmp` y `snmp_estado` los escribe el poller: son la última vez que
+    el equipo contestó. Para el inventario eso vale como avistaje — un equipo
+    que responde por SNMP existe, no hace falta que nadie lo vaya a mirar.
+    """
+
+    __tablename__ = "torre_equipos"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    torre_id: Mapped[int | None] = mapped_column(Integer)
+    tipo: Mapped[str | None] = mapped_column(Text)
+    fabricante: Mapped[str | None] = mapped_column(Text)
+    modelo: Mapped[str | None] = mapped_column(Text)
+    nro_serie: Mapped[str | None] = mapped_column(Text)
+    mac: Mapped[str | None] = mapped_column(Text)
+    ip: Mapped[str | None] = mapped_column(Text)
+    estado: Mapped[str | None] = mapped_column(Text)
+    ubicacion: Mapped[str | None] = mapped_column(Text)
+    es_ap: Mapped[int | None] = mapped_column(Integer)
+    ultimo_snmp: Mapped[str | None] = mapped_column(Text)
+    snmp_estado: Mapped[str | None] = mapped_column(Text)
+
+
+class SnmpEstacion(BaseLegado):
+    """Estación (CPE) asociada a un AP, según la última pasada del poller.
+
+    Es una foto del AHORA, no un histórico: la fila se pisa en cada sondeo y
+    el que se desconectó desaparece solo. Para el inventario es la fuente que
+    dice qué equipos inalámbricos existen de verdad y están funcionando, con
+    su MAC y su modelo, sin que nadie los cargue a mano.
+
+    Clave compuesta (equipo_id, mac): la misma MAC puede verse desde dos APs
+    durante un traspaso.
+    """
+
+    __tablename__ = "snmp_estaciones"
+
+    equipo_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    mac: Mapped[str] = mapped_column(Text, primary_key=True)
+    cliente_id: Mapped[int | None] = mapped_column(Integer)
+    nombre_ap: Mapped[str | None] = mapped_column(Text)
+    ip: Mapped[str | None] = mapped_column(Text)
+    modelo_sm: Mapped[str | None] = mapped_column(Text)
+    firmware_sm: Mapped[str | None] = mapped_column(Text)
+    fecha: Mapped[str | None] = mapped_column(Text)
+
+
+class StockItem(BaseLegado):
+    """Equipo serializado del depósito: lo que el registro DICE que existe.
+
+    Es el lado contra el que se concilia. `estado` distingue depósito de
+    instalado, y ahí está el agujero que el cruce viene a medir.
+    """
+
+    __tablename__ = "stock_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    serie: Mapped[str | None] = mapped_column(Text)
+    mac: Mapped[str | None] = mapped_column(Text)
+    modelo: Mapped[str | None] = mapped_column(Text)
+    marca: Mapped[str | None] = mapped_column(Text)
+    tipo: Mapped[str | None] = mapped_column(Text)
+    estado: Mapped[str | None] = mapped_column(Text)
+    cliente_id: Mapped[int | None] = mapped_column(Integer)
+    cliente_nombre: Mapped[str | None] = mapped_column(Text)
+    nro_cliente: Mapped[str | None] = mapped_column(Text)
+    ubicacion: Mapped[str | None] = mapped_column(Text)
+    fecha_ingreso: Mapped[str | None] = mapped_column(Text)
+    fecha_asignacion: Mapped[str | None] = mapped_column(Text)
+    fecha_baja: Mapped[str | None] = mapped_column(Text)
+
+
 #: Tablas heredadas que las pruebas necesitan crear. Se exporta como lista
 #: explícita para que agregar un modelo acá sea una decisión visible.
 TABLAS_LEGADAS = (
     Cliente.__table__, Olt.__table__, Nap.__table__, OnuSenal.__table__,
     OnuSenalHist.__table__, Historial.__table__, TareaUsuario.__table__,
+    Torre.__table__, TorreEquipo.__table__, SnmpEstacion.__table__,
+    StockItem.__table__,
 )
 
 

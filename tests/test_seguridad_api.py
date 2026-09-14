@@ -32,6 +32,7 @@ def app_v2(tmp_path, monkeypatch):
 
     from pucara.api.analitica import bp as bp_a
     from pucara.api.analitica import bp_rescisiones as bp_res
+    from pucara.api.inventario import bp as bp_inv
     from pucara.api.reclamos import bp as bp_r
 
     app = Flask(__name__)
@@ -39,6 +40,7 @@ def app_v2(tmp_path, monkeypatch):
     app.register_blueprint(bp_r)
     app.register_blueprint(bp_a)
     app.register_blueprint(bp_res)
+    app.register_blueprint(bp_inv)
     return app
 
 
@@ -48,6 +50,8 @@ RUTAS = [
     "/api/v2/reclamos/analitica",
     "/api/v2/antiguedad",
     "/api/v2/pendientes-rescision",
+    "/api/v2/inventario/conciliacion",
+    "/api/v2/inventario/resumen",
 ]
 
 

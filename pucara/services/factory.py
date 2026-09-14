@@ -17,6 +17,7 @@ from pucara.repositories.adjuntos import AdjuntoRepository, TareaLegadaRepositor
 from pucara.repositories.auditoria import AuditoriaRepository
 from pucara.repositories.clientes import ClienteAnaliticaRepository
 from pucara.repositories.incidentes import IncidenteRepository
+from pucara.repositories.inventario import InventarioRepository
 from pucara.repositories.naps import NapRepository
 from pucara.repositories.optica import OpticaRepository
 from pucara.repositories.reclamos import (
@@ -26,6 +27,7 @@ from pucara.services.adjuntos import ServicioAdjuntos
 from pucara.services.antiguedad import ServicioAntiguedad
 from pucara.services.degradacion import ServicioDegradacion
 from pucara.services.incidentes import ConfiguracionMotor, MotorIncidentes
+from pucara.services.inventario import ServicioInventario
 from pucara.services.reclamos import ServicioAnaliticaReclamos, ServicioReclamos
 from pucara.services.rescisiones import ServicioRescisiones
 from pucara.services.ubicaciones import ServicioUbicacionNap
@@ -51,6 +53,10 @@ def servicio_rescisiones(s: Session) -> ServicioRescisiones:
 
 def servicio_degradacion(s: Session) -> ServicioDegradacion:
     return ServicioDegradacion(OpticaRepository(s))
+
+
+def servicio_inventario(s: Session) -> ServicioInventario:
+    return ServicioInventario(InventarioRepository(s))
 
 
 def servicio_ubicacion_naps(s: Session) -> ServicioUbicacionNap:

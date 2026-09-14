@@ -6,6 +6,8 @@ físico de 128.
 """
 from __future__ import annotations
 
+from datetime import date, timedelta
+
 import pytest
 from sqlalchemy import insert
 from sqlalchemy.orm import sessionmaker
@@ -36,16 +38,29 @@ def base():
         engine.dispose()
 
 
+def _hace(dias: int) -> str:
+    """Fecha relativa a hoy.
+
+    Las fechas NO van fijas. `historico_rx()` mira una ventana de los últimos
+    N días, así que un dato escrito como '2026-08-01' entra hoy y deja de
+    entrar el mes que viene: la prueba pasa a rojo sola, sin que nadie toque
+    el código. Ya ocurrió. Todo dato de esta prueba se ancla a `date.today()`.
+    """
+    return (date.today() - timedelta(days=dias)).isoformat()
+
+
 def onu(s, pon, num, rx, nro=None, online=1, olt=1):
     s.execute(insert(OnuSenal).values(
         olt_id=olt, pon=pon, onu=num, nro_cliente=nro, rx_power=rx,
-        online=online, last_check="2026-08-12 10:00"))
+        online=online, last_check=_hace(0) + " 10:00"))
 
 
 def historia(s, pon, num, valores, olt=1):
+    """Carga las lecturas de más vieja a más nueva, la última es la de ayer."""
+    n = len(valores)
     s.execute(insert(OnuSenalHist), [
         {"olt_id": olt, "pon": pon, "onu": num, "rx_power": v,
-         "fecha": f"2026-08-{i+1:02d}"}
+         "fecha": _hace(n - i)}
         for i, v in enumerate(valores)
     ])
 
@@ -195,3 +210,34 @@ class TestResumen:
 
     def test_umbral_critico_coincide_con_el_del_diagnostico(self):
         assert RX_CRITICO == -27.0
+
+
+class TestVentanaDeTiempo:
+    """La línea base mira los últimos N días y nada más.
+
+    Esta clase existe porque el descuido inverso ya rompió la suite: los datos
+    estaban fijados en agosto, pasó el mes, quedaron fuera de la ventana de 30
+    días y dos pruebas se pusieron en rojo sin que nadie tocara el código.
+    Además de anclar los datos a hoy, conviene que la ventana esté probada de
+    los dos lados: que lo de adentro cuente y lo de afuera no.
+    """
+
+    def test_una_lectura_vieja_no_cuenta_para_la_linea_base(self, base):
+        """Rx de hace un año no dice nada del estado actual del enlace."""
+        onu(base, 1, 1, -25.5, "1001")
+        base.execute(insert(OnuSenalHist), [
+            {"olt_id": 1, "pon": 1, "onu": 1, "rx_power": -21.4,
+             "fecha": _hace(400 - i)} for i in range(7)
+        ])
+        base.commit()
+        # Sin historia utilizable no hay caída que medir: queda sólo el nivel
+        # absoluto, que a -25,5 dBm es "señal baja", no "degradación".
+        caso = srv(base).analizar().en_riesgo[0]
+        assert caso.caida_db is None or caso.caida_db == 0
+        assert caso.severidad == "media"
+
+    def test_lo_que_esta_dentro_de_la_ventana_si_cuenta(self, base):
+        onu(base, 1, 1, -25.5, "1001")
+        historia(base, 1, 1, [-21.4] * 6 + [-25.5])     # los últimos 7 días
+        base.commit()
+        assert srv(base).analizar().en_riesgo[0].caida_db > 3.0
