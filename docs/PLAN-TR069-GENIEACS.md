@@ -134,15 +134,42 @@ caso que TR-069 viene a resolver. Bien.
 combinación de modelo + firmware es, potencialmente, un árbol de parámetros distinto que
 hay que verificar por separado.
 
-**3. `TIGRE-V1.0` es el que más preocupa.** No sigue la nomenclatura de VSOL (`V<n>.<n>.<n>`)
-y parece una compilación personalizada o de marca blanca. **En los firmware a medida es
-donde el cliente CWMP aparece recortado, alterado o directamente ausente.** Ese modelo hay
-que probarlo primero, no último: si TR-069 no está disponible ahí, define el alcance real
-del plan antes de invertir en el resto.
+**3. `TIGRE-V1.0` trae TR-069 activo de fábrica. Los otros tres, no.** (Confirmado por
+ERLAN, septiembre 2026.)
 
-> Lo que **no** se puede afirmar desde acá: si estos firmwares traen cliente TR-069, y con
-> qué rutas de parámetros. No hay documentación pública confiable de la implementación CWMP
-> de VSOL para estas versiones. Sale del equipo o no sale — y por eso la fase 0 existe.
+Eso da vuelta el problema respecto de lo que uno supondría. El firmware a medida no es el
+riesgo: **es el atajo.** Alguien lo compiló justamente para que las ONU se administren por
+ACS, y ahí el cliente CWMP ya está andando.
+
+El trabajo real está en los otros tres — `V3.2.00`, `V1.9.1.2` y `V2.1.06` — y no es
+descubrir rutas de parámetros: es **activar TR-069 en una flota ya instalada**, casa por
+casa o de forma remota. Ese pasa a ser el riesgo principal del plan.
+
+| | Firmware | TR-069 | Qué hay que hacer |
+|---|---|---|---|
+| ✅ | `TIGRE-V1.0` | **activo de fábrica** | Nada. Apuntarlo al ACS y anda |
+| ⚠️ | `V3.2.00`, `V1.9.1.2`, `V2.1.06` | inactivo | **Activarlo.** Es el problema a resolver |
+
+#### Cómo se activa en los tres que no lo traen
+
+Cuatro caminos, de mejor a peor:
+
+1. **Por OMCI desde la OLT**, si el firmware de la OLT expone la ME correspondiente. Sería lo
+   ideal: masivo, remoto y sin tocar al cliente. Hay que verificarlo en las dos OLT por
+   separado, que están en líneas bastante distintas (`V2.3.1R` y `V1.4.14R`).
+2. **Por plantilla de perfil de ONU en la OLT**, si VSOL permite fijar la URL del ACS en el
+   perfil que se aplica al autorizar. Serviría para las altas nuevas, no para lo instalado.
+3. **Actualización de firmware** a una build con CWMP activo — idealmente la misma `TIGRE`.
+   Masivo pero pesado, y hay que validar que no rompa nada.
+4. **Web de cada ONU, una por una.** Es el peor caso: no escala a 2.400 equipos y sólo sirve
+   como plan de última instancia para un grupo chico.
+
+**El censo decide cuál de estos caminos hace falta y cuánto cuesta**, porque dice qué
+proporción de la flota ya está lista y cuánta hay que intervenir.
+
+> Lo que todavía **no** se puede afirmar desde acá: con qué rutas de parámetros responde cada
+> firmware. No hay documentación pública confiable de la implementación CWMP de VSOL para
+> estas versiones. Sale del equipo o no sale.
 
 ### Fase 0 — Descubrimiento · **es la primera y no se puede saltear**
 
@@ -166,9 +193,12 @@ python3 scripts/censo_onu_vsol.py --censo 192.168.10.247 <community> \
 
 Es de sólo lectura: `snmpbulkwalk` y nada más.
 
-**Entregable:** cuántas ONU de cada modelo y firmware, y en qué PON. Con eso se sabe
-cuántos árboles de parámetros hay que verificar, cuál es el más común, y cuál es el radio
-de alcance de `TIGRE-V1.0`.
+**Entregable:** cuántas ONU de cada modelo y firmware, y en qué PON.
+
+**El número que decide el proyecto:** qué proporción de la flota corre `TIGRE-V1.0` —o sea,
+ya está lista para el ACS— y cuánta hay que intervenir. Si `TIGRE` es mayoría, esto arranca
+con valor inmediato sobre buena parte de los clientes. Si es una minoría, el plan depende
+enteramente de resolver la activación remota (riesgo R1b).
 
 > Conviene verificar la columna sugerida contra la web de la OLT antes de darla por buena.
 > Ya hubo un OID que parecía temperatura de chasis y no lo era: la historia está en el
@@ -194,10 +224,10 @@ equipo publica (`GetParameterNames` sobre la raíz). GenieACS lo muestra en su U
 **Entregable:** una tabla con la ruta exacta de cada parámetro que hace falta, por modelo de
 ONU y versión de firmware.
 
-**Orden de prueba, por lo que dijo el censo:** primero `TIGRE-V1.0`, que es el firmware con
-más chances de no traer cliente CWMP. Después el firmware más numeroso de la flota. Probar
-primero el caso fácil y dejar el difícil para el final es la forma más cara de descubrir un
-problema.
+**Orden de prueba:** primero `TIGRE-V1.0`, que ya trae TR-069 activo. No por ser el difícil
+—es el fácil— sino porque **valida la cadena entera de punta a punta** (ONU → ACS → Pucará)
+sin pelearse todavía con la activación. Una vez que eso anda, el problema de activar los
+otros tres queda aislado y se puede atacar solo.
 
 **Criterio de éxito:** cambiar el SSID de una ONU de laboratorio desde la UI de GenieACS y
 verlo aplicado en el equipo.
@@ -337,8 +367,8 @@ más** y por la red hacia cada ONU. Eso convierte un problema latente en uno act
 
 | # | Riesgo | Probabilidad | Mitigación |
 |---|---|---|---|
-| R1 | Un modelo de ONU no expone los parámetros de WiFi o DHCP por TR-069 | **Media-alta** | Fase 0 primero, y dentro de ella `TIGRE-V1.0` primero. Si pasa, se sabe con una semana de trabajo |
-| R1b | `TIGRE-V1.0` es un firmware a medida y no trae cliente CWMP | **Media** | Si se confirma: las ONU con ese firmware quedan fuera de TR-069 hasta actualizarlas. El censo dice cuántas son y si eso hunde el plan o es un flanco menor |
+| R1 | Un modelo de ONU no expone los parámetros de WiFi o DHCP por TR-069 | Media | Fase 0. Se sabe con una semana de trabajo, no con un trimestre |
+| **R1b** | **No hay forma masiva de activar TR-069 en `V3.2.00`, `V1.9.1.2` y `V2.1.06`** | **Alta** | **Es el riesgo principal del plan.** Si ni OMCI ni el perfil de la OLT sirven, queda actualizar firmware a toda la flota o visitar casa por casa. El censo dice cuántos equipos son; eso decide si el plan sigue, se acota a las altas nuevas, o se frena |
 | R2 | El ACS no puede alcanzar la ONU para el *connection request* | **Media** | Sin esto, los cambios se aplican recién en el chequeo periódico (horas). Verificar el ruteo en la fase 1 |
 | R3 | Una provisión mal escrita se aplica a toda la red | **Baja, impacto altísimo** | Presets por etiqueta. Grupo de prueba de 10 clientes durante dos semanas antes de ampliar |
 | R4 | Heterogeneidad de firmware entre ONU del mismo modelo | Alta | El script resuelve rutas por modelo y firmware, no una sola ruta fija |
@@ -360,15 +390,18 @@ Los modelos y firmwares ya están (ver arriba). Queda pendiente:
 2. ~~Modelos de ONU~~ · **resuelto:** V2802DAC y V2802GW, ambos HGU. Falta saber **cuántas
    están en modo bridge**, porque esas no participan de TR-069. El censo lo aclara en parte;
    el resto sale de `clientes.modo_equipo`.
-3. **Si las ONU traen TR-069 habilitado de fábrica** y contra qué URL de ACS apuntan. Si viene
-   deshabilitado, hay que ver si se puede habilitar por OMCI desde la OLT — y eso depende del
-   firmware de cada OLT, que son dos líneas bastante distintas (`V2.3.1R` y `V1.4.14R`).
+3. ~~Si las ONU traen TR-069 habilitado~~ · **resuelto:** sólo `TIGRE-V1.0`. En su lugar
+   queda la pregunta que importa: **¿se puede activar TR-069 por OMCI o por perfil desde las
+   OLT?** Hay que probarlo en las dos por separado (`V2.3.1R` y `V1.4.14R`). De la respuesta
+   depende que esto sea un proyecto de un mes o una campaña de actualización de firmware a
+   toda la planta.
 4. **Plan de direccionamiento de la VLAN de gestión**: qué rango usan las ONU y si el servidor
    del ACS puede rutear hacia ahí. Es lo que decide si un cambio se aplica al momento o recién
    en el chequeo periódico.
 
 Más una decisión de negocio: **una ONU de laboratorio** que se pueda resetear y romper sin
-afectar a un cliente — preferentemente con `TIGRE-V1.0`, que es el firmware dudoso.
+afectar a un cliente. **Dos, en realidad:** una con `TIGRE-V1.0` para validar la cadena
+entera rápido, y otra con cualquiera de los tres restantes para atacar la activación.
 
 ---
 
