@@ -1,0 +1,12 @@
+<div class="page" id="page-torres-enlaces">
+  <div class="card">
+    <div class="stitle">🗼 Enlaces de Torres
+      <small style="margin-left:auto;color:var(--txt2);font-weight:400">Equipos Master y Slave (5 GHz) detectados en las torres</small>
+    </div>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-bottom:.8rem">
+      <input type="text" id="torre-buscar" placeholder="🔍 Filtrar por nombre, SSID, IP..." oninput="filtrarTorresEnlaces()" style="flex:1;min-width:200px;padding:.45rem .7rem;border:1px solid var(--brd);border-radius:6px">
+      <span id="torre-resumen" style="font-size:.85rem;color:var(--txt2)"></span>
+    </div>
+    <div id="torres-lista"></div>
+  </div>
+</div>

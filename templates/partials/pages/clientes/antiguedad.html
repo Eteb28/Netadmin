@@ -1,0 +1,16 @@
+<div class="page" id="page-antiguedad">
+  <div class="card">
+    <div class="stitle">📅 Antigüedad y permanencia
+      <select id="ant-tipo" onchange="loadAntiguedad()" style="margin-left:auto;max-width:190px">
+        <option value="fibra">Fibra (FTTH)</option>
+        <option value="inalambrico">Inalámbrico</option>
+      </select>
+      <button class="btn btn-gray btn-sm" style="margin-left:.4rem" onclick="loadAntiguedad()">🔄</button>
+    </div>
+    <div style="font-size:.76rem;color:var(--txt2);margin-bottom:.7rem">
+      Cuánto duran los clientes, cómo se distribuye la cartera por antigüedad y qué proporción se va
+      cada mes. Se calcula sobre la fecha de alta y la de baja de cada cliente.
+    </div>
+    <div id="ant-cont"><div style="color:var(--txt2);padding:.6rem">Cargando…</div></div>
+  </div>
+</div>

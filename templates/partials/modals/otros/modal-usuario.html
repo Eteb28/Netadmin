@@ -1,0 +1,26 @@
+<div id="modal-usuario" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-usuario')">
+<div class="modal">
+  <div class="modal-hd"><span id="musr-title">Nuevo Usuario</span><button class="modal-close" onclick="closeModal('modal-usuario')">×</button></div>
+  <div class="modal-bd">
+    <input type="hidden" id="musr-id">
+    <div class="form-row">
+      <div><label>Username *</label><input id="musr-username" placeholder="usuario"></div>
+      <div><label>Nombre completo</label><input id="musr-nombre" placeholder="Nombre y apellido"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Contraseña</label><input id="musr-pass" type="password" placeholder="Dejar vacío para no cambiar"></div>
+      <div><label>Rol</label><select id="musr-rol"><option value="operador">Operador</option><option value="tecnico">Técnico</option><option value="admin">Admin</option></select></div>
+    </div>
+    <div class="form-row">
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <input type="checkbox" id="musr-guardias" style="width:auto">
+        <label for="musr-guardias" style="margin:0">🗓️ Puede editar las guardias de sábado</label>
+      </div>
+    </div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-gray" onclick="closeModal('modal-usuario')">Cancelar</button>
+    <button class="btn btn-prim" onclick="saveUsuario()">💾 Guardar</button>
+  </div>
+</div>
+</div>

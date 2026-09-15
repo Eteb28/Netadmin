@@ -1,0 +1,50 @@
+/* ── MAPA ── */
+#map-container{position:absolute;inset:0}
+.map-toolbar{position:absolute;top:10px;left:10px;z-index:500;display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;background:rgba(255,255,255,.1);padding:.5rem .7rem;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.15);max-width:calc(100% - 20px)}
+.map-search-wrap{position:relative}
+.map-search-drop{position:absolute;top:100%;left:0;width:300px;background:var(--card);border:1.5px solid var(--brd);border-radius:0 0 8px 8px;box-shadow:0 8px 20px rgba(0,0,0,.15);z-index:600;max-height:220px;overflow-y:auto;display:none}
+.map-search-drop .item{padding:.5rem .8rem;cursor:pointer;border-bottom:1px solid var(--brd);font-size:.8rem}
+.map-search-drop .item:hover{background:#444}
+.map-search-drop .item .name{font-weight:600;color:var(--txt)}
+.map-search-drop .item .sub{color:var(--txt2);font-size:.72rem}
+/* ── NAP CARDS DASHBOARD ── */
+.nap-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.6rem}
+.nap-card{border-radius:8px;padding:.7rem;border:2px solid transparent;transition:.2s;cursor:pointer}
+.nap-card:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.nap-card.lleno{border-color:var(--rj2);background:#fff5f5}
+.nap-card.casi{border-color:var(--am2);background:#fffbf0}
+.nap-card.normal{border-color:var(--brd);background:var(--card)}
+.nap-pct{font-size:1.4rem;font-weight:800;margin-bottom:.2rem}
+.nap-name{font-size:.78rem;font-weight:700;margin-bottom:.3rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nap-bar{height:6px;background:var(--surf2);border-radius:3px;overflow:hidden;margin-bottom:.4rem}
+.nap-bar-fill{height:100%;border-radius:3px;transition:.4s}
+.nap-dots{display:flex;gap:2px;flex-wrap:wrap}
+.nap-dot{width:10px;height:10px;border-radius:50%}
+.nap-dot.activo{background:var(--vd2)}
+.nap-dot.suspendido{background:var(--am2)}
+.nap-dot.rescision{background:var(--rj2)}
+.nap-dot.libre{background:var(--surf2)}
+
+/* NAPs agrupadas */
+.nap-group{margin-bottom:.5rem}
+.nap-group-header{background:var(--card);padding:.5rem .7rem;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:.5rem;border:1px solid var(--brd);transition:.15s}
+.nap-group-header:hover{background:var(--surf2)}
+.nap-group-toggle{transition:transform .2s}
+.nap-group.open .nap-group-toggle{transform:rotate(90deg)}
+.nap-group-name{font-weight:700;font-size:.85rem;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nap-group-stats{font-size:.7rem;color:var(--txt2);white-space:nowrap}
+.nap-group-bar{width:80px;height:6px;background:var(--brd);border-radius:3px;overflow:hidden;flex-shrink:0}
+.nap-group-bar-fill{height:100%;background:var(--vd2)}
+.nap-group-bar-fill.warn{background:var(--am2)}
+.nap-group-bar-fill.full{background:var(--rj2)}
+.nap-group-content{display:none;padding:.7rem;background:var(--card);border-radius:0 0 8px 8px;margin-top:-2px;border:1px solid var(--brd);border-top:0}
+.nap-group.open .nap-group-content{display:block}
+.nap-mini-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:.4rem}
+.nap-mini{background:var(--card);border-radius:6px;padding:.4rem .5rem;border:1px solid var(--brd);font-size:.74rem;cursor:pointer;transition:.15s}
+.nap-mini:hover{transform:translateY(-1px);box-shadow:0 2px 6px rgba(0,0,0,.1)}
+.nap-mini.lleno{border-color:var(--rj2);background:#fef5f5}
+.nap-mini.casi{border-color:var(--am2);background:#fef9f0}
+.nap-mini-name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.72rem}
+.nap-mini-pct{font-weight:800;font-size:.85rem;color:var(--az2)}
+.nap-mini.lleno .nap-mini-pct{color:var(--rj)}
+.nap-mini.casi .nap-mini-pct{color:var(--am)}

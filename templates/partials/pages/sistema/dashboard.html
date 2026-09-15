@@ -1,0 +1,215 @@
+<div class="page active" id="page-dashboard">
+  <!-- Banner de tareas pendientes (se muestra solo si hay pendientes) -->
+  <a id="dash-tareas-banner" onclick="navGo('tareas')" style="display:none;cursor:pointer;text-decoration:none;
+     align-items:center;gap:.9rem;padding:.9rem 1.15rem;margin-bottom:1rem;border-radius:12px;
+     background:linear-gradient(90deg,rgba(224,168,56,.28),rgba(224,168,56,.10));
+     border:1px solid rgba(224,168,56,.55);border-left:5px solid #E0A838;
+     box-shadow:0 2px 14px rgba(224,168,56,.12)">
+    <span style="font-size:1.7rem;line-height:1;animation:pinBounce 1.8s ease-in-out infinite">📌</span>
+    <div style="flex:1">
+      <div style="font-family:'Space Grotesk','Segoe UI',sans-serif;font-weight:700;font-size:1.06rem;color:#F5DFA0">
+        Tenés <span id="dash-tareas-num">0</span> <span id="dash-tareas-lbl">tareas pendientes</span>
+      </div>
+      <div style="font-size:.79rem;color:var(--txt2);margin-top:.1rem">Tocá para verlas en tu pizarrón personal</div>
+    </div>
+    <span style="font-size:.82rem;color:#E0A838;font-weight:700;white-space:nowrap;background:rgba(224,168,56,.15);padding:.35rem .7rem;border-radius:20px">Ver mis tareas →</span>
+  </a>
+  <!-- Banner de señal crítica de ONU (se muestra solo si hay críticas) -->
+  <a id="dash-onu-banner" onclick="navGo('onu-alertas')" style="display:none;cursor:pointer;text-decoration:none;
+     align-items:center;gap:.9rem;padding:.9rem 1.15rem;margin-bottom:1rem;border-radius:12px;
+     background:linear-gradient(90deg,rgba(224,96,95,.28),rgba(224,96,95,.10));
+     border:1px solid rgba(224,96,95,.55);border-left:5px solid #E0605F;box-shadow:0 2px 14px rgba(224,96,95,.12)">
+    <span style="font-size:1.7rem;line-height:1">🔴</span>
+    <div style="flex:1">
+      <div style="font-family:'Space Grotesk','Segoe UI',sans-serif;font-weight:700;font-size:1.06rem;color:#F0A5A4">
+        <span id="dash-onu-num">0</span> <span id="dash-onu-lbl">clientes con señal óptica crítica</span>
+      </div>
+      <div style="font-size:.79rem;color:var(--txt2);margin-top:.1rem">Potencia RX por debajo de -29 dBm — fibra degradada, requiere atención</div>
+    </div>
+    <span style="font-size:.82rem;color:#E0605F;font-weight:700;white-space:nowrap;background:rgba(224,96,95,.15);padding:.35rem .7rem;border-radius:20px">Ver alertas →</span>
+  </a>
+  <!-- Desplegable: estado de servicios grandes (Cloudflare, MercadoPago, etc.) -->
+  <div class="card" id="dash-servicios" style="margin-bottom:1rem">
+    <div onclick="_toggleServicios()" style="cursor:pointer;display:flex;align-items:center;gap:.6rem">
+      <span style="font-size:1.1rem">🌐</span>
+      <b>Estado de servicios grandes</b>
+      <span id="dash-serv-resumen" style="font-size:.8rem;color:var(--txt2)">cargando…</span>
+      <span id="dash-serv-flecha" style="margin-left:auto;color:var(--txt2);font-size:.8rem">▼</span>
+    </div>
+    <div id="dash-serv-body" style="display:none;margin-top:.7rem"></div>
+  </div>
+
+
+  <!-- Carrusel de noticias/incidencias/clima -->
+  <div class="carousel carousel-wide" id="carousel">
+    <span class="carousel-icon">📡</span>
+    <div class="carousel-content" id="carousel-content">
+      <div class="carousel-slide active">
+        <span class="carousel-title">Pucara</span>
+        <span class="carousel-text">Sistema operativo — sin incidencias activas</span>
+        <span class="carousel-badge b-activo" style="background:rgba(76,175,80,.3);color:#fff">OK</span>
+      </div>
+    </div>
+    <div class="carousel-nav">
+      <button onclick="carouselPrev()">‹</button>
+      <button onclick="carouselNext()">›</button>
+      <button onclick="openWeatherModal()" title="Pronóstico extendido" style="margin-left:.4rem">🌤</button>
+    </div>
+  </div>
+
+  <!-- Filtro global -->
+  <div class="global-filter">
+    <label>FILTRAR:</label>
+    <select id="gf-localidad" onchange="reloadDashboard()"><option value="">Todas las localidades</option></select>
+    <select id="gf-tipo" onchange="reloadDashboard()"><option value="">Todos los tipos</option><option value="fibra">Fibra</option><option value="inalambrico">Inalámbrico</option></select>
+    <select id="gf-periodo" onchange="reloadDashboard()">
+      <option value="30">Últimos 30 días</option>
+      <option value="7">Últimos 7 días</option>
+      <option value="90">Últimos 90 días</option>
+      <option value="365">Año actual</option>
+    </select>
+    <div class="live-badge"><span class="live-dot"></span> EN VIVO · <span id="gf-update">recién actualizado</span></div>
+  </div>
+
+  <!-- KPIs principales con sparklines -->
+  <div class="kpi-grid">
+    <div class="kpi green">
+      <div class="kpi-info">
+        <div class="kpi-label">Clientes Activos</div>
+        <div class="kpi-value" id="kpi-activos">—</div>
+        <div class="kpi-trend" id="kpi-trend-altas">—</div>
+      </div>
+      <svg class="kpi-spark" viewBox="0 0 80 50" id="spark-activos"></svg>
+    </div>
+    <div class="kpi orange">
+      <div class="kpi-info">
+        <div class="kpi-label">Suspendidos</div>
+        <div class="kpi-value" id="kpi-suspendidos">—</div>
+        <div class="kpi-trend flat">Requieren gestión</div>
+      </div>
+      <svg class="kpi-spark" viewBox="0 0 80 50" id="spark-susp"></svg>
+    </div>
+    <div class="kpi red">
+      <div class="kpi-info">
+        <div class="kpi-label">Pte. Rescisión</div>
+        <div class="kpi-value" id="kpi-rescision">—</div>
+        <div class="kpi-trend down" id="kpi-trend-bajas">—</div>
+      </div>
+      <svg class="kpi-spark" viewBox="0 0 80 50" id="spark-resc"></svg>
+    </div>
+    <div class="kpi">
+      <div class="kpi-info">
+        <div class="kpi-label">Total Clientes</div>
+        <div class="kpi-value" id="kpi-total">—</div>
+        <div class="kpi-trend up" id="kpi-trend-total">—</div>
+      </div>
+      <svg class="kpi-spark" viewBox="0 0 80 50" id="spark-total"></svg>
+    </div>
+  </div>
+
+  <!-- KPIs secundarios -->
+  <div class="grid-4">
+    <div class="stat"><div class="stat-val" id="ds-fibra">—</div><div class="stat-lbl">Activos Fibra</div></div>
+    <div class="stat"><div class="stat-val" id="ds-inalambrico">—</div><div class="stat-lbl">Activos Inalámbrico</div></div>
+    <div class="stat orange" data-req-modulo="servicios"><div class="stat-val" id="ds-svc-pend">—</div><div class="stat-lbl">Servicios Pendientes</div></div>
+    <div class="stat red" data-req-modulo="incidencias"><div class="stat-val" id="ds-inc">—</div><div class="stat-lbl">Incidencias Abiertas</div></div>
+    <div class="stat" data-req-modulo="servicios" style="border-left:3px solid #2196f3"><div class="stat-val" id="ds-pte-inst">—</div><div class="stat-lbl">Pte. Instalación</div></div>
+    <div class="stat" data-req-modulo="servicios" style="border-left:3px solid #ff9800"><div class="stat-val" id="ds-pte-calc">—</div><div class="stat-lbl">Pte. Cálculo</div></div>
+    <div class="stat" data-req-modulo="servicios" style="border-left:3px solid #9e9e9e"><div class="stat-val" id="ds-borrador">—</div><div class="stat-lbl">Borrador</div></div>
+  </div>
+
+  <!-- Incidencias compactas — MOVIDO ARRIBA -->
+  <div class="card" data-req-modulo="incidencias">
+    <div class="section-title" style="margin:0 0 .8rem">🚨 Incidencias Activas
+      <button class="btn btn-prim btn-sm" style="margin-left:auto" onclick="navGo('incidencias')">Ver todas</button>
+    </div>
+    <div id="dash-inc-list"></div>
+  </div>
+
+  <!-- Riesgos / Alertas Inteligentes -->
+  <div class="section-title" data-req-modulo="clientes">⚠️ Clientes en Riesgo (gestión proactiva)</div>
+  <div class="grid-4" data-req-modulo="clientes">
+    <div class="risk-card" onclick="filtroRiesgo('suspendidos_30')" style="cursor:pointer">
+      <div class="label">Suspendidos +30 días</div>
+      <div class="num" id="rg-sus-30">—</div>
+      <div style="font-size:.72rem;color:var(--txt2)">Candidatos a rescisión</div>
+    </div>
+    <div class="risk-card warn" onclick="filtroRiesgo('pago_15')" style="cursor:pointer" data-req-modulo="finanzas">
+      <div class="label">Pago vencido +15 días</div>
+      <div class="num" id="rg-pago-15">—</div>
+      <div style="font-size:.72rem;color:var(--txt2)" id="rg-deuda">$— en deuda</div>
+    </div>
+    <div class="risk-card warn" onclick="filtroRiesgo('rescision_60')" style="cursor:pointer" data-req-modulo="bajas">
+      <div class="label">Rescisión +60 días con equipo</div>
+      <div class="num" id="rg-resc-60">—</div>
+      <div style="font-size:.72rem;color:var(--txt2)">Generar OT de retiro</div>
+    </div>
+    <div class="risk-card" onclick="filtroRiesgo('sin_tecnico')" style="cursor:pointer" data-req-modulo="servicios">
+      <div class="label">Servicios sin técnico +48hs</div>
+      <div class="num" id="rg-svc-48">—</div>
+      <div style="font-size:.72rem;color:var(--txt2)">Asignar técnico urgente</div>
+    </div>
+  </div>
+
+  <!-- Alerta de revisión -->
+  <!-- Charts grid 1: Evolución mensual + Donut estados -->
+  <div class="charts-grid">
+    <div class="card">
+      <div class="section-title" style="margin:0 0 .8rem">📈 Evolución Mensual de Altas/Bajas</div>
+      <div id="chart-evolucion" style="position:relative">
+        <svg viewBox="0 0 500 200" style="width:100%;height:180px" id="svg-evolucion"></svg>
+      </div>
+      <div id="evol-legend" style="display:flex;gap:1rem;margin-top:.5rem;font-size:.75rem;flex-wrap:wrap"></div>
+    </div>
+    <div class="card">
+      <div class="section-title" style="margin:0 0 .8rem">🎯 Distribución de Clientes</div>
+      <div class="donut-wrap" id="donut-estados"></div>
+    </div>
+  </div>
+
+  <!-- Charts grid 3: Localidades + Tipo servicio -->
+  <div class="charts-grid">
+    <div class="card">
+      <div class="section-title" style="margin:0 0 .8rem">🌍 Top Localidades</div>
+      <div id="bar-localidades"></div>
+    </div>
+    <div class="card">
+      <div class="section-title" style="margin:0 0 .8rem">💎 Distribución por Tipo de Servicio</div>
+      <div class="donut-wrap" id="donut-tipos"></div>
+      <div id="ftth-potencial-msg" style="font-size:.75rem;color:var(--txt2);margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--brd)"></div>
+    </div>
+  </div>
+
+  <!-- Calendario de vacaciones / ausencias -->
+  <!-- Planes vigentes (perfil comercial) -->
+  <div class="card" id="dash-planes-card" data-req-modulo="abonos" style="display:none">
+    <div class="section-title" style="margin:0 0 .8rem">💎 Planes vigentes
+      <button class="btn btn-prim btn-sm" style="margin-left:auto" onclick="navGo('abonos')">Ver abonos</button>
+    </div>
+    <div id="dash-planes-list" style="font-size:.85rem;color:var(--txt2)">Cargando planes…</div>
+  </div>
+
+  <div class="card" id="dash-vacaciones-card">
+    <div class="stitle">🏖 Vacaciones del equipo
+      <div style="margin-left:auto;display:flex;gap:.4rem;align-items:center">
+        <span id="dash-vac-saldo" style="font-size:.78rem;color:var(--txt2)"></span>
+        <button class="btn btn-prim btn-xs" id="dash-vac-solicitar" style="display:flex" onclick="abrirSolicitarVacaciones()">+ Solicitar vacaciones</button>
+        <button class="btn btn-gray btn-xs" onclick="cambiarMesDashVac(-1)">‹</button>
+        <span id="dash-vac-mes" style="font-weight:600;min-width:110px;text-align:center;font-size:.85rem"></span>
+        <button class="btn btn-gray btn-xs" onclick="cambiarMesDashVac(1)">›</button>
+      </div>
+    </div>
+    <div id="dash-vac-calendario"></div>
+  </div>
+
+  <!-- Auditoría de datos (solo admin) -->
+  <div class="card" id="dash-auditoria-card" style="display:none">
+    <div class="stitle">🔍 Auditoría de datos
+      <button class="btn btn-gray btn-xs" style="margin-left:auto" onclick="correrAuditoria()">▶ Ejecutar auditoría</button>
+    </div>
+    <div id="dash-auditoria" style="font-size:.85rem;color:var(--txt2)">
+      Detecta IPs y equipos duplicados, NAPs sobrepasados, abonos que no condicen con el tipo de servicio, servicios estancados y problemas de seguridad.
+    </div>
+  </div>
+
+</div>

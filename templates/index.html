@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pucara — Gestión ISP</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+<link id="tema-oscuro-css" rel="stylesheet" href="{{ url_for('static', filename='css/tema-oscuro.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pucara-noc.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/mcli-tabs.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ap-mosaico.css') }}">
+<script>
+  // Preferencia de tema (oscuro por defecto). Se aplica antes del render para no parpadear.
+  if(localStorage.getItem('pucara_tema') === 'claro'){
+    var _t = document.getElementById('tema-oscuro-css');
+    if(_t) _t.disabled = true;
+  }
+</script>
+</head>
+<body>
+
+<!-- ════ NAV ════ -->
+<nav class="nav">
+  <div class="nav-brand">
+    <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="ERLAN" class="nav-logo">
+    <span class="nav-brand-sub">ISP v6</span>
+  </div>
+
+  <!-- Links desktop — agrupados con dropdowns -->
+  <div class="nav-links" id="nav-links-desktop">
+    <a onclick="navGo('dashboard',this)" class="active">📊 Dashboard</a>
+    <a onclick="navGo('tareas',this)" id="nav-tareas">📌 Mis Tareas</a>
+    <a onclick="navGo('clientes',this)">👥 Clientes</a>
+    <a onclick="navGo('mapa',this)">🗺️ Mapa</a>
+    
+    <!-- FTTH/Red: NAPs, OLTs, Incidencias -->
+    <div class="nav-group" data-group="fibra">
+      <a class="nav-group-trigger" onclick="toggleNavGroup(event,'fibra')">💡 Fibra <span class="nav-caret">▾</span></a>
+      <div class="nav-group-menu">
+        <a onclick="navGo('naps',this);closeNavGroups()">🔌 Cajas NAP</a>
+        <a onclick="navGo('ftth',this);closeNavGroups()">🖥️ OLTs</a>
+        <a onclick="navGo('ftth-capacidad',this);closeNavGroups()">💡 Capacidad PONs</a>
+        <a onclick="navGo('onu-alertas',this);closeNavGroups()">🔴 Alertas de ONU</a>
+        <a onclick="navGo('gestion-ips',this);closeNavGroups()">🌐 Gestión IPs</a>
+        <a onclick="navGo('incidencias',this);closeNavGroups()">🚨 Incidencias</a>
+        <a onclick="navGo('ftth_plan',this);closeNavGroups()" id="nav-ftth_plan">📐 FTTH Plan</a>
+      </div>
+    </div>
+
+    <div class="nav-group" data-group="inalambrico">
+      <a class="nav-group-trigger" onclick="toggleNavGroup(event,'inalambrico')">📡 Inalámbrico <span class="nav-caret">▾</span></a>
+      <div class="nav-group-menu">
+        <a onclick="navGo('torres',this);closeNavGroups()">🗼 Torres</a>
+        <a onclick="navGo('aps',this);closeNavGroups()">📡 Vista de APs</a>
+        <a onclick="navGo('torres-enlaces',this);closeNavGroups()">🗼 Enlaces de Torres</a>
+        <a onclick="navGo('enlaces-snmp',this);closeNavGroups()">🔗 Enlaces SNMP</a>
+        <a onclick="navGo('mikrotik',this);closeNavGroups()">🧭 Routers MikroTik</a>
+        <a onclick="navGo('capacidad-aps',this);closeNavGroups()">📊 Capacidad APs</a>
+        <a onclick="navGo('cobertura-mapa',this);closeNavGroups()">🗺 Mapa de Cobertura</a>
+        <a onclick="navGo('perfiles-radio',this);closeNavGroups()">📻 Perfiles de Radio</a>
+        <a onclick="navGo('enlaces-alertas',this);closeNavGroups()">🚨 Alertas de Enlaces</a>
+        <a onclick="navGo('monitoreo',this);closeNavGroups()">📡 Monitoreo de IPs</a>
+      </div>
+    </div>
+    
+    <!-- Servicios: Servicios, Activación, Instalación, Agenda -->
+    <div class="nav-group" data-group="servicios">
+      <a class="nav-group-trigger" onclick="toggleNavGroup(event,'servicios')">🔧 Servicios <span class="nav-caret">▾</span></a>
+      <div class="nav-group-menu">
+        <a onclick="navGo('servicios',this);closeNavGroups()">🛠️ Servicios</a>
+        <a onclick="navGo('activacion-pendiente',this);closeNavGroups()">⚙️ Activación pendiente</a>
+        <a onclick="navGo('instalacion-pendiente',this);closeNavGroups()">🔧 Instalación pendiente</a>
+        <a onclick="navGo('agenda',this);closeNavGroups()">📅 Agenda</a>
+        <a onclick="navGo('stats-service',this);closeNavGroups()">📊 Estadísticas service</a>
+      </div>
+    </div>
+    
+    <!-- Infraestructura: Torres, Monitoreo -->
+
+    <!-- Administración: Bajas, Abonos, Stock -->
+    <div class="nav-group" data-group="administracion">
+      <a class="nav-group-trigger" onclick="toggleNavGroup(event,'administracion')">💰 Administración <span class="nav-caret">▾</span></a>
+      <div class="nav-group-menu">
+        <a onclick="navGo('finanzas',this);closeNavGroups()" id="nav-finanzas">💰 Finanzas</a>
+        <a onclick="navGo('contabilidad',this);closeNavGroups()" id="nav-contabilidad">🧮 Contabilidad</a>
+        <a onclick="navGo('informes',this);closeNavGroups()" id="nav-informes">📊 Informes</a>
+        <a onclick="navGo('bajas',this);closeNavGroups()">📋 Bajas</a>
+        <a onclick="navGo('antiguedad',this);closeNavGroups()">📅 Antigüedad y churn</a>
+        <a onclick="navGo('abonos',this);closeNavGroups()">💰 Abonos</a>
+        <a onclick="navGo('stock',this);closeNavGroups()">📦 Stock</a>
+      </div>
+    </div>
+    
+    <a onclick="navGo('guardias',this)" id="nav-guardias">🗓️ Guardias</a>
+
+    <div class="nav-group" data-group="configuracion">
+      <a class="nav-group-trigger" onclick="toggleNavGroup(event,'configuracion')">⚙️ Configuración <span class="nav-caret">▾</span></a>
+      <div class="nav-group-menu">
+        <a onclick="navGo('sync',this);closeNavGroups()" id="nav-sync" style="display:none">🔄 Sync ERP</a>
+        <a onclick="navGo('historial',this);closeNavGroups()">📜 Historial</a>
+        <a onclick="navGo('usuarios',this);closeNavGroups()" id="nav-usuarios" style="display:none">👤 Usuarios</a>
+        <a onclick="navGo('rrhh',this);closeNavGroups()" id="nav-rrhh" style="display:none">🧑‍💼 RRHH</a>
+        <a onclick="navGo('config',this);closeNavGroups()" id="nav-config" style="display:none">⚙️ Ajustes</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="nav-right">
+    <button class="notif-btn" onclick="toggleNotif()" title="Notificaciones">
+      🔔<span class="notif-badge" id="notif-cnt" style="display:none">0</span>
+    </button>
+    <span class="nav-user" id="nav-nombre"></span>
+    <button class="nav-logout" id="btn-tema" onclick="toggleTema()" style="background:rgba(255,255,255,.08)">🌙 Tema oscuro</button>
+    <button class="nav-logout" onclick="localStorage.setItem('erlan_modo','mobile');location.href='/mobile'" style="background:rgba(255,255,255,.08)">📱 Vista móvil</button>
+    <button class="nav-logout" onclick="location.href='/logout'">Salir</button>
+    <button class="nav-hamburger" onclick="openDrawer()" title="Menú" style="display:none">☰</button>
+  </div>
+</nav>
+
+<!-- Botón hamburguesa flotante (solo visible en móvil, fuera del sidebar) -->
+<button class="nav-hamburger-mobile" onclick="openDrawer()" title="Menú">☰</button>
+
+<!-- ════ MENÚ MÓVIL (drawer) — secciones colapsables ════ -->
+<div class="nav-drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+<div class="nav-drawer" id="nav-drawer">
+  <div class="nav-drawer-header">
+    <span class="nav-drawer-brand"><img src="{{ url_for('static', filename='img/logo.svg') }}" alt="ERLAN" style="height:32px;vertical-align:middle;border-radius:4px"></span>
+    <button class="nav-drawer-close" onclick="closeDrawer()">×</button>
+  </div>
+  <a onclick="navGo('dashboard');closeDrawer()">📊 Dashboard</a>
+  <a onclick="navGo('clientes');closeDrawer()">👥 Clientes</a>
+  <a onclick="navGo('mapa');closeDrawer()">🗺️ Mapa</a>
+  
+  <!-- FTTH/Red -->
+  <div class="drawer-section">
+    <a class="drawer-section-toggle" onclick="toggleDrawerSection(this)">
+      💡 FTTH/Red <span class="drawer-caret">▸</span>
+    </a>
+    <div class="drawer-section-content">
+      <a onclick="navGo('naps');closeDrawer()" class="drawer-sub">🔌 NAPs</a>
+      <a onclick="navGo('gestion-ips');closeDrawer()" class="drawer-sub">🌐 Gestión IPs</a>
+      <a onclick="navGo('aps');closeDrawer()" class="drawer-sub">📡 Vista de APs</a>
+      <a onclick="navGo('mikrotik');closeDrawer()" class="drawer-sub">🧭 Routers MikroTik</a>
+      <a onclick="navGo('enlaces-alertas');closeDrawer()" class="drawer-sub">🚨 Alertas de Enlaces</a>
+      <a onclick="navGo('torres-enlaces');closeDrawer()" class="drawer-sub">🗼 Enlaces de Torres</a>
+      <a onclick="navGo('enlaces-snmp');closeDrawer()" class="drawer-sub">🔗 Enlaces SNMP</a>
+      <a onclick="navGo('capacidad-aps');closeDrawer()" class="drawer-sub">📊 Capacidad APs</a>
+      <a onclick="navGo('cobertura-mapa');closeDrawer()" class="drawer-sub">🗺 Mapa de Cobertura</a>
+      <a onclick="navGo('perfiles-radio');closeDrawer()" class="drawer-sub">📻 Perfiles de Radio</a>
+      <a onclick="navGo('ftth');closeDrawer()" class="drawer-sub">🖥️ OLTs</a>
+      <a onclick="navGo('ftth-capacidad');closeDrawer()" class="drawer-sub">💡 Capacidad PONs</a>
+      <a onclick="navGo('incidencias');closeDrawer()" class="drawer-sub">🚨 Incidencias</a>
+    </div>
+  </div>
+  
+  <!-- Servicios -->
+  <div class="drawer-section">
+    <a class="drawer-section-toggle" onclick="toggleDrawerSection(this)">
+      🔧 Servicios <span class="drawer-caret">▸</span>
+    </a>
+    <div class="drawer-section-content">
+      <a onclick="navGo('servicios');closeDrawer()" class="drawer-sub">🛠️ Servicios</a>
+      <a onclick="navGo('activacion-pendiente');closeDrawer()" class="drawer-sub">⚙️ Activación Pte.</a>
+      <a onclick="navGo('instalacion-pendiente');closeDrawer()" class="drawer-sub">🔧 Instalación Pte.</a>
+      <a onclick="navGo('agenda');closeDrawer()" class="drawer-sub">📅 Agenda</a>
+    </div>
+  </div>
+  
+  <!-- Infraestructura -->
+  <div class="drawer-section">
+    <a class="drawer-section-toggle" onclick="toggleDrawerSection(this)">
+      🗼 Infraestructura <span class="drawer-caret">▸</span>
+    </a>
+    <div class="drawer-section-content">
+      <a onclick="navGo('torres');closeDrawer()" class="drawer-sub">🗼 Torres</a>
+      <a onclick="navGo('monitoreo');closeDrawer()" class="drawer-sub">📡 Monitoreo</a>
+    </div>
+  </div>
+  
+  <!-- Administración -->
+  <div class="drawer-section">
+    <a class="drawer-section-toggle" onclick="toggleDrawerSection(this)">
+      💰 Administración <span class="drawer-caret">▸</span>
+    </a>
+    <div class="drawer-section-content">
+      <a onclick="navGo('bajas');closeDrawer()" class="drawer-sub">📋 Bajas</a>
+      <a onclick="navGo('antiguedad');closeDrawer()" class="drawer-sub">📅 Antigüedad y churn</a>
+      <a onclick="navGo('abonos');closeDrawer()" class="drawer-sub">💰 Abonos</a>
+      <a onclick="navGo('stock');closeDrawer()" class="drawer-sub">📦 Stock</a>
+    </div>
+  </div>
+  
+  <a onclick="navGo('historial');closeDrawer()">📜 Historial</a>
+  <a onclick="navGo('reclamos');closeDrawer()" data-req-modulo="reclamos">📋 Reclamos (Tero)</a>
+  <a onclick="navGo('usuarios');closeDrawer()" id="drawer-usuarios" style="display:none">👤 Usuarios</a>
+  <a onclick="navGo('sync');closeDrawer()" id="drawer-sync" style="display:none">🔄 Sync ERP</a>
+  <a onclick="navGo('finanzas');closeDrawer()" id="drawer-finanzas">💰 Finanzas</a>
+  <a onclick="navGo('ftth_plan');closeDrawer()" id="drawer-ftth_plan">📐 FTTH Plan</a>
+  <a onclick="navGo('config');closeDrawer()" id="drawer-config" style="display:none">⚙️ Config</a>
+  <a onclick="location.href='/logout'" style="color:#ff9999;margin-top:.5rem">🚪 Cerrar sesión</a>
+</div>
+
+<!-- ════ LAYOUT ════ -->
+<div class="layout">
+
+<!-- ══ DASHBOARD ══ -->
+{% include 'partials/pages/sistema/dashboard.html' %}
+
+<!-- ══ CLIENTES ══ -->
+{% include 'partials/pages/clientes/clientes.html' %}
+
+<!-- ══ MAPA ══ -->
+{% include 'partials/pages/clientes/mapa.html' %}
+
+<!-- ══ NAPs ══ -->
+{% include 'partials/pages/red/naps.html' %}
+
+<!-- ══ SERVICIOS ══ -->
+{% include 'partials/pages/operaciones/servicios.html' %}
+
+<!-- ══ FTTH / OLT ══ -->
+{% include 'partials/pages/ftth/ftth.html' %}
+
+<!-- ══ INCIDENCIAS ══ -->
+{% include 'partials/pages/ftth/incidencias.html' %}
+
+<!-- ══ STOCK ══ -->
+{% include 'partials/pages/operaciones/stock.html' %}
+
+<!-- Modal nuevo equipo -->
+{% include 'partials/modals/red/modal-equipo-torre.html' %}
+
+<div class="modal" id="modal-stock-nuevo" style="display:none">
+  <div class="modal-content" style="max-width:420px">
+    <div class="modal-header"><h3>📥 Ingresar equipo</h3><button class="modal-close" onclick="closeModal('modal-stock-nuevo')">×</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div><label>Nº de serie</label><input id="msi-serie" placeholder="S/N" style="font-family:monospace"></div>
+        <div><label>MAC</label><input id="msi-mac" placeholder="AA:BB:CC:DD:EE:FF" style="font-family:monospace"></div>
+      </div>
+      <div class="form-row">
+        <div><label>Marca</label><input id="msi-marca" placeholder="UBIQUITI, CAMBIUM, VSOL..." list="marcas-list">
+          <datalist id="marcas-list"><option value="UBIQUITI"><option value="CAMBIUM"><option value="VSOL"><option value="MIKROTIK"><option value="TP-LINK"></datalist>
+        </div>
+        <div><label>Modelo</label><input id="msi-modelo" placeholder="NanoStation M2, ONU..."></div>
+      </div>
+      <div class="form-row">
+        <div><label>Tipo</label><select id="msi-tipo"><option value="fibra">Fibra (ONU)</option><option value="inalambrico">Inalámbrico (CPE)</option><option value="router">Router</option><option value="otro">Otro</option></select></div>
+        <div><label>Observaciones</label><input id="msi-obs" placeholder="Notas..."></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeModal('modal-stock-nuevo')">Cancelar</button>
+      <button class="btn btn-prim" onclick="saveNuevoEquipo()">📥 Ingresar</button>
+    </div>
+  </div>
+</div>
+
+{% include 'partials/pages/clientes/bajas.html' %}
+
+{% include 'partials/pages/clientes/antiguedad.html' %}
+
+<!-- ══ ABONOS ══ -->
+{% include 'partials/pages/clientes/abonos.html' %}
+
+<!-- ══ RECLAMOS (Tero) ══ -->
+{% include 'partials/pages/otros/reclamos.html' %}
+
+<!-- ══ HISTORIAL ══ -->
+{% include 'partials/pages/otros/historial.html' %}
+
+<!-- ══ USUARIOS ══ -->
+{% include 'partials/pages/rrhh/rrhh.html' %}
+
+{% include 'partials/pages/finanzas/informes.html' %}
+
+{% include 'partials/pages/finanzas/contabilidad.html' %}
+
+{% include 'partials/pages/operaciones/tareas.html' %}
+
+{% include 'partials/pages/otros/guardias.html' %}
+
+{% include 'partials/modals/otros/modal-generar-guardias.html' %}
+
+{% include 'partials/pages/sistema/usuarios.html' %}
+<!-- ══ TORRES ══ -->
+{% include 'partials/pages/otros/stats-service.html' %}
+
+<!-- ══ TORRES ══ -->
+{% include 'partials/pages/red/torres.html' %}
+
+<!-- ══ MONITOREO ══ -->
+{% include 'partials/pages/red/monitoreo.html' %}
+
+<!-- ══ AGENDA ══ -->
+{% include 'partials/pages/otros/agenda.html' %}
+
+<!-- ══ FINANZAS ══ -->
+{% include 'partials/pages/finanzas/finanzas.html' %}
+
+<!-- ══ FTTH PLANNING ══ -->
+<div class="page" id="page-ftth_plan">
+  <div class="stitle">📐 Planificación FTTH</div>
+  <div style="display:flex;gap:.5rem;margin-bottom:.8rem;flex-wrap:wrap">
+    <button class="btn btn-prim" onclick="navGo('mapa');setTimeout(()=>startDrawRoute(),300)">✏️ Trazar ruta en mapa</button>
+    <button class="btn" style="background:#ff9800;color:#fff" onclick="navGo('mapa');setTimeout(()=>toggleDensityMap(),300)">🔥 Ver densidad inalámbrico</button>
+    <button class="btn" style="background:#9c27b0;color:#fff" onclick="navGo('mapa');setTimeout(()=>startDrawZone(),300)">📐 Marcar zona expansión</button>
+    <button class="btn btn-gray" onclick="navGo('mapa');setTimeout(()=>showAllRutas(),300)">👁 Ver todas las rutas</button>
+  </div>
+  <div id="ftth-panel"></div>
+</div>
+
+<!-- ══ CONFIG ══ -->
+{% include 'partials/pages/red/torres-enlaces.html' %}
+
+<!-- ══ ENLACES SNMP (punto a punto) ══ -->
+{% include 'partials/pages/red/enlaces-snmp.html' %}
+
+{% include 'partials/modals/otros/modal-enlace.html' %}
+
+<!-- ══ MAPA DE COBERTURA (independiente del mapa general) ══ -->
+{% include 'partials/pages/red/cobertura-mapa.html' %}
+
+<!-- ══ CAPACIDAD / SATURACIÓN DE APs ══ -->
+{% include 'partials/pages/red/capacidad-aps.html' %}
+
+<!-- ══ PERFILES DE RADIO (capacidad por modelo) ══ -->
+{% include 'partials/pages/red/perfiles-radio.html' %}
+
+{% include 'partials/modals/sistema/modal-perfil.html' %}
+
+{% include 'partials/pages/red/enlaces-alertas.html' %}
+
+<!-- ══ CAPACIDAD / SALUD DE PONs (FTTH) ══ -->
+{% include 'partials/pages/ftth/ftth-capacidad.html' %}
+
+{% include 'partials/pages/ftth/onu-alertas.html' %}
+
+{% include 'partials/pages/red/aps.html' %}
+
+{% include 'partials/pages/red/mikrotik.html' %}
+
+{% include 'partials/pages/red/gestion-ips.html' %}
+
+{% include 'partials/pages/sistema/config.html' %}
+
+<!-- Modal de edición de permisos por usuario -->
+{% include 'partials/modals/sistema/modal-permisos.html' %}
+
+<!-- ══ ACTIVACIÓN PENDIENTE (Workflow Sprint v8) ══ -->
+{% include 'partials/pages/clientes/activacion-pendiente.html' %}
+
+<!-- ══ INSTALACIÓN PENDIENTE (Workflow Sprint v8) ══ -->
+{% include 'partials/pages/otros/instalacion-pendiente.html' %}
+
+<!-- ══ PAGE: SINCRONIZACIÓN ERP ══ -->
+{% include 'partials/pages/sistema/sync.html' %}
+
+<style>
+@keyframes pinBounce{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-3px) rotate(-8deg)}}
+
+
+/* Aviso flotante de los modos del mapa (reubicar NAP, elegir coordenada) */
+.nap-modo-aviso{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:1200;
+  background:#1565c0;color:#fff;padding:.55rem 1rem;border-radius:20px;font-size:.82rem;
+  box-shadow:0 4px 16px rgba(0,0,0,.4);display:flex;align-items:center;gap:.4rem;
+  max-width:92vw;text-align:center}
+/* Marcador de NAP arrastrable: el cursor tiene que decir que se puede mover */
+.leaflet-marker-draggable{cursor:grab}
+.leaflet-marker-draggable:active{cursor:grabbing}
+
+/* ═══════ Pizarrón de tareas (post-its) ═══════ */
+.tarea-board{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:1rem;align-items:start}
+.tarea-postit{border-radius:4px 4px 6px 6px;padding:.9rem .9rem .6rem;min-height:120px;display:flex;flex-direction:column;
+  box-shadow:0 4px 12px rgba(0,0,0,.28);transition:transform .12s,box-shadow .12s;position:relative}
+.tarea-postit:hover{transform:rotate(0deg) scale(1.02) !important;box-shadow:0 8px 20px rgba(0,0,0,.35);z-index:2}
+.tarea-texto{flex:1;font-size:.92rem;line-height:1.35;word-break:break-word;font-weight:500;white-space:pre-wrap}
+.tarea-acciones{display:flex;align-items:center;justify-content:space-between;margin-top:.6rem;padding-top:.4rem;border-top:1px solid rgba(0,0,0,.12)}
+.tarea-check{display:flex;align-items:center;gap:.3rem;font-size:.72rem;cursor:pointer;opacity:.85}
+.tarea-check input{width:auto;margin:0;cursor:pointer}
+.tarea-del,.tarea-adj{background:transparent;border:0;cursor:pointer;font-size:.9rem;opacity:.55;padding:.1rem .3rem;border-radius:4px}
+.tarea-del:hover,.tarea-adj:hover{opacity:1;background:rgba(0,0,0,.1)}
+.tarea-postit:focus{outline:2px solid rgba(0,0,0,.35);outline-offset:2px}
+/* Realce mientras se arrastra una imagen encima de la nota */
+.tarea-postit.tarea-drop{outline:2px dashed rgba(0,0,0,.5);outline-offset:3px}
+
+/* ─── Imágenes adjuntas a las notas ─── */
+.tarea-galeria{display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.5rem}
+.tarea-miniatura{position:relative;width:56px;height:56px;border-radius:4px;overflow:hidden;
+  background:rgba(0,0,0,.08);box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.tarea-miniatura img{width:100%;height:100%;object-fit:cover;cursor:zoom-in;display:block}
+.tarea-mini-del{position:absolute;top:1px;right:1px;width:16px;height:16px;line-height:14px;padding:0;
+  border:0;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:.8rem;cursor:pointer;
+  opacity:0;transition:opacity .12s}
+.tarea-miniatura:hover .tarea-mini-del{opacity:1}
+.tarea-mini-pend{width:44px;height:44px}
+#tarea-pendientes{display:none;gap:.35rem;flex-wrap:wrap;margin-top:.6rem;padding-top:.5rem;
+  border-top:1px dashed var(--brd)}
+
+/* Visor a pantalla completa */
+.tarea-visor{position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,.86);display:flex;
+  flex-direction:column;align-items:center;justify-content:center;gap:.6rem;padding:1rem;cursor:zoom-out}
+.tarea-visor img{max-width:96vw;max-height:82vh;object-fit:contain;border-radius:6px;cursor:default;
+  box-shadow:0 8px 32px rgba(0,0,0,.6)}
+.tarea-visor-barra{display:flex;align-items:center;gap:1rem;color:#eee;font-size:.85rem;max-width:96vw}
+.tarea-visor-barra a{color:#8ab4f8}
+.tarea-visor-barra button{background:transparent;border:0;color:#eee;font-size:1.4rem;cursor:pointer;line-height:1}
+@media(max-width:560px){.tarea-board{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.7rem}}
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+/* ═══════ INFORMES (tema oscuro contenido) ═══════ */
+#page-informes.active{padding:0;display:block;overflow-y:auto}
+.inf-root{
+  --i-bg:#0A131E; --i-surf:#111E2D; --i-surf2:#172838; --i-surf3:#1E3247;
+  --i-line:#243A52; --i-ink:#EAF1F8; --i-dim:#8FA6BF; --i-faint:#566B84;
+  --i-sig:#4FB3AA; --i-sigd:#2E7D77; --i-gold:#E0A838; --i-up:#4FB88A; --i-down:#E08063; --i-vio:#8B80D8;
+  background:var(--i-bg); color:var(--i-ink); min-height:100%;
+  font-family:'IBM Plex Sans','Inter',system-ui,sans-serif;
+  padding:1.4rem 1.6rem 3rem;
+  background-image:radial-gradient(800px 460px at 80% -8%,rgba(79,179,170,.05),transparent 60%);
+}
+.inf-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1rem}
+.inf-title{font-family:'Space Grotesk','IBM Plex Sans';font-weight:600;font-size:1.3rem;margin:0}
+.inf-title em{font-style:normal;color:var(--i-faint);font-weight:400;font-size:.95rem}
+.inf-live{display:flex;align-items:center;gap:.4rem;font-size:.74rem;color:var(--i-dim);margin-top:.35rem}
+.inf-dot{width:7px;height:7px;border-radius:50%;background:var(--i-up)}
+.inf-seg{display:flex;background:var(--i-surf);border:1px solid var(--i-line);border-radius:10px;padding:3px}
+.inf-seg button{border:0;background:transparent;color:var(--i-dim);font-family:inherit;font-size:.78rem;font-weight:500;padding:.34rem .75rem;border-radius:7px;cursor:pointer;transition:.15s}
+.inf-seg button.on{background:var(--i-surf3);color:var(--i-ink)}
+.inf-banner{display:flex;gap:.7rem;align-items:center;background:linear-gradient(90deg,rgba(79,179,170,.07),transparent);border:1px solid var(--i-line);border-left:3px solid var(--i-sig);border-radius:11px;padding:.75rem 1rem;margin-bottom:1.2rem;font-size:.8rem;color:var(--i-dim)}
+.inf-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:.4rem}
+.inf-loading{grid-column:1/-1;color:var(--i-faint);padding:2rem;text-align:center}
+.inf-k{background:linear-gradient(180deg,var(--i-surf),#0F1B29);border:1px solid var(--i-line);border-radius:13px;padding:1rem 1.1rem;position:relative;overflow:hidden}
+.inf-k .kl{font-size:.7rem;color:var(--i-dim);font-weight:500;letter-spacing:.02em;text-transform:uppercase}
+.inf-k .kn{font-family:'Space Grotesk','IBM Plex Sans';font-weight:600;font-size:2rem;line-height:1.1;margin:.4rem 0 .25rem}
+.inf-k .kf{font-size:.72rem;color:var(--i-faint)}
+.inf-chip{font-family:'IBM Plex Mono',monospace;font-size:.72rem;padding:.14rem .42rem;border-radius:6px;font-weight:500;position:absolute;top:1rem;right:1.1rem}
+.inf-chip.up{background:rgba(79,184,138,.15);color:var(--i-up)}
+.inf-chip.down{background:rgba(224,128,99,.15);color:var(--i-down)}
+.inf-sh{display:flex;align-items:baseline;gap:.7rem;margin:1.9rem 0 .85rem}
+.inf-ey{font-family:'IBM Plex Mono',monospace;font-size:.67rem;letter-spacing:.15em;color:var(--i-sig);text-transform:uppercase}
+.inf-sh h2{font-family:'Space Grotesk','IBM Plex Sans';font-weight:600;font-size:1.02rem;margin:0}
+.inf-rule{flex:1;height:1px;background:linear-gradient(90deg,var(--i-line),transparent)}
+.inf-grid{display:grid;gap:13px}
+.inf-two{grid-template-columns:1.6fr 1fr}
+.inf-two-b{grid-template-columns:1fr 1fr}
+.inf-card{background:linear-gradient(180deg,var(--i-surf),#0F1B29);border:1px solid var(--i-line);border-radius:13px;padding:1.05rem 1.15rem}
+.inf-card h3{font-family:'Space Grotesk','IBM Plex Sans';font-weight:600;font-size:.96rem;margin:0 0 .2rem}
+.inf-sub{font-size:.76rem;color:var(--i-dim);margin:0 0 1rem}
+.inf-chart{width:100%;display:block}
+.inf-leg{display:flex;gap:1rem;flex-wrap:wrap;margin-top:.7rem;font-size:.73rem;color:var(--i-dim)}
+.inf-leg span{display:inline-flex;align-items:center;gap:.4rem}
+.inf-sw{width:10px;height:10px;border-radius:3px;display:inline-block}
+.inf-pills{display:flex;gap:.55rem;flex-wrap:wrap;margin-top:.9rem}
+.inf-pill{flex:1;min-width:110px;background:var(--i-surf2);border:1px solid var(--i-line);border-radius:10px;padding:.55rem .7rem}
+.inf-pill .pl{font-size:.64rem;text-transform:uppercase;letter-spacing:.05em;color:var(--i-faint)}
+.inf-pill .pv{font-family:'Space Grotesk','IBM Plex Sans';font-weight:600;font-size:1.2rem;margin-top:.12rem}
+.inf-rank{display:flex;flex-direction:column;gap:.7rem;margin-top:.2rem}
+.inf-rrow{display:grid;grid-template-columns:18px 1fr auto;align-items:center;gap:.65rem}
+.inf-rrow .rp{font-family:'IBM Plex Mono',monospace;font-size:.78rem;color:var(--i-faint)}
+.inf-rrow .rw{font-size:.85rem;font-weight:500}
+.inf-rrow .rbar{height:7px;border-radius:5px;background:var(--i-surf3);overflow:hidden;margin-top:.32rem}
+.inf-rrow .rbar i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,var(--i-sigd),var(--i-sig))}
+.inf-rrow.gold .rbar i{background:linear-gradient(90deg,#9B7327,var(--i-gold))}
+.inf-rrow .rv{font-family:'IBM Plex Mono',monospace;font-size:.82rem;text-align:right}
+.inf-rrow .rv small{color:var(--i-faint)}
+.inf-badge-req{font-family:'IBM Plex Mono',monospace;font-size:.64rem;color:var(--i-gold);border:1px solid rgba(224,168,56,.4);background:rgba(224,168,56,.08);padding:.16rem .44rem;border-radius:6px;white-space:nowrap}
+.inf-note{display:flex;gap:.5rem;margin-top:.85rem;padding:.55rem .7rem;background:rgba(224,168,56,.06);border:1px solid rgba(224,168,56,.2);border-radius:9px;font-size:.75rem;color:#E4D2A6}
+.inf-soon{text-align:center;padding:2rem 1.2rem}
+.inf-soon-tags{display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center}
+.inf-soon-tags span{font-size:.75rem;color:var(--i-gold);border:1px solid rgba(224,168,56,.3);background:rgba(224,168,56,.07);padding:.3rem .7rem;border-radius:20px}
+@media(max-width:900px){.inf-two,.inf-two-b{grid-template-columns:1fr}.inf-kpis{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.inf-kpis{grid-template-columns:1fr}.inf-root{padding:1rem}}
+
+.sync-row { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.sync-card { background: var(--card); padding: 12px; border-radius: 6px;
+             border: 1px solid var(--bord, #243A52); flex: 1; min-width: 280px; margin-bottom: 12px; }
+.sync-card h3 { font-size: 14px; margin: 0 0 8px 0; color: var(--txt); }
+.sync-line { padding: 3px 0; font-size: 13px; }
+.sync-line.muted, .muted { color: var(--txt2, #6b7280); font-size: 12px; }
+.sync-mod-line { padding: 4px 0; font-size: 13px; border-bottom: 1px solid var(--bord, #243A52); }
+.sync-mod-line.err { color: #dc2626; }
+.sync-errores pre { background: var(--card); color: #991b1b; padding: 6px;
+                    border-radius: 4px; font-size: 11px; white-space: pre-wrap; max-height: 100px; overflow:auto;}
+.tabla-historial { width: 100%; border-collapse: collapse; font-size: 12px; }
+.tabla-historial th, .tabla-historial td { text-align: left; padding: 4px 8px;
+                                            border-bottom: 1px solid var(--bord, #243A52); }
+.tabla-historial th { background: var(--surf2); font-weight: 600; }
+.btn-small { padding: 2px 8px; font-size: 11px; }
+</style>
+
+<!-- ══ MODAL ACTIVACIÓN (asignar datos técnicos) ══ -->
+{% include 'partials/modals/clientes/modal-activacion.html' %}
+
+<!-- ══ MODAL MARCAR INSTALADO ══ -->
+{% include 'partials/modals/otros/modal-instalado.html' %}
+
+</div><!-- end layout -->
+
+<!-- ═══════ MODALES ═══════ -->
+
+<!-- Modal Cliente -->
+{% include 'partials/modals/clientes/modal-cliente.html' %}
+
+<!-- Modal Conflicto Duplicado -->
+{% include 'partials/modals/otros/modal-duplicado.html' %}
+
+<!-- Modal NAP -->
+{% include 'partials/modals/red/modal-nap.html' %}
+
+<!-- Modal NAP Duplicado -->
+{% include 'partials/modals/red/modal-nap-duplicado.html' %}
+
+<!-- Modal Empleado (RRHH) -->
+{% include 'partials/modals/rrhh/modal-empleado.html' %}
+
+<!-- Modal Novedad / Licencia -->
+<!-- Modal Solicitar Vacaciones (empleado) -->
+{% include 'partials/modals/otros/modal-solicitar-vac.html' %}
+
+<!-- Modal Ítem de Inventario -->
+{% include 'partials/modals/otros/modal-inv-item.html' %}
+
+<!-- Modal Cargar Trabajo Técnico Interior -->
+{% include 'partials/modals/otros/modal-ti-trabajo.html' %}
+
+<!-- Modal Personal Técnico Interior -->
+{% include 'partials/modals/otros/modal-ti-personal.html' %}
+
+<!-- Modal Tarifas Técnico Interior -->
+{% include 'partials/modals/otros/modal-ti-tarifas.html' %}
+
+{% include 'partials/modals/rrhh/modal-novedad.html' %}
+
+<!-- Modal Servicio -->
+{% include 'partials/modals/operaciones/modal-servicio.html' %}
+
+<!-- Modal OLT -->
+{% include 'partials/modals/ftth/modal-olt.html' %}
+
+<!-- Modal Incidencia -->
+{% include 'partials/modals/ftth/modal-incidencia.html' %}
+
+<!-- Modal Abono -->
+{% include 'partials/modals/otros/modal-abono.html' %}
+
+<!-- Modal Stock -->
+{% include 'partials/modals/operaciones/modal-stock.html' %}
+
+<!-- Modal Usuario -->
+{% include 'partials/modals/otros/modal-usuario.html' %}
+
+<!-- Modal Torre -->
+<!-- Sub-modal: alta/edición de equipo de inventario -->
+{% include 'partials/modals/red/modal-inv-equipo.html' %}
+
+{% include 'partials/modals/red/modal-torre.html' %}
+
+<!-- Modal Asignar OLT a NAP -->
+{% include 'partials/modals/red/modal-nap-olt.html' %}
+
+<!-- Modal detalle NAP (existente, se mantiene) -->
+{% include 'partials/modals/red/modal-nap-detail.html' %}
+
+<!-- Modal Monitoreo IP -->
+{% include 'partials/modals/red/modal-monitoreo.html' %}
+
+<!-- Modal Historial Señal NAP -->
+{% include 'partials/modals/otros/modal-senal.html' %}
+
+<!-- Weather Modal -->
+{% include 'partials/modals/otros/modal-weather.html' %}
+
+<!-- Datalists -->
+<datalist id="loc-datalist"></datalist>
+<datalist id="plan-datalist"></datalist>
+<datalist id="nap-datalist"></datalist>
+<datalist id="olt-datalist"></datalist>
+<datalist id="tecnico-datalist"></datalist>
+
+<!-- ═══════ SCRIPTS ═══════ -->
+<script src="{{ url_for('static', filename='js/ui_dialogs.js') }}"></script>
+<script src="{{ url_for('static', filename='js/core.js') }}"></script>
+<script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+<script src="{{ url_for('static', filename='js/nav.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script src="{{ url_for('static', filename='js/clientes.js') }}"></script>
+<script src="{{ url_for('static', filename='js/torres.js') }}"></script>
+<script src="{{ url_for('static', filename='js/naps.js') }}"></script>
+<script src="{{ url_for('static', filename='js/incidencias.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tecnicos.js') }}"></script>
+<script src="{{ url_for('static', filename='js/planes.js') }}"></script>
+<script src="{{ url_for('static', filename='js/mapa.js') }}"></script>
+<script src="{{ url_for('static', filename='js/monitoreo.js') }}"></script>
+<script src="{{ url_for('static', filename='js/weather.js') }}"></script>
+<script src="{{ url_for('static', filename='js/logs.js') }}"></script>
+<script src="{{ url_for('static', filename='js/config.js') }}"></script>
+<script src="{{ url_for('static', filename='js/instalaciones.js') }}"></script>
+<script src="{{ url_for('static', filename='js/gestion_ips.js') }}"></script>
+<script src="{{ url_for('static', filename='js/aps.js') }}"></script>
+<script src="{{ url_for('static', filename='js/mikrotik.js') }}"></script>
+<script src="{{ url_for('static', filename='js/enlaces_alertas.js') }}"></script>
+<script src="{{ url_for('static', filename='js/onu_alertas.js') }}"></script>
+<script src="{{ url_for('static', filename='js/v2_widgets.js') }}"></script>
+<script src="{{ url_for('static', filename='js/reclamos.js') }}"></script>
+<script src="{{ url_for('static', filename='js/reclamos_tecnicos.js') }}"></script>
+<script src="{{ url_for('static', filename='js/antiguedad.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pucara-noc.js') }}"></script>
+<script src="{{ url_for('static', filename='js/torres_enlaces.js') }}"></script>
+<script src="{{ url_for('static', filename='js/perfiles.js') }}"></script>
+<script src="{{ url_for('static', filename='js/capacidad.js') }}"></script>
+<script src="{{ url_for('static', filename='js/cobertura_mapa.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ftth_capacidad.js') }}"></script>
+<script src="{{ url_for('static', filename='js/enlaces.js') }}"></script>
+<script src="{{ url_for('static', filename='js/permisos.js') }}"></script>
+<script src="{{ url_for('static', filename='js/sync.js') }}"></script>
+<script src="{{ url_for('static', filename='js/finanzas.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ftth_planning.js') }}"></script>
+<script src="{{ url_for('static', filename='js/stock.js') }}"></script>
+<script src="{{ url_for('static', filename='js/rrhh.js') }}"></script>
+<script src="{{ url_for('static', filename='js/informes.js') }}"></script>
+<script src="{{ url_for('static', filename='js/contabilidad.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tareas.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tecnico_interior.js') }}"></script>
+<script src="{{ url_for('static', filename='js/vacaciones.js') }}"></script>
+<script src="{{ url_for('static', filename='js/init.js') }}"></script>
+<script src="{{ url_for('static', filename='js/autorefresh.js') }}"></script>
+</body>
+</html>

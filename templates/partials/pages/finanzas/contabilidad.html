@@ -1,0 +1,58 @@
+<div class="page" id="page-contabilidad">
+  <div class="section-title" style="font-size:1.15rem">🧮 Contabilidad
+    <span style="font-size:.78rem;color:var(--txt2);font-weight:400;margin-left:.6rem">Carga de egresos e inflación para los informes de rentabilidad</span>
+  </div>
+
+  <!-- Resumen rápido -->
+  <div class="grid-4" id="cont-resumen" style="margin-bottom:1rem">
+    <div class="stat"><div class="stat-val" id="cont-ing">—</div><div class="stat-lbl">Ingresos (mes)</div></div>
+    <div class="stat orange"><div class="stat-val" id="cont-egr">—</div><div class="stat-lbl">Egresos (mes)</div></div>
+    <div class="stat"><div class="stat-val" id="cont-gan">—</div><div class="stat-lbl">Ganancia (mes)</div></div>
+    <div class="stat"><div class="stat-val" id="cont-infl">—</div><div class="stat-lbl">Inflación (mes)</div></div>
+  </div>
+
+  <div class="charts-grid">
+    <!-- EGRESOS -->
+    <div class="card">
+      <div class="section-title" style="margin:0 0 .8rem">💸 Egresos</div>
+      <div class="form-row" style="gap:.5rem;flex-wrap:wrap;align-items:end">
+        <div style="flex:1;min-width:120px"><label>Fecha</label><input type="date" id="egr-fecha"></div>
+        <div style="flex:1.4;min-width:150px"><label>Categoría</label>
+          <select id="egr-categoria"></select>
+        </div>
+        <div style="flex:1;min-width:110px"><label>Monto (ARS)</label><input type="number" id="egr-monto" placeholder="0" step="0.01"></div>
+      </div>
+      <div class="form-row" style="gap:.5rem;align-items:end;margin-top:.4rem">
+        <div style="flex:2"><label>Descripción (opcional)</label><input id="egr-desc" placeholder="Detalle del egreso"></div>
+        <button class="btn btn-prim" onclick="guardarEgreso()" style="height:38px">➕ Agregar</button>
+      </div>
+      <div style="margin:.9rem 0 .4rem;font-size:.8rem;color:var(--txt2)">
+        Ver mes: <input type="month" id="egr-mes-filtro" onchange="loadEgresos()" style="width:auto;display:inline-block;padding:.2rem .4rem">
+      </div>
+      <div id="egr-por-categoria" style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.6rem"></div>
+      <div style="overflow-x:auto;max-height:340px">
+        <table class="tbl" style="font-size:.82rem"><thead><tr>
+          <th>Fecha</th><th>Categoría</th><th style="text-align:right">Monto</th><th>Descripción</th><th></th>
+        </tr></thead><tbody id="egr-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- INFLACIÓN -->
+    <div class="card">
+      <div class="section-title" style="margin:0 0 .8rem">📈 Índice de inflación mensual</div>
+      <p style="font-size:.8rem;color:var(--txt2);margin:0 0 .8rem">
+        Cargá el % de inflación de cada mes (IPC INDEC o el índice que uses). Sirve para calcular la ganancia real deflactada en los informes.
+      </p>
+      <div class="form-row" style="gap:.5rem;align-items:end">
+        <div style="flex:1"><label>Mes</label><input type="month" id="infl-mes"></div>
+        <div style="flex:1"><label>Inflación %</label><input type="number" id="infl-pct" placeholder="0.0" step="0.1"></div>
+        <button class="btn btn-prim" onclick="guardarInflacion()" style="height:38px">💾 Guardar</button>
+      </div>
+      <div style="overflow-x:auto;max-height:400px;margin-top:.9rem">
+        <table class="tbl" style="font-size:.82rem"><thead><tr>
+          <th>Mes</th><th style="text-align:right">Inflación %</th><th>Cargado por</th>
+        </tr></thead><tbody id="infl-tbody"></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,24 @@
+# ═══════════════════════════════════════════════════════════════
+# Caddyfile — Pucara PRODUCCIÓN (HTTPS en puerto 5000)
+#
+# Caddy escucha HTTPS en el 5000 (el 443 está ocupado por Apache)
+# y reenvía a waitress, que corre en 127.0.0.1:5001 (HTTP interno).
+#
+# Acceso:
+#   - Interno:  https://192.168.10.9:5000
+#   - Externo:  https://190.57.238.36:5000  (router: 5000 público -> server:5000)
+# ═══════════════════════════════════════════════════════════════
+
+{
+    # No intentar redirect automático en puerto 80 (no lo usamos, evita permisos root)
+    auto_https disable_redirects
+}
+
+# Escuchar HTTPS en el 5000, respondiendo a las dos IPs (interna y pública)
+https://192.168.10.9:5000, https://190.57.238.36:5000 {
+    # Certificado autofirmado (debe incluir AMBAS IPs en subjectAltName)
+    tls /home/eaguiar/ERLAN/erlan_v6.1.8/cert.pem /home/eaguiar/ERLAN/erlan_v6.1.8/key.pem
+
+    # Reenviar a Pucara (waitress) en HTTP interno, puerto 5001
+    reverse_proxy 127.0.0.1:5001
+}

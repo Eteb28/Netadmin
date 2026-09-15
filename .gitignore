@@ -1,0 +1,27 @@
+cert.pem
+key.pem
+
+# Secretos y configuración local (contraseñas de Postgres, tokens)
+.env
+.secret_key
+.cron_token
+
+# Base de datos (contiene datos de clientes: DNI, teléfonos, claves PPPoE)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+/backups/
+
+# Archivos subidos por usuarios
+/uploads/*
+!/uploads/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Backups / cruft que no debería versionarse
+*_BKP.js
+*.bak

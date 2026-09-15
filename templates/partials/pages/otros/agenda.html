@@ -1,0 +1,12 @@
+<div class="page" id="page-agenda">
+  <div class="card">
+    <div class="stitle">📅 Agenda Técnica</div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.7rem;align-items:center">
+      <input type="date" id="ag-desde" onchange="loadAgenda()">
+      <input type="date" id="ag-hasta" onchange="loadAgenda()">
+      <select id="ag-tecnico" onchange="loadAgenda()"><option value="">Todos los técnicos</option></select>
+      <button class="btn btn-vd" onclick="exportarHojaCorte()">📄 Hoja de Corte PDF</button>
+    </div>
+    <div id="agenda-calendar"></div>
+  </div>
+</div>

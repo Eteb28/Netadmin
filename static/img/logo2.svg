@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 50">
+  <!-- Átomo/Red -->
+  <g transform="translate(25,25)">
+    <ellipse rx="18" ry="9" fill="none" stroke="#e8792a" stroke-width="1.5" transform="rotate(-30)"/>
+    <ellipse rx="18" ry="9" fill="none" stroke="#e8792a" stroke-width="1.5" transform="rotate(30)"/>
+    <ellipse rx="18" ry="9" fill="none" stroke="#e8792a" stroke-width="1.5" transform="rotate(90)"/>
+    <circle r="3.5" fill="#e8792a"/>
+    <circle cx="14" cy="-10" r="2.5" fill="#e8792a"/>
+    <circle cx="-14" cy="10" r="2.5" fill="#e8792a"/>
+    <circle cx="0" cy="-18" r="2.5" fill="#e8792a"/>
+    <circle cx="14" cy="10" r="2" fill="#e8792a"/>
+    <circle cx="-14" cy="-10" r="2" fill="#e8792a"/>
+  </g>
+  <!-- Texto "erlan" -->
+  <text x="50" y="34" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="28" fill="#ffffff" font-weight="300">er</text>
+  <text x="82" y="34" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="28" fill="#ffffff" font-weight="700">lan</text>
+</svg>

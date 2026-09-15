@@ -1,0 +1,27 @@
+<div class="page" id="page-tareas">
+  <div class="section-title" style="font-size:1.15rem">📌 Mis Tareas
+    <span style="font-size:.78rem;color:var(--txt2);font-weight:400;margin-left:.6rem">Tu pizarrón personal — solo vos ves estas notas y sus imágenes</span>
+  </div>
+
+  <!-- Agregar tarea -->
+  <div class="card" style="margin-bottom:1rem">
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+      <input id="tarea-input" placeholder="Escribí una tarea y presioná Enter…" style="flex:1;min-width:200px"
+             onkeydown="if(event.key==='Enter')agregarTarea()">
+      <div id="tarea-colores" style="display:flex;gap:.35rem"></div>
+      <button class="btn btn-prim" onclick="agregarTarea()">➕ Agregar</button>
+    </div>
+    <div style="font-size:.73rem;color:var(--txt2);margin-top:.45rem">
+      📋 Pegá una captura con <b>Ctrl+V</b> y se adjunta a la nota que estés escribiendo.
+      Sobre una nota ya creada, hacé clic en ella y pegá, arrastrá el archivo encima, o usá el botón 📎.
+      PNG, JPG, GIF o WEBP · hasta 5 MB · 6 imágenes por nota.
+    </div>
+    <!-- Imágenes pegadas antes de crear la nota -->
+    <div id="tarea-pendientes"></div>
+  </div>
+
+  <!-- Tablero de post-its -->
+  <div id="tarea-board" class="tarea-board">
+    <div id="tarea-loading" style="color:var(--txt2);padding:1rem">Cargando…</div>
+  </div>
+</div>

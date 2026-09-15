@@ -1,0 +1,52 @@
+<div class="page-map" id="page-mapa">
+  <div id="map-container"></div>
+  <div class="map-toolbar">
+    <div class="map-search-wrap">
+      <input type="text" id="map-q" placeholder="🔍 Buscar por nombre o N° cliente..." style="min-width:200px;color:var(--txt) !important" oninput="mapaSearch()" autocomplete="off">
+      <div class="map-search-drop" id="map-drop"></div>
+    </div>
+    <div class="map-filtros-wrap" style="position:relative">
+      <button type="button" class="map-filtros-btn" onclick="toggleFiltrosMapa()">
+        ☰ Filtros <span id="map-filtros-count" class="badge" style="background:#1565c0;color:#fff;margin-left:4px"></span>
+      </button>
+      <div class="map-filtros-panel" id="map-filtros-panel" style="display:none">
+        <div class="mf-section">
+          <div class="mf-title">Estado del cliente</div>
+          <label class="mf-check"><input type="checkbox" class="map-estado-chk" value="activo" checked onchange="reloadMapaClientes()"> 🟢 Vigentes</label>
+          <label class="mf-check"><input type="checkbox" class="map-estado-chk" value="suspendido" checked onchange="reloadMapaClientes()"> ⏸ Suspendidos</label>
+          <label class="mf-check"><input type="checkbox" class="map-estado-chk" value="pte_instalacion" onchange="reloadMapaClientes()"> 🔧 Pte. Instalación</label>
+          <label class="mf-check"><input type="checkbox" class="map-estado-chk" value="pte_calculo" onchange="reloadMapaClientes()"> 📐 Pte. Cálculo</label>
+          <label class="mf-check"><input type="checkbox" class="map-estado-chk" value="pte_activacion" onchange="reloadMapaClientes()"> ⚙️ Pte. Activación</label>
+          <label class="mf-check"><input type="checkbox" class="map-estado-chk" value="pte_rescision" onchange="reloadMapaClientes()"> ⚠ Pte. Rescisión</label>
+          <label class="mf-check"><input type="checkbox" class="map-estado-chk" value="rescision" onchange="reloadMapaClientes()"> ✕ Rescindidos</label>
+          <label class="mf-check"><input type="checkbox" class="map-estado-chk" value="borrador" onchange="reloadMapaClientes()"> 📝 Borrador</label>
+        </div>
+        <div class="mf-section">
+          <div class="mf-title">Tipo de servicio</div>
+          <label class="mf-check"><input type="radio" name="map-tipo-r" value="" checked onchange="reloadMapaClientes()"> Todos</label>
+          <label class="mf-check"><input type="radio" name="map-tipo-r" value="fibra" onchange="reloadMapaClientes()"> 🔵 Fibra</label>
+          <label class="mf-check"><input type="radio" name="map-tipo-r" value="inalambrico" onchange="reloadMapaClientes()"> 🟣 Inalámbrico</label>
+        </div>
+        <div class="mf-section">
+          <div class="mf-title">Servicio técnico</div>
+          <label class="mf-check"><input type="checkbox" id="map-svc-pendiente" onchange="reloadMapaClientes()"> 🔧 Solo con servicio pendiente</label>
+        </div>
+      </div>
+    </div>
+    <div class="chips">
+      <span class="chip" id="chip-naps" onclick="toggleChip('naps')">NAPs</span>
+      <span class="chip active" id="chip-clientes" onclick="toggleChip('clientes')">Clientes</span>
+      <span class="chip" id="chip-torres" onclick="toggleChip('torres')">🗼 Torres</span>
+      <span class="chip" id="chip-heat" onclick="toggleChip('heat')">🌡 Densidad</span>
+      <span class="chip" id="chip-ftth-pot" onclick="toggleChip('ftth_pot')">🔄 Pot.Migración</span>
+      <span class="chip" id="chip-olts" onclick="toggleChip('olts')">OLTs</span>
+      <span class="chip" id="chip-zonas" onclick="toggleChip('zonas')">📐 Zonas expansión</span>
+      <span class="chip" id="chip-vehiculos" onclick="toggleChip('vehiculos')">🚐 Vehículos</span>
+      <span class="chip" id="chip-reubicar" onclick="toggleReubicarNaps()"
+            title="Arrastrar las NAPs para corregir su ubicación">📍 Reubicar NAPs</span>
+      <span class="chip" onclick="activarModoPosibleCliente()">👤 Posible cliente</span>
+      <span class="chip" onclick="posibleClientePorCoords()" title="Pegar coordenadas de Google Maps">📍 ...por coordenadas</span>
+      <span class="chip" onclick="asignarTorresProximidad()">🗼 Asignar torres</span>
+    </div>
+  </div>
+</div>

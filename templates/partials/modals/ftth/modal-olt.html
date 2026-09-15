@@ -1,0 +1,29 @@
+<div id="modal-olt" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-olt')">
+<div class="modal">
+  <div class="modal-hd"><span id="molt-title">Nueva OLT</span><button class="modal-close" onclick="closeModal('modal-olt')">×</button></div>
+  <div class="modal-bd">
+    <input type="hidden" id="molt-id">
+    <div class="form-row">
+      <div><label>Nombre *</label><input id="molt-nombre" placeholder="OLT-001"></div>
+      <div><label>Modelo</label><input id="molt-modelo" placeholder="V-SOL V1600G1B..."></div>
+    </div>
+    <div class="form-row">
+      <div><label>IP Acceso Remoto</label><input id="molt-ip-remota" placeholder="200.x.x.x"></div>
+      <div><label>IP Red Local (169.254.x.x)</label><input id="molt-ip-red" placeholder="169.254.x.x"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Puertos PON</label><input id="molt-puertos" type="number" value="4" min="1" max="32"></div>
+      <div><label>ONU máx. por PON <small style="color:var(--txt2)">(split)</small></label><input id="molt-onu-max" type="number" value="128" min="1" max="256" placeholder="128"></div>
+      <div><label>Ubicación</label><input id="molt-ubicacion" placeholder="Dirección física"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Latitud</label><input id="molt-lat" placeholder="-31.7345 o 31°44'04.2&quot;S"></div>
+      <div><label>Longitud</label><input id="molt-lng" placeholder="-60.5280 o 60°31'41.0&quot;W"></div>
+    </div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-gray" onclick="closeModal('modal-olt')">Cancelar</button>
+    <button class="btn btn-prim" onclick="saveOlt()">💾 Guardar</button>
+  </div>
+</div>
+</div>

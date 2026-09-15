@@ -1,0 +1,17 @@
+<div class="page" id="page-gestion-ips">
+  <div class="card">
+    <div class="stitle">🌐 Gestión de IPs
+      <small style="margin-left:auto;color:var(--txt2);font-weight:400">Grilla de cada rango: equipos de torre (1-50) y clientes (51-254)</small>
+    </div>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-bottom:.8rem">
+      <label>Rango (subred 169.254.<b>X</b>.0):</label>
+      <select id="ip-subred-sel" onchange="loadGrillaIP()" style="min-width:120px"></select>
+      <div style="display:flex;gap:.3rem">
+        <button class="btn btn-sm" id="ipbloque-torre" onclick="setBloqueIP('torre')">📡 Torre (1-50)</button>
+        <button class="btn btn-sm btn-prim" id="ipbloque-clientes" onclick="setBloqueIP('clientes')">👥 Clientes (51-254)</button>
+      </div>
+      <div id="ip-resumen" style="margin-left:auto;font-size:.85rem;color:var(--txt2)"></div>
+    </div>
+    <div id="ip-grilla-cont" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:.35rem"></div>
+  </div>
+</div>

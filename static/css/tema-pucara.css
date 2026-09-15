@@ -1,0 +1,175 @@
+/* ════════════════════════════════════════════════════════════
+   tema-pucara.css — Overlay visual sobre main.css (v6.1.8)
+   Copyright (C) 2026 Esteban Aguiar — AGPL-3.0-or-later
+
+   INSTALACIÓN (una línea, en templates/index.html):
+     <link rel="stylesheet" href="/static/css/tema-pucara.css">
+     ↑ SIEMPRE después de main.css. Rollback = comentar la línea.
+
+   Qué hace: redefine las variables de :root (todo lo que ya usa
+   var() cambia solo) y sobrescribe las clases que en main.css
+   tienen colores hardcodeados (.nav, .btn-prim, badges, etc.).
+   Qué NO alcanza: estilos inline en HTML y en JS (markers del
+   mapa en torres.js, popups Leaflet). Eso es el Paso 2.
+
+   Dirección: azul ERLAN conservado pero desaturado; bordes 1px
+   claros en lugar de grises pesados; sombras casi nulas; radios
+   generosos; Archivo para títulos/KPI, Instrument Sans de texto,
+   mono para datos. Sobrio, sin ruido.
+   ════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Instrument+Sans:wght@400;500;600;700&family=Spline+Sans+Mono:wght@500;600&display=swap');
+
+/* ── 1 · Tokens: mismas variables de main.css, valores nuevos ── */
+:root{
+  /* Azul ERLAN, desaturado (antes #2d5a8e / #1a3d6b / #4d7fb5) */
+  --az:#3E6389;  --az2:#22344C;  --az3:#6C8FB3;
+  /* Semánticos tenues (antes muy saturados) */
+  --vd:#2F6B45;  --vd2:#3F8A5C;
+  --rj:#9A3B3B;  --rj2:#B05252;
+  --am:#93601F;  --am2:#B27B33;
+  --gris:#5B6672;
+  /* Superficies: fondo neutro claro, cards blancas, borde suave */
+  --fondo:#F6F7F8;  --card:#FFFFFF;  --brd:#E2E5E9;
+  --txt:#212B36;    --txt2:#5B6672;
+  /* Nuevos tokens propios del tema */
+  --pucara-radio:10px;  --pucara-radio-card:14px;
+  --pucara-sombra:0 1px 2px rgba(16,24,32,.04);
+  --pucara-focus:0 0 0 3px rgba(62,99,137,.16);
+  --pucara-mono:'Spline Sans Mono',ui-monospace,'Cascadia Mono',monospace;
+  --pucara-display:'Archivo','Segoe UI',system-ui,sans-serif;
+}
+
+/* ── 2 · Base ── */
+body{
+  font-family:'Instrument Sans','Segoe UI',system-ui,sans-serif;
+  background:var(--fondo);color:var(--txt);
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,.stitle,.section-title{
+  font-family:var(--pucara-display);
+  letter-spacing:-.01em;color:var(--txt);
+}
+
+/* ── 3 · Nav superior: de azul saturado a pizarra profundo ── */
+.nav{
+  background:var(--az2);
+  box-shadow:none;border-bottom:1px solid #1A2A3E;
+}
+.nav-brand{font-family:var(--pucara-display);font-weight:800;letter-spacing:.02em}
+.nav-brand span{opacity:.55;font-weight:400}
+.nav-links a{color:rgba(255,255,255,.72);border-radius:8px}
+.nav-links a:hover,.nav-links a.active{
+  background:rgba(255,255,255,.12);color:#fff;
+}
+.nav-logout{background:rgba(255,255,255,.10);border-radius:8px}
+.nav-drawer{background:var(--az2)}
+.notif-badge{background:var(--rj2)}
+
+/* ── 4 · Cards / contenedores ── */
+.card{
+  background:var(--card);
+  border:1px solid var(--brd);
+  border-radius:var(--pucara-radio-card);
+  box-shadow:var(--pucara-sombra);
+}
+.global-filter{
+  border-radius:var(--pucara-radio-card);
+  border:1px solid var(--brd);box-shadow:var(--pucara-sombra);
+}
+.inc-card{border-radius:12px;box-shadow:var(--pucara-sombra)}
+.risk-card{border-radius:12px}
+.stock-row{border-radius:var(--pucara-radio);background:#FAFBFC}
+.stock-cnt{background:var(--az2);font-family:var(--pucara-mono);font-weight:600}
+
+/* ── 5 · KPIs y stats: los números en display ── */
+.kpi-value,.stat-val{
+  font-family:var(--pucara-display);
+  font-weight:700;letter-spacing:-.02em;
+}
+.kpi-label,.stat-lbl{
+  color:var(--txt2);text-transform:uppercase;
+  letter-spacing:.05em;font-size:.68rem;font-weight:600;
+}
+
+/* ── 6 · Botones: radios generosos, hover sin apagado ── */
+.btn{
+  border-radius:var(--pucara-radio);
+  font-weight:600;
+}
+.btn:hover{opacity:1;transform:none;filter:brightness(1.07)}
+.btn:active{filter:brightness(.95)}
+.btn-prim{background:var(--az)}
+.btn-vd{background:var(--vd)}
+.btn-rj{background:var(--rj)}
+.btn-am{background:var(--am)}
+.btn-gray{background:#EDEFF2;color:var(--txt);border:1px solid var(--brd)}
+.btn-gray:hover{filter:none;background:#E3E6EA}
+
+/* ── 7 · Tablas: encabezado tipo etiqueta, líneas finas ── */
+th{
+  border-bottom:1px solid var(--brd);
+  font-size:.68rem;text-transform:uppercase;
+  letter-spacing:.05em;color:var(--txt2);font-weight:600;
+}
+td{border-bottom:1px solid #EDEFF2}
+tr:hover td{background:#F6F8FA}
+
+/* ── 8 · Badges: pastel tenue + borde 1px del mismo matiz ── */
+.badge{
+  font-weight:600;font-size:.68rem;
+  padding:.16rem .55rem;border:1px solid transparent;
+}
+.b-activo,.b-cerrado   {background:#EAF4EE;color:#2F6B45;border-color:#CDE4D6}
+.b-suspendido,.b-alta  {background:#F8EFE1;color:#93601F;border-color:#EAD9BE}
+.b-pendiente,.b-media  {background:#F9F4E2;color:#8A6A14;border-color:#EBE0BC}
+.b-rescision,.b-urgente{background:#F8ECEC;color:#9A3B3B;border-color:#EBD2D2}
+.b-baja,.b-normal      {background:#EFF1F4;color:#5B6672;border-color:#E2E5E9}
+.b-fibra,.b-en_proceso {background:#EAF0F7;color:#3E6389;border-color:#D5E0EC}
+.b-inalambrico         {background:#F1ECF7;color:#5E3E89;border-color:#DFD4EC}
+.b-critica             {background:#7A2626;color:#F8ECEC;border-color:#7A2626}
+
+/* ── 9 · Formularios: foco visible y calmo ── */
+label{color:var(--txt2);font-weight:600}
+input,select,textarea{
+  border:1px solid #D6DAE0;
+  border-radius:var(--pucara-radio);
+  background:#fff;color:var(--txt);
+}
+input:focus,select:focus,textarea:focus{
+  border-color:var(--az);box-shadow:var(--pucara-focus);
+}
+input[type=number]{font-family:var(--pucara-mono);font-size:.82rem}
+.global-filter select{border-radius:8px;border:1px solid #D6DAE0}
+
+/* ── 10 · Modales ── */
+.modal-overlay{background:rgba(21,30,41,.42);backdrop-filter:blur(2px)}
+.modal{
+  border-radius:16px;
+  box-shadow:0 18px 50px rgba(16,24,32,.18);
+  border:1px solid var(--brd);
+}
+
+/* ── 11 · Estados vivos, sin gritar ── */
+.live-badge{color:var(--vd)}
+.live-dot{background:var(--vd2)}
+.pon-port.vacio{background:#F7F9FA}
+.pon-port.lleno{background:#F8ECEC;border-color:var(--rj2)}
+.pon-port.casi{background:#F9F4E2;border-color:var(--am2)}
+@keyframes pulse-inc{
+  0%,100%{box-shadow:0 0 0 0 rgba(176,82,82,.45)}
+  50%{box-shadow:0 0 10px 3px rgba(176,82,82,.25)}
+}
+
+/* ── 12 · Detalles finales ── */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-thumb{background:#CBD2D9;border-radius:6px}
+::-webkit-scrollbar-thumb:hover{background:#AEB8C2}
+.alert-box{border-radius:var(--pucara-radio);border:1px solid var(--brd)}
+.sep{border:none;border-top:1px solid var(--brd)}
+
+/* Accesibilidad: foco de teclado y movimiento reducido */
+:focus-visible{outline:2px solid var(--az);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}

@@ -1,0 +1,47 @@
+<div id="modal-perfil" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-perfil')">
+  <div class="modal-box">
+    <div class="modal-hd"><span id="mperf-title">Nuevo perfil</span><button class="modal-close" onclick="closeModal('modal-perfil')">×</button></div>
+    <div class="modal-bd">
+      <input type="hidden" id="mperf-id">
+      <div class="form-row">
+        <div><label>Fabricante *</label><input id="mperf-fabricante" placeholder="Ubiquiti, Cambium…"></div>
+        <div><label>Modelo *</label><input id="mperf-modelo" placeholder="Rocket M5, Force 130…"></div>
+        <div><label>Tipo</label><select id="mperf-tipo">
+          <option value="">—</option><option value="AP sectorial">AP sectorial</option>
+          <option value="AP omni">AP omni</option><option value="PtP">PtP</option>
+          <option value="Estación">Estación</option>
+        </select></div>
+      </div>
+      <div class="form-row">
+        <div><label>Apertura H (°)</label><input id="mperf-apertura-h" type="number"></div>
+        <div><label>Apertura V (°)</label><input id="mperf-apertura-v" type="number"></div>
+        <div><label>Ganancia (dBi)</label><input id="mperf-ganancia" type="number" step="0.1"></div>
+      </div>
+      <div class="form-row">
+        <div><label>Frec. mín (MHz)</label><input id="mperf-frec-min" type="number"></div>
+        <div><label>Frec. máx (MHz)</label><input id="mperf-frec-max" type="number"></div>
+        <div><label>Alcance teórico (m)</label><input id="mperf-alcance" type="number"></div>
+      </div>
+      <div class="form-row">
+        <div><label>Clientes recomendados</label><input id="mperf-cli-rec" type="number"></div>
+        <div><label>Clientes máx operativo</label><input id="mperf-cli-max" type="number"></div>
+        <div><label>Throughput rec. (Mbps)</label><input id="mperf-throughput" type="number"></div>
+      </div>
+      <div class="form-row">
+        <div><label>Umbral advertencia (% del rec.)</label><input id="mperf-umbral-adv" type="number" placeholder="ej. 80"></div>
+        <div><label>Umbral crítico (%)</label><input id="mperf-umbral-crit" type="number" placeholder="ej. 100"></div>
+        <div><label>Fuente</label><select id="mperf-fuente">
+          <option value="manual">Manual</option><option value="fabricante">Fabricante</option>
+          <option value="documentacion">Documentación</option><option value="snmp">SNMP</option>
+        </select></div>
+      </div>
+      <div style="margin-top:.4rem"><label>Observaciones</label><textarea id="mperf-obs" rows="2"></textarea></div>
+      <div style="font-size:.72rem;color:var(--txt2);margin-top:.3rem">Dejá vacío lo que no tengas confirmado: se mostrará como "No disponible" en vez de un valor inventado.</div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-rj btn-sm" id="mperf-del" style="margin-right:auto;display:none" onclick="borrarPerfil()">🗑 Eliminar</button>
+      <button class="btn btn-gray btn-sm" onclick="closeModal('modal-perfil')">Cancelar</button>
+      <button class="btn btn-prim btn-sm" onclick="guardarPerfil()">Guardar</button>
+    </div>
+  </div>
+</div>

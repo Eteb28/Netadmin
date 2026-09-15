@@ -1,0 +1,67 @@
+<div id="modal-activacion" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-activacion')">
+<div class="modal" style="max-width:680px">
+  <div class="modal-hd" style="background:#1565c0;color:#fff">
+    <span id="mact-title">⚙️ Activar cliente</span>
+    <button class="modal-close" onclick="closeModal('modal-activacion')" style="color:#fff">×</button>
+  </div>
+  <div class="modal-bd">
+    <input type="hidden" id="mact-cli-id">
+    <div id="mact-cli-info" style="background:var(--surf2);padding:.6rem;border-radius:6px;margin-bottom:.7rem;font-size:.85rem"></div>
+    
+    <div class="form-row">
+      <div><label>IP asignada *</label><input id="mact-ip" placeholder="10.0.0.1 / PPPoE"></div>
+      <div><label>PPPoE Usuario</label><input id="mact-pppoe-user" placeholder="usuario_pppoe"></div>
+    </div>
+    <div class="form-row">
+      <div><label>PPPoE Clave</label>
+        <div style="display:flex;gap:.3rem">
+          <input id="mact-pppoe-pass" placeholder="clave" style="flex:1">
+          <button type="button" class="btn btn-gray btn-sm" onclick="generarPasswordAct()">🔄</button>
+        </div>
+      </div>
+      <div></div>
+    </div>
+    <hr class="sep">
+    
+    <!-- FTTH específico -->
+    <div id="mact-ftth-fields" style="display:none">
+      <div style="font-weight:600;margin-bottom:.4rem">📡 FTTH</div>
+      <div class="form-row">
+        <div><label>NAP</label><input id="mact-nap" list="nap-datalist" placeholder="Nombre de NAP"></div>
+        <div></div>
+      </div>
+      <div class="form-row">
+        <div><label>OLT</label><input id="mact-olt" list="olt-datalist" placeholder="OLT"></div>
+        <div><label>Puerto PON</label><input id="mact-pon" type="number" min="1"></div>
+      </div>
+    </div>
+    
+    <!-- Inalámbrico específico -->
+    <div id="mact-inal-fields" style="display:none">
+      <div style="font-weight:600;margin-bottom:.4rem">📶 Inalámbrico</div>
+      <div class="form-row">
+        <div><label>Torre enlazada</label>
+          <select id="mact-torre"><option value="">— Sin torre —</option></select>
+        </div>
+        <div><label>AP del que toma servicio</label><input id="mact-ap" placeholder="ej: AP-Norte-5GHz"></div>
+      </div>
+    </div>
+    
+    <hr class="sep">
+    <div style="font-weight:600;margin-bottom:.4rem">📦 Equipo</div>
+    <div class="form-row">
+      <div><label>Modelo</label><input id="mact-eq-modelo" placeholder="Modelo del equipo"></div>
+      <div><label>Marca</label><input id="mact-eq-marca" placeholder="Marca"></div>
+    </div>
+    <div class="form-row">
+      <div><label>N° de serie</label><input id="mact-eq-serie" placeholder="Serial"></div>
+      <div><label>MAC</label><input id="mact-eq-mac" placeholder="MAC address"></div>
+    </div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-gray" onclick="closeModal('modal-activacion')">Cancelar</button>
+    <button class="btn btn-am" onclick="guardarActivacion(false)">💾 Guardar (queda en activación pte.)</button>
+    <button class="btn btn-prim" onclick="guardarActivacion(true)">➡️ Pasar a Instalación</button>
+  </div>
+</div>
+</div>

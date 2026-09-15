@@ -1,0 +1,18 @@
+<div class="page" id="page-stats-service">
+  <div class="card">
+    <div class="stitle">📊 Estadísticas de Service: FTTH vs Inalámbrico
+      <select id="stats-periodo" onchange="loadStatsService()" style="margin-left:auto">
+        <option value="3">Últimos 3 meses</option>
+        <option value="6">Últimos 6 meses</option>
+        <option value="12" selected>Últimos 12 meses</option>
+        <option value="todo">Histórico completo</option>
+      </select>
+    </div>
+    <div style="font-size:.82rem;color:var(--txt2);margin-bottom:.8rem">
+      Compara cuántas visitas técnicas (servicios) genera cada tipo de servicio.
+      La <b>tasa por 100 clientes</b> permite comparar de forma justa, ya que las bases de clientes son distintas.
+    </div>
+    <div id="stats-service-cards" class="fin-grid"></div>
+    <div id="stats-service-evol" style="margin-top:1rem"></div>
+  </div>
+</div>

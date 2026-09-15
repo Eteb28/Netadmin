@@ -1,0 +1,31 @@
+<div class="page" id="page-cobertura-mapa">
+  <div class="card" style="padding:.6rem">
+    <div class="stitle" style="margin-bottom:.5rem">🗺 Mapa de Cobertura Teórica
+      <small style="margin-left:auto;color:var(--txt2);font-weight:400">Sectores geométricos teóricos coloreados por capacidad. No es cobertura real.</small>
+    </div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-bottom:.5rem;font-size:.82rem">
+      <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" id="cov-chk-sectores" checked onchange="covToggle('sectores')"> Sectores</label>
+      <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" id="cov-chk-clientes" onchange="covToggle('clientes')"> Clientes</label>
+      <label style="display:flex;align-items:center;gap:.3rem;cursor:pointer"><input type="checkbox" id="cov-chk-torres" checked onchange="covToggle('torres')"> Torres</label>
+      <select id="cov-filtro-estado" onchange="covRender()" style="padding:.3rem;border:1px solid var(--brd);border-radius:6px">
+        <option value="">Todos los estados</option>
+        <option value="critico">🔴 Críticos</option>
+        <option value="advertencia">🟡 Advertencia</option>
+        <option value="normal">🟢 Normales</option>
+        <option value="sin_datos">⚫ Sin datos</option>
+      </select>
+      <button class="btn btn-gray btn-xs" onclick="cargarCoberturaMapa()">🔄 Refrescar</button>
+      <span id="cov-info" style="color:var(--txt2)"></span>
+    </div>
+    <div id="cobertura-map-container" style="height:70vh;min-height:420px;border-radius:8px;background:var(--surf2)"></div>
+    <div id="cov-leyenda" style="display:flex;gap:.8rem;flex-wrap:wrap;font-size:.72rem;color:var(--txt2);margin-top:.4rem">
+      <span>Sectores:</span>
+      <span>🟢 normal</span><span>🟡 advertencia</span><span>🔴 crítico</span><span>⚫ sin datos</span>
+      <span style="margin-left:.5rem">Clientes:</span>
+      <span style="color:#2e7d32">●</span> buena
+      <span style="color:#e8a13b">●</span> media
+      <span style="color:#c62828">●</span> pobre
+    </div>
+    <div id="cov-omitidos" style="font-size:.75rem;color:var(--alerta);margin-top:.3rem"></div>
+  </div>
+</div>

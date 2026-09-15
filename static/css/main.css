@@ -1,0 +1,9 @@
+/* main.css — índice. El contenido está en static/css/main/*.css
+   El ORDEN de estos @import define la cascada: no reordenar. */
+@import url('main/01-base.css');
+@import url('main/02-layout.css');
+@import url('main/03-componentes.css');
+@import url('main/04-formularios.css');
+@import url('main/05-mapa.css');
+@import url('main/06-dominio.css');
+@import url('main/07-varios.css');

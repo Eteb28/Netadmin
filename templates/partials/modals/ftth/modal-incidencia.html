@@ -1,0 +1,94 @@
+<div id="modal-incidencia" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-incidencia')">
+<div class="modal">
+  <div class="modal-hd"><span id="minc-title">Nueva Incidencia</span><button class="modal-close" onclick="closeModal('modal-incidencia')">×</button></div>
+  <div class="modal-bd">
+    <input type="hidden" id="minc-id">
+    <div><label>Título *</label><input id="minc-titulo" placeholder="Descripción corta de la incidencia"></div>
+    <div class="form-row" style="margin-top:.5rem">
+      <div><label>Tipo</label>
+        <select id="minc-tipo">
+          <option value="torre_sin_servicio">Torre sin servicio</option>
+          <option value="ap_caido">AP Caído</option>
+          <option value="nap_sin_luz">NAP sin luz</option>
+          <option value="corte_fibra">Corte de fibra</option>
+          <option value="olt_offline">OLT offline</option>
+          <option value="masivo">Masivo</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+      <div><label>Prioridad</label>
+        <select id="minc-prioridad">
+          <option value="media">Media</option>
+          <option value="alta">Alta</option>
+          <option value="critica">Crítica</option>
+          <option value="baja">Baja</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:.5rem">
+      <div><label>Técnico a cargo</label><input id="minc-tecnico" placeholder="Técnico" list="tecnico-datalist"></div>
+      <div><label>Estado</label>
+        <select id="minc-estado">
+          <option value="abierta">Abierta</option>
+          <option value="en_proceso">En proceso</option>
+          <option value="cerrada">Cerrada</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-top:.5rem"><label>Afectados (clientes/zonas)</label><input id="minc-afectados" placeholder="Zona, NAP, cantidad de clientes..."></div>
+    
+    <!-- ── Objeto afectado: torre / nap / cdo / general ── -->
+    <div style="margin-top:.7rem;padding:.7rem;background:var(--surf2);border-radius:6px;border-left:3px solid var(--prim,#1976d2)">
+      <label style="font-weight:700;margin-bottom:.4rem;display:block">🎯 Objeto afectado</label>
+      <div class="form-row">
+        <div><label>Tipo de objeto</label>
+          <select id="minc-objeto-tipo" onchange="onIncObjetoTipoChange()">
+            <option value="general">📋 General (sin objeto específico)</option>
+            <option value="torre">🗼 Torre</option>
+            <option value="nap">🔌 NAP (uno o varios)</option>
+            <option value="cdo">📦 CDO completo (afecta todos sus NAPs)</option>
+          </select>
+        </div>
+        <div></div>
+      </div>
+      
+      <!-- Campos para torre (existentes) -->
+      <div id="minc-block-torre" style="display:none;margin-top:.5rem">
+        <label>Torre afectada</label>
+        <select id="minc-torre"><option value="">Sin torre vinculada</option></select>
+      </div>
+      
+      <!-- Campos para NAP/CDO -->
+      <div id="minc-block-naptree" style="display:none;margin-top:.5rem">
+        <div class="form-row">
+          <div><label>Red</label>
+            <select id="minc-red" onchange="onIncRedChange()"><option value="">— Seleccionar —</option></select>
+          </div>
+          <div><label>OLT</label>
+            <select id="minc-olt" onchange="onIncOltChange()"><option value="">— Todas —</option></select>
+          </div>
+        </div>
+        <!-- Selector específico según objeto_tipo -->
+        <div id="minc-block-cdo" style="display:none;margin-top:.5rem">
+          <label>CDO afectado</label>
+          <select id="minc-cdo" onchange="onIncCdoChange()"><option value="">— Seleccionar CDO —</option></select>
+          <div id="minc-cdo-preview" style="margin-top:.4rem;font-size:.82rem;color:var(--txt2)"></div>
+        </div>
+        <div id="minc-block-naps" style="display:none;margin-top:.5rem">
+          <label>NAP(s) afectados <span style="color:#8FA6BF;font-weight:400;font-size:.78rem">(Ctrl/Cmd+click para múltiples)</span></label>
+          <input type="text" id="minc-naps-q" placeholder="🔍 Filtrar lista por nombre, localidad..." oninput="filtrarNapsIncidencia()" style="margin-bottom:.3rem;width:100%">
+          <select id="minc-naps" multiple size="8" style="height:auto;width:100%"></select>
+          <div id="minc-naps-count" style="font-size:.72rem;color:var(--txt2);margin-top:.2rem"></div>
+        </div>
+      </div>
+    </div>
+    
+    <div style="margin-top:.5rem"><label>Descripción</label><textarea id="minc-desc" rows="3" placeholder="Detalle de la incidencia..."></textarea></div>
+    <div style="margin-top:.5rem" id="minc-resolucion-wrap"><label>Resolución</label><textarea id="minc-resolucion" rows="2" placeholder="Cómo se resolvió..."></textarea></div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-gray" onclick="closeModal('modal-incidencia')">Cancelar</button>
+    <button class="btn btn-prim" onclick="saveIncidencia()">💾 Guardar</button>
+  </div>
+</div>
+</div>

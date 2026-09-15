@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a2744">
+<link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='img/icon-192.png') }}">
+<title>Pucara — Técnicos</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ url_for('static', filename='js/ui_dialogs.js') }}"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/mobile.css') }}">
+</head>
+<body>
+<div class="topbar">
+  <h1>⚡ ERLAN — Técnicos</h1>
+  <button onclick="localStorage.setItem('erlan_modo','desktop');location.href='/'">🖥 Desktop</button>
+  <button onclick="location.href='/logout'">Salir</button>
+</div>
+<div class="content">
+  <!-- MIS TAREAS (nueva) -->
+  <div class="screen active" id="sc-tareas">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+      <h2 style="margin:0;font-size:1rem">📋 Mis Tareas</h2>
+      <button class="btn btn-prim" style="font-size:.75rem" onclick="loadMiRuta()">🗺️ Ver ruta</button>
+    </div>
+    <div id="mob-tareas-resumen" style="display:flex;gap:.4rem;margin-bottom:.6rem"></div>
+    <div id="mob-tareas-list"></div>
+    <h3 style="margin:.8rem 0 .3rem;font-size:.9rem">🚨 Incidencias asignadas</h3>
+    <div id="mob-tareas-inc"></div>
+  </div>
+  <!-- MIS SERVICIOS -->
+  <div class="screen" id="sc-servicios">
+    <div class="search-box">
+      <input type="text" id="mob-svc-q" placeholder="Filtrar servicios..." oninput="filterSvc()">
+    </div>
+    <div style="display:flex;gap:.4rem;margin-bottom:.6rem;overflow-x:auto;padding-bottom:.2rem">
+      <button class="btn btn-prim" style="white-space:nowrap;font-size:.75rem" onclick="filterEstadoSvc('')">Todos</button>
+      <button class="btn btn-am" style="white-space:nowrap;font-size:.75rem" onclick="filterEstadoSvc('pendiente')">Pendientes</button>
+      <button class="btn btn-prim" style="white-space:nowrap;font-size:.75rem;background:#1976d2" onclick="filterEstadoSvc('en_proceso')">En proceso</button>
+    </div>
+    <div id="mob-svc-list"></div>
+  </div>
+  <!-- MAPA -->
+  <div class="screen-map" id="sc-mapa">
+    <div id="mob-map" style="width:100%;height:100%"></div>
+    <div style="position:absolute;top:10px;left:10px;right:10px;z-index:500">
+      <div style="position:relative">
+        <input type="text" id="mob-map-q" placeholder="🔍 Buscar cliente..." style="width:100%;padding:.5rem .8rem;border-radius:8px;border:1.5px solid var(--brd);font-size:.85rem;box-shadow:0 2px 8px rgba(0,0,0,.15);color:#222;background:#fff" oninput="mobMapSearch()" autocomplete="off">
+        <div id="mob-map-drop" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--brd);border-radius:0 0 8px 8px;box-shadow:0 4px 12px rgba(0,0,0,.15);max-height:200px;overflow-y:auto;z-index:600"></div>
+      </div>
+      <!-- Filtros de capa -->
+      <div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.5rem">
+        <button class="map-chip active" id="mchip-activo" onclick="toggleMapCapa('activo')">🟢 Vigentes</button>
+        <button class="map-chip active" id="mchip-pte_rescision" onclick="toggleMapCapa('pte_rescision')">🟠 Pte. Rescisión</button>
+        <button class="map-chip active" id="mchip-suspendido" onclick="toggleMapCapa('suspendido')">🔴 Suspendidos</button>
+        <button class="map-chip" id="mchip-naps" onclick="toggleMapCapa('naps')">🔌 NAPs</button>
+        <button class="map-chip" id="mchip-torres" onclick="toggleMapCapa('torres')">🗼 Torres</button>
+        <button class="map-chip" id="mchip-gps" onclick="toggleMiUbicacion()">📍 Mi ubicación</button>
+        <button class="map-chip mt" id="mchip-tareas" onclick="toggleSoloTareas()">📋 Mis Tareas</button>
+      </div>
+    </div>
+  </div>
+  <!-- NAPs -->
+  <div class="screen" id="sc-naps">
+    <div id="mob-nap-list"></div>
+  </div>
+  <!-- NUEVA INCIDENCIA -->
+  <div class="screen" id="sc-incidencia">
+    <div class="card">
+      <div class="card-title">🚨 Reportar Incidencia</div>
+      <label>Tipo</label>
+      <select id="mob-inc-tipo">
+        <option value="torre_sin_servicio">Torre sin servicio</option>
+        <option value="ap_caido">AP Caído</option>
+        <option value="nap_sin_luz">NAP sin luz</option>
+        <option value="corte_fibra">Corte de fibra</option>
+        <option value="olt_offline">OLT offline</option>
+        <option value="masivo">Masivo</option>
+        <option value="otro">Otro</option>
+      </select>
+      <label>Título / Descripción corta</label>
+      <input id="mob-inc-titulo" placeholder="Ej: Torre Norte sin energía">
+      <label>Prioridad</label>
+      <select id="mob-inc-prioridad">
+        <option value="media">Media</option>
+        <option value="alta">Alta</option>
+        <option value="critica">Crítica</option>
+      </select>
+      <label>Afectados (zona, clientes)</label>
+      <input id="mob-inc-afectados" placeholder="Zona Norte, 45 clientes...">
+      <label>Descripción detallada</label>
+      <textarea id="mob-inc-desc" placeholder="Detalle lo que estás viendo..."></textarea>
+      <button class="btn btn-rj btn-full" onclick="submitIncidencia()">🚨 Reportar Incidencia</button>
+      <div id="mob-inc-ok" style="display:none;margin-top:.5rem;background:#e8f5e9;color:#2e7d32;border-radius:8px;padding:.5rem .7rem;font-size:.82rem;text-align:center">✅ Incidencia reportada correctamente</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Incidencias recientes</div>
+      <div id="mob-inc-list"></div>
+    </div>
+  </div>
+  <!-- BUSCAR CLIENTE -->
+  <div class="screen" id="sc-buscar">
+    <div class="search-box">
+      <input type="text" id="mob-cli-q" placeholder="Nombre, DNI, IP, teléfono..." oninput="searchCliente()">
+    </div>
+    <div id="mob-cli-list"></div>
+  </div>
+</div><!-- end content -->
+<!-- BOTTOM NAV -->
+<nav class="botnav">
+  <button class="botnav-btn active" id="bn-tareas" onclick="goScreen('tareas')"><span class="icon">📋</span>Tareas</button>
+  <button class="botnav-btn" id="bn-servicios" onclick="goScreen('servicios')"><span class="icon">🔧</span>Servicios</button>
+  <button class="botnav-btn" id="bn-mapa" onclick="goScreen('mapa')"><span class="icon">🗺️</span>Mapa</button>
+  <button class="botnav-btn" id="bn-naps" onclick="goScreen('naps')"><span class="icon">🔌</span>NAPs</button>
+  <button class="botnav-btn" id="bn-incidencia" onclick="goScreen('incidencia')"><span class="icon">🚨</span>Reportar</button>
+</nav>
+<!-- DRAWER DETALLE SERVICIO -->
+<div class="drawer" id="drawer-svc">
+  <div class="drawer-bg" onclick="closeDrawer()"></div>
+  <div class="drawer-content">
+    <div class="drawer-handle"></div>
+    <div class="drawer-title" id="dsvc-title">Detalle de Servicio</div>
+    <div id="dsvc-body"></div>
+  </div>
+</div>
+<!-- DRAWER DETALLE CLIENTE -->
+<div class="drawer" id="drawer-cli">
+  <div class="drawer-bg" onclick="closeDrawerCli()"></div>
+  <div class="drawer-content">
+    <div class="drawer-handle"></div>
+    <div class="drawer-title" id="dcli-title">Detalle Cliente</div>
+    <div id="dcli-body"></div>
+  </div>
+</div>
+<script>
+let mobMap=null, mobMapInited=false;
+let allSvcs=[], svcEstadoFil='';
+async function api(url,method='GET',body=null){
+  const opts={method,headers:{'Content-Type':'application/json'}};
+  if(body) opts.body=JSON.stringify(body);
+  const r=await fetch(url,opts);
+  if(r.status===401){location.href='/login';return null;}
+  return r.json();
+}
+function goScreen(name){
+  document.querySelectorAll('.screen,.screen-map').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.botnav-btn').forEach(b=>b.classList.remove('active'));
+  const screen=document.getElementById('sc-'+name);
+  if(screen) screen.classList.add('active');
+  const btn=document.getElementById('bn-'+name);
+  if(btn) btn.classList.add('active');
+  if(name==='mapa') initMobMap();
+  else if(name==='tareas') loadMisTareas();
+  else if(name==='servicios') loadSvc();
+  else if(name==='naps') loadNaps();
+  else if(name==='incidencia') loadIncidencias();
+}
+// ── MIS TAREAS ──
+function _mobDatosTec(t){
+  const tipo = (t.tipo_servicio||'').toLowerCase();
+  const chips = [];
+  if(t.cliente_plan) chips.push(`📋 ${t.cliente_plan}`);
+  if(tipo === 'inalambrico'){
+    if(t.ip_asignada) chips.push(`🌐 IP: <b>${t.ip_asignada}</b>`);
+  } else if(tipo === 'fibra'){
+    if(t.nap_display) chips.push(`🔵 NAP: <b>${t.nap_display}</b>`);
+    if(t.olt_nombre) chips.push(`📡 ${t.olt_nombre}${t.olt_puerto?'/'+t.olt_puerto:''}`);
+  }
+  if(t.pppoe_usuario) chips.push(`👤 ${t.pppoe_usuario}`);
+  if(t.pppoe_clave) chips.push(`🔑 ${t.pppoe_clave}`);
+  if(!chips.length) return '';
+  return `<div style="margin-top:.3rem;padding:.4rem;background:#f0f7ff;border-radius:6px;font-size:.72rem;line-height:1.7">${chips.join('<br>')}</div>`;
+}
+async function loadMisTareas(){
+  const d = await api('/api/tecnico/mis-tareas');
+  if(!d) return;
+  // Resumen
+  const res = document.getElementById('mob-tareas-resumen');
+  const pend = d.tareas.filter(t=>t.estado==='pendiente').length;
+  const proc = d.tareas.filter(t=>t.estado==='en_proceso').length;
+  const prog = d.tareas.filter(t=>t.estado==='programado').length;
+  res.innerHTML = `
+    <div style="flex:1;background:#fff3e0;border-radius:8px;padding:.4rem;text-align:center">
+      <div style="font-size:1.3rem;font-weight:700;color:#e65100">${pend}</div>
+      <div style="font-size:.65rem;color:#bf360c">Pendientes</div>
+    </div>
+    <div style="flex:1;background:#e3f2fd;border-radius:8px;padding:.4rem;text-align:center">
+      <div style="font-size:1.3rem;font-weight:700;color:#1565c0">${proc}</div>
+      <div style="font-size:.65rem;color:#0d47a1">En proceso</div>
+    </div>
+    <div style="flex:1;background:#e8f5e9;border-radius:8px;padding:.4rem;text-align:center">
+      <div style="font-size:1.3rem;font-weight:700;color:#2e7d32">${d.tareas.length}</div>
+      <div style="font-size:.65rem;color:#1b5e20">Total</div>
+    </div>`;
+  // Tareas
+  const list = document.getElementById('mob-tareas-list');
+  if(!d.tareas.length){
+    list.innerHTML = '<div class="empty">✅ Sin tareas pendientes</div>';
+  } else {
+    list.innerHTML = d.tareas.map(t=>{
+      const prioColor = {urgente:'#c62828',alta:'#e65100',media:'#f9a825',baja:'#2e7d32'}[t.prioridad] || '#666';
+      const estadoEmoji = {pendiente:'🟡',en_proceso:'🔵',programado:'📅'}[t.estado] || '⚪';
+      return `<div style="background:#fff;border-radius:10px;padding:.7rem;margin-bottom:.5rem;box-shadow:0 1px 4px rgba(0,0,0,.08);border-left:4px solid ${prioColor}">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem">
+          <span style="font-weight:700;font-size:.85rem">${estadoEmoji} ${tipoSvcLabel(t.tipo)}</span>
+          <span style="font-size:.7rem;color:${prioColor};font-weight:600">${(t.prioridad||'').toUpperCase()}</span>
+        </div>
+        <div style="font-size:.82rem;margin-bottom:.3rem"><b>${t.cliente_nombre||'—'}</b> ${t.nro_cliente?'(#'+t.nro_cliente+')':''}</div>
+        ${t.direccion?`<div style="font-size:.75rem;color:#666">📍 ${t.direccion}, ${t.localidad||''}</div>`:''}
+        ${t.telefono?`<a href="tel:${t.telefono}" style="font-size:.8rem;color:#1565c0;text-decoration:none">📞 ${t.telefono}</a>`:''}
+        ${t.descripcion?`<div style="font-size:.75rem;color:#555;margin-top:.2rem"><b>Problema:</b> ${t.descripcion}</div>`:''}
+        ${_mobDatosTec(t)}
+        <div style="display:flex;gap:.3rem;margin-top:.5rem">
+          ${t.estado==='pendiente'?`<button class="btn btn-prim btn-xs" onclick="iniciarTarea(${t.id})">▶ Iniciar</button>`:''}
+          ${t.estado==='en_proceso'?`<button class="btn btn-xs" style="background:#2e7d32;color:#fff" onclick="completarTarea(${t.id})">✅ Completar</button>`:''}
+          ${t.lat&&t.lng?`<button class="btn btn-gray btn-xs" onclick="navegarATarea(${t.lat},${t.lng})">🗺️ Navegar</button>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+  // Incidencias
+  const incList = document.getElementById('mob-tareas-inc');
+  if(!d.incidencias.length){
+    incList.innerHTML = '<div class="empty">Sin incidencias asignadas</div>';
+  } else {
+    incList.innerHTML = d.incidencias.map(i=>`
+      <div style="background:#fff;border-radius:10px;padding:.6rem;margin-bottom:.4rem;box-shadow:0 1px 3px rgba(0,0,0,.07);border-left:4px solid #c62828">
+        <div style="font-weight:700;font-size:.84rem">🚨 ${i.titulo}</div>
+        <div style="font-size:.72rem;color:#666">${i.tipo||''} · ${(i.prioridad||'').toUpperCase()}</div>
+        ${i.torre_nombre?`<div style="font-size:.75rem">🗼 ${i.torre_nombre}</div>`:''}
+      </div>
+    `).join('');
+  }
+}
+async function iniciarTarea(id){
+  if(!confirm('¿Iniciar esta tarea?\n\nSe va a registrar la hora de inicio del trabajo.')) return;
+  const r = await api(`/api/tecnico/iniciar/${id}`, 'POST');
+  if(r?.ok) loadMisTareas();
+}
+async function completarTarea(id){
+  const notas = prompt('Notas de cierre (opcional):') || '';
+  const r = await api(`/api/tecnico/completar/${id}`, 'POST', {notas});
+  if(r?.ok){
+    alert('✅ Tarea completada');
+    loadMisTareas();
+  }
+}
+function navegarATarea(lat, lng){
+  window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
+}
+async function loadMiRuta(){
+  const data = await api('/api/tecnico/ruta');
+  if(!data || !data.length){ alert('No hay tareas con ubicación'); return; }
+  goScreen('mapa');
+  setTimeout(()=>{
+    if(!mobMap) return;
+    // Dibujar ruta
+    const coords = data.filter(t=>t.lat&&t.lng).map(t=>[t.lat,t.lng]);
+    if(coords.length > 1){
+      L.polyline(coords, {color:'#1565c0', weight:3, dashArray:'8,5'}).addTo(mobMap);
+    }
+    data.forEach((t,i) => {
+      if(!t.lat||!t.lng) return;
+      const icon = L.divIcon({className:'',
+        html:`<div style="background:#1565c0;color:#fff;border:2px solid #fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;box-shadow:0 2px 5px rgba(0,0,0,.4)">${i+1}</div>`,
+        iconSize:[28,28], iconAnchor:[14,14]
+      });
+      L.marker([t.lat, t.lng], {icon})
+        .bindPopup(`<b>${i+1}. ${t.cliente||'—'}</b><br>${t.direccion||''}<br>${tipoSvcLabel(t.tipo)}<br>
+          <a href="https://www.google.com/maps/dir/?api=1&destination=${t.lat},${t.lng}" target="_blank" style="color:#1565c0">🗺️ Navegar</a>`)
+        .addTo(mobMap);
+    });
+    if(coords.length) mobMap.fitBounds(coords, {padding:[30,30]});
+  }, 500);
+}
+// ── SERVICIOS ──
+async function loadSvc(){
+  const d=await api('/api/servicios?estado='+svcEstadoFil);
+  if(!d) return;
+  allSvcs=d;
+  renderSvcs(d);
+}
+function filterEstadoSvc(estado){
+  svcEstadoFil=estado;
+  loadSvc();
+}
+function filterSvc(){
+  const q=document.getElementById('mob-svc-q').value.toLowerCase();
+  renderSvcs(allSvcs.filter(s=>(s.cliente_nombre||'').toLowerCase().includes(q)||(s.descripcion||'').toLowerCase().includes(q)));
+}
+function renderSvcs(svcs){
+  const list=document.getElementById('mob-svc-list');
+  if(!svcs.length){list.innerHTML='<div class="empty">Sin órdenes pendientes</div>';return;}
+  list.innerHTML=svcs.map(s=>{
+    // Datos de red según tipo (lo que el técnico necesita en la calle)
+    const tipo=(s.tipo_servicio||'').toLowerCase();
+    const red=[];
+    if(s.cliente_plan) red.push(`📋 ${s.cliente_plan}`);
+    if(tipo==='inalambrico' && s.ip_asignada) red.push(`🌐 ${s.ip_asignada}`);
+    if(tipo==='fibra' && s.cliente_nap) red.push(`🔵 ${s.cliente_nap}`);
+    if(s.pppoe_usuario) red.push(`👤 ${s.pppoe_usuario}`);
+    if(s.pppoe_clave) red.push(`🔑 ${s.pppoe_clave}`);
+    const redHtml = red.length?`<div style="font-size:.72rem;color:#1565c0;margin-top:.25rem;line-height:1.5">${red.join(' · ')}</div>`:'';
+    return `<div class="svc-item" onclick="openSvcDetail(${s.id})">
+    <div class="svc-hd">
+      <span class="badge b-${s.prioridad||'normal'}">${(s.prioridad||'normal').toUpperCase()}</span>
+      <span class="badge b-${s.estado}">${estadoLabel(s.estado)}</span>
+    </div>
+    <div class="svc-cli">${s.cliente_nombre||'Sin cliente'}</div>
+    <div class="svc-tipo">${tipoSvcLabel(s.tipo)}</div>
+    ${s.cliente_tel?`<div style="font-size:.73rem;color:#546e7a;margin-top:.2rem">📞 ${s.cliente_tel}</div>`:''}
+    ${s.cliente_dir?`<div style="font-size:.73rem;color:#546e7a">📍 ${s.cliente_dir}${s.cliente_localidad?', '+s.cliente_localidad:''}</div>`:''}
+    ${s.tecnico?`<div style="font-size:.73rem;color:#546e7a">👷 ${s.tecnico}</div>`:''}
+    ${redHtml}
+    ${s.descripcion?`<div style="font-size:.75rem;margin-top:.3rem;color:#333"><b>Problema:</b> ${s.descripcion.slice(0,80)}${s.descripcion.length>80?'...':''}</div>`:''}
+  </div>`;
+  }).join('');
+}
+function _mobSvcDatosRed(s){
+  const tipo=(s.tipo_servicio||'').toLowerCase();
+  const r=[];
+  if(s.cliente_plan) r.push(`<b>Abono:</b> ${s.cliente_plan}`);
+  if(tipo==='inalambrico' && s.ip_asignada) r.push(`<b>IP:</b> ${s.ip_asignada}`);
+  if(tipo==='fibra'){
+    if(s.cliente_nap) r.push(`<b>NAP:</b> ${s.cliente_nap}`);
+    if(s.olt_nombre) r.push(`<b>OLT:</b> ${s.olt_nombre}${s.olt_puerto?'/'+s.olt_puerto:''}`);
+  }
+  if(s.pppoe_usuario) r.push(`<b>PPPoE:</b> ${s.pppoe_usuario}`);
+  if(s.pppoe_clave) r.push(`<b>Clave:</b> ${s.pppoe_clave}`);
+  if(!r.length) return '';
+  return `<div style="background:#e3f2fd;border-radius:8px;padding:.5rem;font-size:.8rem;margin-bottom:.5rem;line-height:1.7">${r.join('<br>')}</div>`;
+}
+async function openSvcDetail(id){
+  const s=allSvcs.find(x=>x.id===id);
+  if(!s) return;
+  document.getElementById('dsvc-title').textContent=tipoSvcLabel(s.tipo);
+  document.getElementById('dsvc-body').innerHTML=`
+    <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.6rem">
+      <span class="badge b-${s.prioridad}">${(s.prioridad||'').toUpperCase()}</span>
+      <span class="badge b-${s.estado}">${estadoLabel(s.estado)}</span>
+      ${s.tiene_costo?`<span class="badge" style="background:#fff9c4;color:#f57f17">💵 $${s.costo}</span>`:''}
+    </div>
+    <div style="font-size:.88rem;margin-bottom:.4rem"><b>Cliente:</b> ${s.cliente_nombre||'—'}</div>
+    ${s.cliente_tel?`<a href="tel:${s.cliente_tel}" style="display:block;padding:.5rem;background:#e3f2fd;color:#1565c0;border-radius:8px;text-align:center;text-decoration:none;font-weight:700;margin-bottom:.4rem">📞 Llamar: ${s.cliente_tel}</a>`:''}
+    ${s.cliente_dir?`<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((s.cliente_dir||'')+' '+(s.cliente_localidad||''))}" target="_blank" style="display:block;padding:.5rem;background:#e8f5e9;color:#2e7d32;border-radius:8px;text-align:center;text-decoration:none;font-weight:700;margin-bottom:.4rem">📍 Ver en Maps: ${s.cliente_dir}</a>`:''}
+    ${s.descripcion?`<div style="background:#f5f7fa;border-radius:8px;padding:.5rem;font-size:.82rem;margin-bottom:.5rem"><b>Problema:</b> ${s.descripcion}</div>`:''}
+    ${_mobSvcDatosRed(s)}
+    <hr class="sep">
+    <div style="font-size:.78rem;color:#666;margin-bottom:.6rem">Creado: ${s.fecha_creacion?.slice(0,16)||'—'}</div>
+    <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+      ${s.estado==='pendiente'?`<button class="btn btn-am" onclick="updateSvcEstado(${s.id},'en_proceso')">▶ Iniciar</button>`:''}
+      ${s.estado==='en_proceso'?`<button class="btn btn-vd" onclick="updateSvcEstado(${s.id},'cerrado')">✓ Cerrar</button>`:''}
+    </div>
+  `;
+  document.getElementById('drawer-svc').classList.add('open');
+}
+async function updateSvcEstado(id,estado){
+  const s=allSvcs.find(x=>x.id===id);
+  if(!s) return;
+  await api(`/api/servicios/${id}`,'PUT',{...s,estado,tipo:s.tipo||'otro',prioridad:s.prioridad||'normal',tecnico:s.tecnico||'',costo:s.costo||0,tiene_costo:s.tiene_costo||0});
+  closeDrawer();
+  loadSvc();
+}
+function closeDrawer(){ document.getElementById('drawer-svc').classList.remove('open'); }
+// ── MAPA ──
+function initMobMap(){
+  if(mobMapInited) return;
+  mobMapInited=true;
+  mobMap=L.map('mob-map').setView([-31.73,-60.53],13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM',maxZoom:19}).addTo(mobMap);
+  loadMapData();
+}
+// Capas separadas por estado para poder mostrarlas/ocultarlas
+let mobCapas={activo:null, pte_rescision:null, suspendido:null, naps:null, torres:null, tareas:null};
+let mobCapaVisible={activo:true, pte_rescision:true, suspendido:true, naps:false, torres:false};
+let mobSoloTareas=false;
+let _mobGpsMarker=null, _mobGpsWatch=null;
+async function loadMapData(){
+  const data=await api('/api/clientes/mapa');
+  if(!data) return;
+  const COLOR={activo:'#2e7d32',suspendido:'#e65100',rescision:'#c62828',pte_rescision:'#f9a825'};
+  // Crear un layerGroup por estado
+  mobCapas.activo=L.layerGroup();
+  mobCapas.pte_rescision=L.layerGroup();
+  mobCapas.suspendido=L.layerGroup();
+  mobCapas.naps=L.layerGroup();
+  data.forEach(c=>{
+    if(!c.lat||!c.lng) return;
+    const m=L.circleMarker([c.lat,c.lng],{radius:7,fillColor:COLOR[c.estado]||'#546e7a',color:'#fff',weight:2,fillOpacity:.85})
+     .bindPopup(`<b>${c.nombre}</b>${c.nro_cliente?' <span style="color:#1565c0">#'+c.nro_cliente+'</span>':''}<br>${c.estado} | ${c.tipo_servicio}<br>${c.direccion||''}`);
+    // Clasificar en la capa correspondiente
+    let cap='activo';
+    if(c.estado==='suspendido') cap='suspendido';
+    else if(c.estado==='pte_rescision') cap='pte_rescision';
+    else if(c.estado==='activo') cap='activo';
+    else return; // otros estados (baja, rescisión) no se muestran
+    if(mobCapas[cap]) m.addTo(mobCapas[cap]);
+  });
+  const naps=await api('/api/naps');
+  if(naps) naps.forEach(n=>{
+    if(!n.lat||!n.lng) return;
+    const color=n.libre<=0?'#c62828':n.total>=(n.capacidad-2)?'#e65100':'#1565c0';
+    L.circleMarker([n.lat,n.lng],{radius:10,fillColor:color,color:'#fff',weight:2,fillOpacity:.9})
+     .bindPopup(`<b>NAP: ${n.nombre}</b><br>${n.total}/${n.capacidad} puertos
+       <br><a href="https://www.google.com/maps/dir/?api=1&destination=${n.lat},${n.lng}" target="_blank" style="display:inline-block;margin-top:.4rem;padding:.35rem .7rem;background:#1565c0;color:#fff;border-radius:6px;text-decoration:none;font-weight:700;font-size:.78rem">🧭 Navegar</a>`)
+     .addTo(mobCapas.naps);
+  });
+  // Torres (referencia para el técnico en campo)
+  mobCapas.torres=L.layerGroup();
+  const torres=await api('/api/torres');
+  if(torres) torres.forEach(t=>{
+    if(!t.lat||!t.lng) return;
+    const icon=L.divIcon({className:'',
+      html:`<div style="background:#1565c0;color:#fff;border:2px solid #fff;border-radius:5px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:13px;box-shadow:0 2px 5px rgba(0,0,0,.4)">🗼</div>`,
+      iconSize:[24,24], iconAnchor:[12,12]});
+    L.marker([t.lat,t.lng],{icon})
+     .bindPopup(`<b>🗼 ${t.nombre||'Torre'}</b><br>${t.tipo||''} ${t.localidad?'· '+t.localidad:''}${t.altura_mts?'<br>Altura: '+t.altura_mts+'m':''}
+       <br><a href="https://www.google.com/maps/dir/?api=1&destination=${t.lat},${t.lng}" target="_blank" style="display:inline-block;margin-top:.4rem;padding:.35rem .7rem;background:#1565c0;color:#fff;border-radius:6px;text-decoration:none;font-weight:700;font-size:.78rem">🧭 Navegar</a>`)
+     .addTo(mobCapas.torres);
+  });
+  _aplicarCapasMob();
+}
+function _aplicarCapasMob(){
+  // Quitar todas
+  ['activo','pte_rescision','suspendido','naps','torres','tareas'].forEach(k=>{
+    if(mobCapas[k] && mobMap.hasLayer(mobCapas[k])) mobMap.removeLayer(mobCapas[k]);
+  });
+  if(mobSoloTareas){
+    // Modo "Mis Tareas": muestra las tareas y, si están activadas, NAP y Torres se solapan encima.
+    // (Se ocultan los marcadores de clientes para mantener el mapa limpio.)
+    if(mobCapas.tareas) mobCapas.tareas.addTo(mobMap);
+    if(mobCapaVisible.naps && mobCapas.naps) mobCapas.naps.addTo(mobMap);
+    if(mobCapaVisible.torres && mobCapas.torres) mobCapas.torres.addTo(mobMap);
+    return;
+  }
+  // Modo normal: las capas activadas
+  ['activo','pte_rescision','suspendido','naps','torres'].forEach(k=>{
+    if(mobCapaVisible[k] && mobCapas[k]) mobCapas[k].addTo(mobMap);
+  });
+}
+function toggleMapCapa(k){
+  mobCapaVisible[k]=!mobCapaVisible[k];
+  const b=document.getElementById('mchip-'+k);
+  if(b) b.classList.toggle('active', mobCapaVisible[k]);
+  // NAP y Torres pueden convivir con Mis Tareas: al tocarlas NO se sale de ese modo.
+  // Solo se sale si se toca una capa de clientes (Vigentes/Suspendidos/Pte. Rescisión).
+  if(mobSoloTareas && k!=='naps' && k!=='torres'){
+    mobSoloTareas=false;
+    document.getElementById('mchip-tareas')?.classList.remove('active');
+  }
+  _aplicarCapasMob();
+}
+async function toggleSoloTareas(){
+  mobSoloTareas=!mobSoloTareas;
+  document.getElementById('mchip-tareas')?.classList.toggle('active', mobSoloTareas);
+  if(mobSoloTareas && !mobCapas.tareas){
+    await _cargarCapaTareas(true);
+  }
+  _aplicarCapasMob();
+}
+// Construye (o reconstruye) la capa VIOLETA de "Mis Tareas" sobre el mapa.
+// Violeta = mis tareas, para distinguirlas de los clientes (círculos de color por estado).
+async function _cargarCapaTareas(avisarVacio){
+  const resp=await api('/api/tecnico/mis-tareas');
+  const tareas = resp?.tareas || [];   // el endpoint devuelve {tareas, incidencias}
+  mobCapas.tareas=L.layerGroup();
+  const VIOLETA='#7C3AED';
+  tareas.forEach(t=>{
+    if(!t.lat||!t.lng) return;
+    const prio=(t.prioridad||'normal').toLowerCase();
+    // El cuerpo del pin es violeta; el borde marca la prioridad (urgente/alta resaltadas)
+    const borde = prio==='urgente'?'#F2607A':prio==='alta'?'#E8B04B':'#ffffff';
+    const icon=L.divIcon({className:'mob-tarea-pin', html:
+      `<div style="position:relative;width:32px;height:40px">
+        <div style="width:30px;height:30px;background:${VIOLETA};border:3px solid ${borde};border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 3px 6px rgba(0,0,0,.4);position:absolute;left:1px;top:1px"></div>
+        <div style="position:absolute;left:0;top:5px;width:32px;text-align:center;font-size:15px;line-height:1;pointer-events:none">🔧</div>
+      </div>`,
+      iconSize:[32,40], iconAnchor:[16,38], popupAnchor:[0,-34]});
+    L.marker([t.lat,t.lng],{icon}).bindPopup(_popupTarea(t)).addTo(mobCapas.tareas);
+  });
+  const n=mobCapas.tareas.getLayers().length;
+  if(avisarVacio && n===0){
+    alert('No tenés tareas con ubicación (coordenadas) en este momento.\nLas tareas aparecen en el mapa solo si el cliente tiene lat/lng.');
+  }
+  return n;
+}
+// Popup de una tarea en el mapa: n° service, cliente, dirección, tipo, motivo,
+// prioridad, estado + botones "Ver tarea" e "Iniciar".
+function _popupTarea(t){
+  const estados={pendiente:'Pendiente',en_proceso:'En proceso',programado:'Programado'};
+  const prio=(t.prioridad||'normal').toLowerCase();
+  const prioColor={urgente:'#c62828',alta:'#e65100',media:'#f9a825',normal:'#7C3AED'}[prio]||'#7C3AED';
+  return `<div style="min-width:195px">
+    <div style="font-weight:700;font-size:.9rem">${tipoSvcLabel(t.tipo)}</div>
+    <div style="font-size:.72rem;color:#666;margin-bottom:.35rem">
+      Service #${t.id} · <b style="color:${prioColor}">${(t.prioridad||'normal').toUpperCase()}</b> · ${estados[t.estado]||t.estado||''}
+    </div>
+    <div style="font-size:.83rem"><b>${t.cliente_nombre||'—'}</b>${t.nro_cliente?' <span style="color:#1565c0">#'+t.nro_cliente+'</span>':''}</div>
+    ${t.direccion?`<div style="font-size:.75rem;color:#555">📍 ${t.direccion}${t.localidad?', '+t.localidad:''}</div>`:''}
+    ${t.telefono?`<div style="font-size:.75rem;margin-top:.15rem"><a href="tel:${t.telefono}" style="color:#1565c0;text-decoration:none">📞 ${t.telefono}</a></div>`:''}
+    ${t.descripcion?`<div style="font-size:.75rem;margin-top:.25rem;color:#333"><b>Motivo:</b> ${t.descripcion}</div>`:''}
+    <div style="display:flex;gap:.3rem;margin-top:.55rem">
+      <button onclick="verTareaDesdeMapa(${t.id})" style="flex:1;padding:.45rem;background:#ede7f6;color:#4527a0;border:0;border-radius:6px;font-weight:700;font-size:.75rem">📋 Ver tarea</button>
+      ${t.estado==='pendiente'?`<button onclick="iniciarTareaDesdeMapa(${t.id})" style="flex:1;padding:.45rem;background:#7C3AED;color:#fff;border:0;border-radius:6px;font-weight:700;font-size:.75rem">▶ Iniciar</button>`:''}
+      ${(t.lat&&t.lng)?`<a href="https://www.google.com/maps/dir/?api=1&destination=${t.lat},${t.lng}" target="_blank" style="padding:.45rem .6rem;background:#e8f5e9;color:#2e7d32;border-radius:6px;font-weight:700;font-size:.75rem;text-decoration:none">🗺️</a>`:''}
+    </div>
+  </div>`;
+}
+function verTareaDesdeMapa(id){ if(mobMap) mobMap.closePopup(); goScreen('tareas'); }
+async function iniciarTareaDesdeMapa(id){
+  const r=await api(`/api/tecnico/iniciar/${id}`,'POST');
+  if(r?.ok){
+    if(mobMap) mobMap.closePopup();
+    // Reconstruir la capa para reflejar el nuevo estado (deja de estar "pendiente")
+    if(mobCapas.tareas && mobMap.hasLayer(mobCapas.tareas)) mobMap.removeLayer(mobCapas.tareas);
+    await _cargarCapaTareas(false);
+    _aplicarCapasMob();
+  }
+}
+// ── Mi ubicación (GPS del teléfono) ──
+function toggleMiUbicacion(){
+  const chip=document.getElementById('mchip-gps');
+  // Si ya está activo, apagar
+  if(_mobGpsWatch!==null){
+    navigator.geolocation.clearWatch(_mobGpsWatch);
+    _mobGpsWatch=null;
+    if(_mobGpsMarker){ mobMap.removeLayer(_mobGpsMarker); _mobGpsMarker=null; }
+    chip?.classList.remove('active');
+    return;
+  }
+  if(!navigator.geolocation){
+    alert('Tu teléfono no permite geolocalización o el navegador la bloqueó.');
+    return;
+  }
+  chip?.classList.add('active');
+  // watchPosition sigue la ubicación mientras el técnico se mueve
+  _mobGpsWatch=navigator.geolocation.watchPosition(
+    pos=>{
+      const {latitude:lat, longitude:lng, accuracy}=pos.coords;
+      const icon=L.divIcon({className:'',
+        html:`<div style="width:18px;height:18px;background:#1e88e5;border:3px solid #fff;border-radius:50%;box-shadow:0 0 0 2px #1e88e5,0 2px 6px rgba(0,0,0,.4)"></div>`,
+        iconSize:[18,18], iconAnchor:[9,9]});
+      if(_mobGpsMarker){
+        _mobGpsMarker.setLatLng([lat,lng]);
+      } else {
+        _mobGpsMarker=L.marker([lat,lng],{icon,zIndexOffset:1000})
+          .bindPopup('📍 Estás acá').addTo(mobMap);
+        mobMap.setView([lat,lng],16);  // centrar la primera vez
+      }
+    },
+    err=>{
+      let msg='No se pudo obtener tu ubicación.';
+      if(err.code===1) msg='Permiso de ubicación denegado. Activá el GPS y permití el acceso.';
+      else if(err.code===2) msg='Ubicación no disponible. Verificá que el GPS esté encendido.';
+      else if(err.code===3) msg='Tardó demasiado en ubicarte. Reintentá al aire libre.';
+      alert(msg);
+      _mobGpsWatch=null;
+      chip?.classList.remove('active');
+    },
+    {enableHighAccuracy:true, maximumAge:5000, timeout:15000}
+  );
+}
+let mobMapTimer=null;
+async function mobMapSearch(){
+  const q=document.getElementById('mob-map-q').value;
+  const drop=document.getElementById('mob-map-drop');
+  if(q.length<2){drop.style.display='none';return;}
+  clearTimeout(mobMapTimer);
+  mobMapTimer=setTimeout(async()=>{
+    const data=await api(`/api/clientes/buscar?q=${encodeURIComponent(q)}`);
+    if(!data?.length){drop.style.display='none';return;}
+    drop.innerHTML=data.map(c=>`<div onclick="mobGoTo(${c.lat},${c.lng},'${c.nombre.replace(/'/g,"\\'")}','${c.estado}','${c.nro_cliente||''}')" style="padding:.5rem .8rem;border-bottom:1px solid #f0f0f0;cursor:pointer">
+      <div style="font-weight:700;font-size:.84rem">${c.nombre} ${c.nro_cliente?'<span style="color:#1565c0;font-weight:600">#'+c.nro_cliente+'</span>':''}</div>
+      <div style="font-size:.73rem;color:#666">${c.direccion||''} ${c.localidad||''} <span class="badge b-${c.estado}">${c.estado}</span></div>
+    </div>`).join('');
+    drop.style.display='block';
+  },300);
+}
+function mobGoTo(lat,lng,nombre,estado,nro){
+  if(!lat||!lng) return;
+  document.getElementById('mob-map-drop').style.display='none';
+  document.getElementById('mob-map-q').value=nombre + (nro?' (#'+nro+')':'');
+  mobMap.setView([lat,lng],18);
+  L.popup().setLatLng([lat,lng]).setContent(`<b>${nombre}</b>${nro?' <span style="color:#1565c0">#'+nro+'</span>':''}<br>${estado}
+    <br><a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}" target="_blank" style="display:inline-block;margin-top:.4rem;padding:.35rem .7rem;background:#1565c0;color:#fff;border-radius:6px;text-decoration:none;font-weight:700;font-size:.78rem">🧭 Navegar</a>`).openOn(mobMap);
+}
+// ── NAPs ──
+let _mobNapsData = [];
+async function loadNaps(){
+  const d=await api('/api/naps');
+  if(!d) return;
+  _mobNapsData = d;
+  const list=document.getElementById('mob-nap-list');
+  list.innerHTML=d.map((n,idx)=>{
+    const est = n.estado||'activo';
+    // Color y etiqueta según estado
+    let estiloBorde = '#4caf50', etiqueta = '', bgHeader = '#fff';
+    if(est==='mantenimiento'){ estiloBorde='#e65100'; etiqueta='🔧 EN MANTENIMIENTO'; bgHeader='#fff3e0'; }
+    else if(est==='alerta' || (n.incidencias && n.incidencias.length)){ estiloBorde='#c62828'; etiqueta='⚠️ CON INCIDENCIA'; bgHeader='#ffebee'; }
+    else if(est==='revision' || n.sobrecargado){ estiloBorde='#ad1457'; etiqueta=`🚩 SOBRECARGADO (+${n.exceso||0})`; bgHeader='#fce4ec'; }
+    else if(est==='inactivo'){ estiloBorde='#999'; etiqueta='⊘ INACTIVO'; bgHeader='#f5f5f5'; }
+    let dots='';
+    for(let i=0;i<n.capacidad;i++){
+      if(i<(n.activos||0)) dots+=`<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#4caf50;margin:1px"></span>`;
+      else if(i<(n.activos||0)+(n.suspendidos||0)) dots+=`<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#ffb300;margin:1px"></span>`;
+      else if(i<(n.activos||0)+(n.suspendidos||0)+(n.rescision||0)) dots+=`<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#ef5350;margin:1px"></span>`;
+      else dots+=`<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#e0e0e0;margin:1px"></span>`;
+    }
+    // Lista de clientes del NAP (colapsada por defecto)
+    const clientes = n.clientes || [];
+    const clientesHtml = clientes.length ? clientes.map(c=>{
+      const ce = c.estado||'';
+      const ci = ce==='activo'?'🟢':ce==='suspendido'?'🟡':ce.includes('rescis')?'🔴':'⚪';
+      return `<div style="display:flex;align-items:center;gap:.4rem;padding:.35rem .2rem;border-bottom:1px solid #f0f0f0;font-size:.8rem">
+        <span>${ci}</span>
+        <span style="font-weight:600">${c.nombre||'—'}</span>
+        ${c.nro_cliente?`<span style="color:#888;font-size:.72rem">#${c.nro_cliente}</span>`:''}
+        <span style="margin-left:auto;font-size:.68rem;color:#888">${c.tipo_servicio||''}</span>
+      </div>`;
+    }).join('') : '<div style="padding:.4rem;color:#999;font-size:.78rem">Sin clientes asignados</div>';
+    return `<div class="nap-item" style="border-left:4px solid ${estiloBorde}">
+      <div onclick="toggleNapClientes(${idx})" style="cursor:pointer;background:${bgHeader};margin:-.6rem -.6rem .3rem;padding:.6rem;border-radius:8px 8px 0 0">
+        <div style="display:flex;align-items:center">
+          <b style="font-size:.88rem">${n.nombre}</b>
+          <span style="margin-left:auto;font-size:.82rem;font-weight:700;color:${n.libre<=0?'#c62828':n.total>=(n.capacidad-2)?'#e65100':'#2e7d32'}">${n.total}/${n.capacidad}</span>
+        </div>
+        ${etiqueta?`<div style="font-size:.7rem;font-weight:700;color:${estiloBorde};margin-top:.2rem">${etiqueta}</div>`:''}
+        <div style="font-size:.73rem;color:#666">${n.localidad||''}</div>
+      </div>
+      <div style="line-height:1.8">${dots}</div>
+      <div style="font-size:.68rem;color:#666;margin-top:.3rem">🟢 ${n.activos||0} | 🟡 ${n.suspendidos||0} | 🔴 ${n.rescision||0}
+        <span style="float:right;color:#1565c0;font-weight:600">👆 Ver clientes</span>
+      </div>
+      <div id="nap-cli-${idx}" style="display:none;margin-top:.4rem;border-top:1px solid #e0e0e0;padding-top:.3rem">
+        ${clientesHtml}
+      </div>
+    </div>`;
+  }).join('');
+}
+function toggleNapClientes(idx){
+  const el = document.getElementById('nap-cli-'+idx);
+  if(el) el.style.display = el.style.display==='none' ? 'block' : 'none';
+}
+// ── INCIDENCIAS ──
+async function loadIncidencias(){
+  const d=await api('/api/incidencias?estado=abierta');
+  if(!d) return;
+  const list=document.getElementById('mob-inc-list');
+  if(!d.length){list.innerHTML='<div class="empty">✅ Sin incidencias abiertas</div>';return;}
+  list.innerHTML=d.map(i=>`<div style="border-radius:8px;border-left:4px solid ${i.prioridad==='critica'?'#c62828':i.prioridad==='alta'?'#e65100':'#ffb300'};background:#fff;padding:.6rem;margin-bottom:.4rem;box-shadow:0 1px 3px rgba(0,0,0,.07)">
+    <div style="font-weight:700;font-size:.84rem">${i.titulo}</div>
+    <div style="font-size:.72rem;color:#666">${i.tipo.replace(/_/g,' ')} | ${i.prioridad.toUpperCase()}</div>
+  </div>`).join('');
+}
+async function submitIncidencia(){
+  const data={
+    titulo:document.getElementById('mob-inc-titulo').value,
+    tipo:document.getElementById('mob-inc-tipo').value,
+    prioridad:document.getElementById('mob-inc-prioridad').value,
+    afectados:document.getElementById('mob-inc-afectados').value,
+    descripcion:document.getElementById('mob-inc-desc').value,
+    estado:'abierta'
+  };
+  if(!data.titulo.trim()){alert('El título es obligatorio');return;}
+  const r=await api('/api/incidencias','POST',data);
+  if(r?.ok||r?.id){
+    document.getElementById('mob-inc-ok').style.display='block';
+    document.getElementById('mob-inc-titulo').value='';
+    document.getElementById('mob-inc-afectados').value='';
+    document.getElementById('mob-inc-desc').value='';
+    setTimeout(()=>document.getElementById('mob-inc-ok').style.display='none',3000);
+    loadIncidencias();
+  }
+}
+// ── BUSCAR CLIENTE ──
+let cliTimer=null;
+async function searchCliente(){
+  const q=document.getElementById('mob-cli-q').value;
+  if(q.length<2){document.getElementById('mob-cli-list').innerHTML='';return;}
+  clearTimeout(cliTimer);
+  cliTimer=setTimeout(async()=>{
+    const data=await api(`/api/clientes/buscar?q=${encodeURIComponent(q)}`);
+    if(!data) return;
+    const list=document.getElementById('mob-cli-list');
+    if(!data.length){list.innerHTML='<div class="empty">Sin resultados</div>';return;}
+    list.innerHTML=data.map(c=>`<div onclick="showClienteDetail(${c.id})" style="background:#fff;border-radius:10px;padding:.7rem;margin-bottom:.5rem;box-shadow:0 1px 4px rgba(0,0,0,.08)">
+      <div style="font-weight:700;font-size:.88rem">${c.nombre}</div>
+      <div style="font-size:.75rem;color:#666">${c.direccion||''} ${c.localidad||''}</div>
+      <div style="margin-top:.2rem;display:flex;gap:.3rem">
+        <span class="badge b-${c.estado}">${c.estado}</span>
+        <span class="badge b-${c.tipo_servicio}">${c.tipo_servicio}</span>
+      </div>
+    </div>`).join('');
+  },300);
+}
+async function showClienteDetail(id){
+  const d=await api(`/api/clientes/${id}`);
+  if(!d) return;
+  const c=d.cliente;
+  document.getElementById('dcli-title').textContent=c.nombre;
+  document.getElementById('dcli-body').innerHTML=`
+    <div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.6rem">
+      <span class="badge b-${c.estado}">${c.estado}</span>
+      <span class="badge b-${c.tipo_servicio}">${c.tipo_servicio}</span>
+    </div>
+    ${c.telefono?`<a href="tel:${c.telefono}" style="display:block;padding:.6rem;background:#e3f2fd;color:#1565c0;border-radius:8px;text-align:center;text-decoration:none;font-weight:700;margin-bottom:.4rem">📞 ${c.telefono}</a>`:''}
+    ${(c.lat&&c.lng)?`<a href="https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}" target="_blank" style="display:block;padding:.6rem;background:#1565c0;color:#fff;border-radius:8px;text-align:center;text-decoration:none;font-weight:700;margin-bottom:.4rem">🧭 Navegar (GPS)</a>`:''}
+    ${c.direccion?`<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((c.direccion||'')+' '+(c.localidad||''))}" target="_blank" style="display:block;padding:.6rem;background:#e8f5e9;color:#2e7d32;border-radius:8px;text-align:center;text-decoration:none;font-weight:700;margin-bottom:.4rem">📍 ${c.direccion}</a>`:''}
+    <hr class="sep">
+    <div style="font-size:.82rem;display:grid;gap:.3rem">
+      <div><b>Plan:</b> ${c.plan||'—'} ${c.precio?'| $'+c.precio:''}</div>
+      <div><b>NAP:</b> ${c.nap_display||c.nap||'—'}</div>
+      <div><b>IP:</b> ${c.ip_asignada||'—'}</div>
+      <div><b>Equipo:</b> ${c.equipo_modelo||'—'} ${c.equipo_marca||''}</div>
+      <div><b>Serie:</b> <span style="font-family:monospace">${c.equipo_serie||'—'}</span></div>
+      ${c.tipo_servicio==='fibra'?`<div><b>OLT:</b> ${c.olt_nombre||'—'} Puerto: ${c.olt_puerto||'—'}</div>`:''}
+      <div><b>Último pago:</b> ${c.ultimo_pago||'—'}</div>
+    </div>
+  `;
+  document.getElementById('drawer-cli').classList.add('open');
+}
+function closeDrawerCli(){ document.getElementById('drawer-cli').classList.remove('open'); }
+function estadoLabel(e){return{activo:'Activo',suspendido:'Suspendido',rescision:'Pte.Rescisión',baja:'Baja',pendiente:'Pendiente',en_proceso:'En Proceso',cerrado:'Cerrado'}[e]||e||'—';}
+function tipoSvcLabel(t){const m={reparacion_fibra:'🔧 Rep.Fibra',reparacion_inalambrico:'📡 Rep.Inalámbrico',migracion_ftth:'🔄 Migración FTTH',cambio_domicilio:'🏠 Cambio Dom.',instalacion:'🆕 Instalación',retiro_equipo:'📦 Retiro',service_con_costo:'💵 S.c/Costo',otro:'🔩 Otro'};return m[t]||t||'—';}
+// INIT
+loadMisTareas();
+</script>
+</body>
+</html>

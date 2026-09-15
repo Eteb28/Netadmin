@@ -1,0 +1,23 @@
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem}
+label{display:block;font-size:.75rem;color:var(--txt2);font-weight:600;margin-bottom:.2rem}
+input,select,textarea{width:100%;padding:.45rem .7rem;border:1.5px solid var(--brd);border-radius:7px;font-size:.84rem;color:var(--txt);background:var(--card);outline:none;font-family:inherit;transition:.15s}
+input:focus,select:focus,textarea:focus{border-color:var(--az);box-shadow:0 0 0 3px rgba(21,101,192,.1)}
+textarea{resize:vertical;min-height:70px}
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;display:flex;align-items:flex-start;justify-content:center;padding:1.5rem;overflow-y:auto}
+.modal{background:var(--card);border-radius:12px;width:100%;max-width:600px;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:mdIn .2s ease}
+.modal-hd{padding:1rem 1.2rem;border-bottom:1px solid var(--brd);display:flex;align-items:center;justify-content:space-between;font-weight:700;font-size:.95rem;color:var(--az2)}
+.modal-bd{padding:1.2rem}
+.modal-ft{padding:.8rem 1.2rem;border-top:1px solid var(--brd);display:flex;gap:.5rem;justify-content:flex-end}
+.modal-close{background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--gris);line-height:1}
+.map-toolbar select,.map-toolbar input{padding:.35rem .6rem;border:1.5px solid var(--brd);border-radius:6px;font-size:.78rem;background:var(--card);color:var(--txt);min-width:120px}
+.map-toolbar input{color:var(--txt) !important;background:var(--card) !important;}
+.map-toolbar input::placeholder{color:#9e9e9e}
+.global-filter label{font-size:.74rem;color:var(--txt2);font-weight:700;text-transform:uppercase}
+.global-filter select{padding:.35rem .6rem;border:1.5px solid var(--brd);border-radius:6px;font-size:.82rem;background:var(--card);color:var(--txt);outline:none;cursor:pointer}
+.global-filter select:focus{border-color:var(--az)}
+.kpi-label{font-size:.7rem;color:var(--txt2);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:.15rem}
+.heatmap-hours-label{font-weight:700;color:var(--txt2);text-align:right;padding-right:.4rem;font-size:.68rem;display:flex;align-items:center;justify-content:flex-end}
+.risk-card .label{font-size:.68rem;color:var(--txt2);font-weight:700;text-transform:uppercase}
+.mf-check input{cursor:pointer;margin:0}

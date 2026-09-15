@@ -1,0 +1,46 @@
+<div class="page" id="page-stock">
+  <div class="stitle" style="display:flex;justify-content:space-between;align-items:center">
+    <span>📦 Gestión de Stock</span>
+    <div style="display:flex;gap:.3rem">
+      <button class="btn btn-prim btn-xs" onclick="openModalNuevoEquipo()">+ Ingresar equipo</button>
+      <button class="btn btn-am btn-xs" onclick="loadPendientesRetiro()">🔙 Pte. retiro</button>
+      <button class="btn btn-gray btn-xs" onclick="loadMovimientos()">📜 Movimientos</button>
+      <button class="btn btn-vd btn-xs" onclick="toggleInventario()">📋 Inventario (cantidades)</button>
+      <button class="btn btn-gray btn-xs" onclick="importarDesdeClientes()" title="Importar equipos de clientes al stock (1 vez)">📥 Importar</button>
+    </div>
+  </div>
+  <div id="stock-inventario-panel" style="display:none"></div>
+  <div id="stock-dashboard"></div>
+  <div style="display:flex;gap:.5rem;margin:.6rem 0;align-items:center;flex-wrap:wrap">
+    <select id="stock-fil-estado" onchange="filtrarStockItems()" style="font-size:.82rem">
+      <option value="">Todos los estados</option>
+      <option value="deposito">En depósito</option>
+      <option value="instalado">Instalados</option>
+      <option value="baja">Dados de baja</option>
+    </select>
+    <input id="stock-fil-q" placeholder="Buscar por serie, MAC, modelo..." onkeyup="filtrarStockItems()" style="flex:1;min-width:150px;font-size:.82rem;padding:.3rem .5rem;border:1px solid #243A52;border-radius:6px">
+  </div>
+  <div id="stock-items-list"></div>
+  <div id="stock-pend-retiro"></div>
+  <div id="stock-movimientos"></div>
+
+  <!-- Stock simple (legacy) -->
+  <details style="margin-top:1rem">
+    <summary style="cursor:pointer;font-size:.82rem;color:#8FA6BF">📊 Stock manual (legacy)</summary>
+    <div class="grid-2" style="align-items:start;margin-top:.5rem">
+      <div class="card">
+        <div class="stitle">📦 Equipos Instalados (desde DB)</div>
+        <div style="display:flex;gap:.4rem;margin-bottom:.6rem">
+          <select id="stock-tipo-fil" onchange="filterStockInstalado()">
+            <option value="">Todos</option><option value="fibra">Fibra</option><option value="inalambrico">Inalámbrico</option>
+          </select>
+        </div>
+        <div id="stock-instalado-list"></div>
+      </div>
+      <div class="card">
+        <div class="stitle">🗃️ Stock en Depósito <button class="btn btn-prim btn-sm" style="margin-left:auto" onclick="openModalStock()">+ Agregar</button></div>
+        <div id="stock-manual-list"></div>
+      </div>
+    </div>
+  </details>
+</div>

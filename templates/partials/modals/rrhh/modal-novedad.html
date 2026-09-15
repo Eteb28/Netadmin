@@ -1,0 +1,52 @@
+<div id="modal-novedad" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-novedad')">
+<div class="modal" style="max-width:460px">
+  <div class="modal-hd">
+    <span id="nov-modal-title">Nueva novedad</span>
+    <button class="modal-close" onclick="closeModal('modal-novedad')">×</button>
+  </div>
+  <div class="modal-bd">
+    <input type="hidden" id="nov-id">
+    <input type="hidden" id="nov-emp-id">
+    <div style="margin-bottom:.7rem">
+      <label style="display:block;font-size:.8rem;font-weight:600;margin-bottom:.2rem">Tipo</label>
+      <select id="nov-tipo" style="width:100%;padding:.5rem;border:1px solid var(--brd);border-radius:6px" onchange="if(typeof _toggleNovPeriodo==='function')_toggleNovPeriodo()">
+        <option value="vacaciones">🟢 Vacaciones</option>
+        <option value="licencia">🔵 Licencia</option>
+        <option value="ausencia">🟠 Ausencia</option>
+        <option value="suspension">🔴 Suspensión</option>
+      </select>
+    </div>
+    <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.7rem">
+      <div>
+        <label style="display:block;font-size:.8rem;font-weight:600;margin-bottom:.2rem">Desde</label>
+        <input type="date" id="nov-desde" style="width:100%;padding:.5rem;border:1px solid var(--brd);border-radius:6px" onchange="calcDiasNovedad()">
+      </div>
+      <div>
+        <label style="display:block;font-size:.8rem;font-weight:600;margin-bottom:.2rem">Hasta</label>
+        <input type="date" id="nov-hasta" style="width:100%;padding:.5rem;border:1px solid var(--brd);border-radius:6px" onchange="calcDiasNovedad()">
+      </div>
+    </div>
+    <div id="nov-medio-wrap" style="margin-bottom:.5rem">
+      <label style="display:flex;align-items:center;gap:.4rem;font-size:.82rem;cursor:pointer">
+        <input type="checkbox" id="nov-medio" onchange="if(typeof calcDiasNovedad==='function')calcDiasNovedad()"> Medio día (0,5)
+      </label>
+    </div>
+    <div style="margin-bottom:.7rem;font-size:.82rem;color:var(--txt2)">
+      Duración: <b id="nov-dias-lbl">—</b>
+    </div>
+    <div id="nov-periodo-wrap" style="margin-bottom:.7rem">
+      <label style="display:block;font-size:.8rem;font-weight:600;margin-bottom:.2rem">Período (a qué año corresponden las vacaciones)</label>
+      <select id="nov-periodo" style="width:100%;padding:.5rem;border:1px solid var(--brd);border-radius:6px"></select>
+    </div>
+    <div>
+      <label style="display:block;font-size:.8rem;font-weight:600;margin-bottom:.2rem">Motivo (opcional)</label>
+      <textarea id="nov-motivo" rows="2" style="width:100%;padding:.5rem;border:1px solid var(--brd);border-radius:6px" placeholder="Detalle..."></textarea>
+    </div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-rj" id="nov-modal-del" style="margin-right:auto;display:none" onclick="eliminarNovedad()">🗑 Eliminar</button>
+    <button class="btn btn-gray" onclick="closeModal('modal-novedad')">Cancelar</button>
+    <button class="btn btn-prim" onclick="guardarNovedad()">Guardar</button>
+  </div>
+</div>
+</div>

@@ -1,0 +1,31 @@
+<div id="modal-abono" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-abono')">
+<div class="modal">
+  <div class="modal-hd"><span id="mabo-title">Nuevo Plan</span><button class="modal-close" onclick="closeModal('modal-abono')">×</button></div>
+  <div class="modal-bd">
+    <input type="hidden" id="mabo-id">
+    <div class="form-row">
+      <div><label>Nombre *</label><input id="mabo-nombre" placeholder="Plan Fibra 100M..."></div>
+      <div><label>Tipo</label>
+        <select id="mabo-tipo">
+          <option value="fibra">Fibra óptica</option>
+          <option value="inalambrico">Inalámbrico</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div><label>Precio ($)</label><input id="mabo-precio" type="number" step="0.01" placeholder="0.00"></div>
+      <div><label>Velocidad Bajada (Mbps)</label><input id="mabo-bajada" type="number" placeholder="100"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Velocidad Subida (Mbps)</label><input id="mabo-subida" type="number" placeholder="50"></div>
+      <div></div>
+    </div>
+    <div><label>Descripción</label><input id="mabo-desc" placeholder="Detalles adicionales"></div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-gray" onclick="closeModal('modal-abono')">Cancelar</button>
+    <button class="btn btn-prim" onclick="saveAbono()">💾 Guardar</button>
+  </div>
+</div>
+</div>

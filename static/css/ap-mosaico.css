@@ -1,0 +1,133 @@
+/* ══════════════════════════════════════════════════════════════════
+   Mosaico de capacidad de APs — mismo lenguaje visual que las tarjetas OLT
+   (pucara-noc.css). Reutiliza las variables NOC: --noc-panel, --noc-up,
+   --noc-line, --optimo/--alerta/--critico/--muerto.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Rejilla ── */
+#cap-lista.ap-mosaico{
+  display:grid; grid-template-columns:1fr; gap:13px;
+}
+@media(min-width:760px){  #cap-lista.ap-mosaico{grid-template-columns:repeat(2,1fr)} }
+@media(min-width:1180px){ #cap-lista.ap-mosaico{grid-template-columns:repeat(3,1fr)} }
+
+/* ── Tarjeta ── */
+.ap-card{
+  min-width:0; display:flex; flex-direction:column;
+  background:var(--noc-panel); border:1px solid var(--noc-line);
+  border-radius:7px; overflow:hidden;
+  transition:border-color .15s ease, transform .15s ease;
+}
+.ap-card:hover{ border-color:#2A4460; transform:translateY(-1px) }
+.ap-card.e-optimo{--e:var(--optimo)}
+.ap-card.e-alerta{--e:var(--alerta)}
+.ap-card.e-critico{--e:var(--critico)}
+.ap-card.e-muerto{--e:var(--muerto)}
+.ap-card.e-critico,.ap-card.e-muerto{opacity:.9}
+
+/* ── Cabecera con franja de estado ── */
+.ap-cab{
+  display:flex; align-items:center; gap:.5rem;
+  padding:.6rem .8rem .55rem; border-bottom:1px solid var(--noc-line-soft);
+  position:relative;
+}
+.ap-cab::before{
+  content:''; position:absolute; left:0; top:0; bottom:0; width:3px;
+  background:var(--e,var(--muerto));
+}
+.ap-nom{
+  font-weight:650; font-size:.87rem; color:var(--txt);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0;
+}
+.ap-torre{ font-size:.65rem; color:var(--txt2); white-space:nowrap }
+.ap-pill{
+  font-size:.6rem; font-weight:700; letter-spacing:.09em; text-transform:uppercase;
+  padding:.15rem .42rem; border-radius:3px; white-space:nowrap;
+  background:color-mix(in srgb, var(--e) 16%, transparent);
+  color:var(--e); border:1px solid color-mix(in srgb, var(--e) 32%, transparent);
+}
+
+/* ── Métricas ── */
+.ap-metricas{ display:flex; border-bottom:1px solid var(--noc-line-soft) }
+.ap-metrica{
+  flex:1; min-width:0; padding:.45rem .5rem;
+  border-right:1px solid var(--noc-line-soft); text-align:center;
+}
+.ap-metrica:last-child{ border-right:0 }
+.ap-metrica .v{
+  font-size:1rem; font-weight:650; line-height:1.15; display:block;
+  color:var(--txt); font-variant-numeric:tabular-nums;
+}
+.ap-metrica .l{
+  font-size:.57rem; color:var(--txt2); text-transform:uppercase;
+  letter-spacing:.05em; display:block; margin-top:1px;
+}
+.ap-metrica.v-alerta .v{ color:var(--alerta) }
+.ap-metrica.v-critico .v{ color:var(--critico) }
+.ap-metrica.v-optimo .v{ color:var(--optimo) }
+
+/* ── Barra de ocupación ── */
+.ap-ocup{ padding:.5rem .8rem .3rem }
+.ap-ocup-tit{
+  display:flex; justify-content:space-between; align-items:baseline;
+  font-size:.6rem; color:var(--txt2); text-transform:uppercase;
+  letter-spacing:.05em; margin-bottom:.25rem;
+}
+.ap-ocup-tit b{ font-size:.72rem; color:var(--txt); font-variant-numeric:tabular-nums }
+.ap-barra{
+  height:7px; background:var(--noc-up); border-radius:4px;
+  overflow:hidden; position:relative;
+}
+.ap-barra i{ display:block; height:100%; background:var(--e,var(--muerto)); border-radius:4px }
+/* marca del umbral de advertencia */
+.ap-barra::after{
+  content:''; position:absolute; top:0; bottom:0; left:var(--umbral,80%);
+  width:1px; background:var(--txt2); opacity:.45;
+}
+
+/* ── Mosaico de señal (el equivalente a los PON) ── */
+.ap-senal{ display:flex; gap:3px; padding:.45rem .8rem .5rem; margin-top:auto }
+.ap-seg{
+  flex:1; min-width:0; background:var(--noc-up);
+  border:1px solid var(--noc-line-soft); border-radius:3px;
+  padding:.28rem .1rem .3rem; text-align:center;
+}
+.ap-seg .sl{ font-size:.54rem; color:var(--txt2); letter-spacing:.03em; display:block }
+.ap-seg .sv{
+  font-size:.82rem; font-weight:650; line-height:1.2; color:var(--txt);
+  font-variant-numeric:tabular-nums; display:block;
+}
+.ap-seg.s-buena{ border-top:2px solid var(--optimo) }
+.ap-seg.s-media{ border-top:2px solid var(--alerta) }
+.ap-seg.s-pobre{ border-top:2px solid var(--critico) }
+.ap-seg.s-vacio{ border-top:2px solid var(--muerto) }
+.ap-seg.s-vacio .sv{ color:var(--muerto) }
+
+/* ── Motivo / pie ── */
+.ap-motivo{
+  padding:.4rem .8rem .55rem; font-size:.7rem; color:var(--txt2);
+  border-top:1px solid var(--noc-line-soft); line-height:1.35;
+}
+.ap-motivo b{ color:var(--txt) }
+.ap-avisos{ display:flex; gap:.3rem; flex-wrap:wrap; margin-top:.3rem }
+.ap-chip{
+  font-size:.58rem; padding:.1rem .35rem; border-radius:3px;
+  border:1px solid var(--noc-line); color:var(--txt2); white-space:nowrap;
+}
+.ap-chip.warn{ color:var(--alerta); border-color:color-mix(in srgb,var(--alerta) 35%,transparent) }
+
+/* ── Tarjetas de resumen arriba ── */
+.ap-resumen{ display:flex; gap:.6rem; flex-wrap:wrap; margin-bottom:.9rem }
+.ap-kpi{
+  flex:1; min-width:96px; background:var(--noc-panel);
+  border:1px solid var(--noc-line); border-left:3px solid var(--k,var(--muerto));
+  border-radius:6px; padding:.5rem .7rem;
+}
+.ap-kpi .v{ font-size:1.45rem; font-weight:700; line-height:1.1; color:var(--k,var(--txt));
+  font-variant-numeric:tabular-nums }
+.ap-kpi .l{ font-size:.6rem; color:var(--txt2); text-transform:uppercase; letter-spacing:.05em }
+.ap-kpi.k-total{--k:var(--az3)}
+.ap-kpi.k-critico{--k:var(--critico)}
+.ap-kpi.k-alerta{--k:var(--alerta)}
+.ap-kpi.k-optimo{--k:var(--optimo)}
+.ap-kpi.k-muerto{--k:var(--muerto)}

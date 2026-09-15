@@ -1,0 +1,457 @@
+/* ═══════════════════════════════════════════════════════════════
+   pucara-noc.css — Overlay de interfaz NOC
+   ───────────────────────────────────────────────────────────────
+   Instalar:  <link rel="stylesheet" href="/static/css/pucara-noc.css">
+              (DESPUÉS de main.css y tema-oscuro.css)
+   Revertir:  comentar esa línea. No modifica ningún archivo existente.
+
+   Qué hace:
+     1. Barra lateral colapsada a iconos, se abre al pasar el mouse
+        o al fijarla. Al abrirse flota sobre el contenido: no salta nada.
+     2. Tokens de color para paneles de monitoreo.
+     3. Estilos del espectro óptico y de las tarjetas de OLT.
+   ═══════════════════════════════════════════════════════════════ */
+
+:root{
+  --side-w:54px;              /* colapsada (main.css ya usa esta variable) */
+  --side-abierta:212px;
+
+  /* Superficies: por defecto siguen al tema activo (claro u oscuro).
+     El sistema ya define --card, --surf2, --brd y los cambia con el tema. */
+  --noc-panel:var(--card,#fff);
+  --noc-up:var(--surf2,#f1f4f8);
+  --noc-line:var(--brd,#dde3ea);
+  --noc-line-soft:var(--brd,#e6ebf1);
+
+  /* Semáforo óptico */
+  --optimo:#4FD1A5;
+  --normal:#4FB3AA;
+  --alerta:#E8B04B;
+  --critico:#F2607A;
+  --muerto:var(--brd,#c8d2dd);
+}
+body.nav-fija{--side-w:var(--side-abierta)}
+
+/* Con el tema oscuro activo usamos superficies más profundas que las del
+   tema base: así los paneles de monitoreo despegan del fondo. */
+body.noc-oscuro{
+  --muerto:#3A4D63;
+  --noc-panel:#0E1A28;
+  --noc-up:#14263A;
+  --noc-line:#1D3148;
+  --noc-line-soft:#152438;
+}
+
+/* ══════════ 1. BARRA LATERAL ══════════ */
+.nav{
+  width:var(--side-w);
+  transition:width .16s cubic-bezier(.4,0,.2,1);
+  overflow:visible;          /* el submenú lateral no se recorta */
+  padding:0;
+  display:flex;flex-direction:column;   /* el pie queda anclado abajo */
+}
+.nav.abierta{width:var(--side-abierta);box-shadow:6px 0 26px rgba(0,0,0,.45)}
+body.nav-fija .nav.abierta{box-shadow:2px 0 8px rgba(0,0,0,.35)}
+.nav::-webkit-scrollbar{width:0}
+
+/* marca / logo */
+.nav-brand{
+  height:52px;margin:0;padding:0 0 0 13px;
+  flex-direction:row;align-items:center;gap:.55rem;
+  border-bottom:1px solid rgba(255,255,255,.08);overflow:hidden;
+}
+.nav-logo{
+  width:auto;max-width:none;height:26px;
+  opacity:0;transition:opacity .13s;
+}
+.nav.abierta .nav-logo{opacity:1}
+.nav-brand-sub{display:none}
+/* cuadradito con la P, visible siempre */
+.nav-brand::before{
+  content:'P';flex-shrink:0;
+  width:26px;height:26px;border-radius:6px;
+  background:linear-gradient(135deg,var(--normal),#2E7D8F);
+  color:#07131B;font-weight:800;font-size:.76rem;
+  display:grid;place-items:center;
+}
+
+/* La lista de links es la única que scrollea; el pie nunca se va de la pantalla.
+   Colapsada: overflow visible para que salgan los submenús al costado.
+   Abierta: scroll propio si los grupos desplegados no entran. */
+.nav-links{
+  padding:.4rem 0;gap:0;
+  flex:1 1 auto;min-height:0;
+  overflow:visible;
+}
+.nav.abierta .nav-links{overflow-y:auto;overflow-x:hidden}
+.nav.abierta .nav-links::-webkit-scrollbar{width:5px}
+.nav.abierta .nav-links::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:3px}
+.nav-brand{flex-shrink:0}
+
+/* ── items ── */
+.nav-links a{
+  display:flex;align-items:center;gap:.7rem;
+  height:35px;padding:0 11px 0 14px;margin:1px 6px;
+  border-radius:5px;font-size:.81rem;position:relative;
+  overflow:visible;
+}
+.nav-links a.active::before{
+  content:'';position:absolute;left:-6px;top:6px;bottom:6px;width:3px;
+  background:var(--normal);border-radius:0 2px 2px 0;
+}
+/* el icono SVG que inyecta pucara-noc.js */
+.nav-links a > .ic{
+  width:19px;height:19px;flex-shrink:0;stroke-width:1.6;
+  stroke:currentColor;fill:none;
+}
+/* la etiqueta de texto */
+.nav-links a > .nav-lbl{
+  opacity:0;transition:opacity .12s;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;
+}
+.nav.abierta .nav-links a > .nav-lbl{opacity:1}
+
+.nav-caret{margin-left:auto;opacity:0;transition:opacity .12s;font-size:.62rem}
+.nav.abierta .nav-caret{opacity:.5}
+
+/* ── grupos ── */
+/* colapsada: al pasar el mouse sale un panel al costado */
+.nav:not(.abierta) .nav-group:hover .nav-group-menu{
+  display:flex;position:absolute;left:calc(var(--side-w) - 2px);top:0;
+  min-width:198px;background:var(--az2,#0A1420);
+  border:1px solid var(--noc-line);border-radius:0 7px 7px 0;
+  box-shadow:9px 6px 28px rgba(0,0,0,.5);
+  padding:.3rem 0 .4rem;z-index:1200;margin:0;
+}
+.nav-group{position:relative}
+.nav:not(.abierta) .nav-group:hover .nav-group-menu a{padding-left:13px}
+.nav:not(.abierta) .nav-group:hover .nav-group-menu a > .nav-lbl{opacity:1}
+
+/* expandida: acordeón (comportamiento original) */
+.nav.abierta .nav-group-menu{padding-left:0}
+.nav-group-menu a{
+  height:30px;padding:0 10px 0 42px;margin:0 6px;font-size:.775rem;
+  display:flex;align-items:center;gap:.55rem;
+}
+.nav-group-menu a > .ic{width:16px;height:16px;opacity:.85}
+
+/* ── pie: botón de fijar ── */
+.nav-fijar{
+  display:flex;align-items:center;gap:.7rem;
+  height:33px;padding:0 11px 0 14px;margin:2px 6px 4px;
+  border-radius:5px;border:0;width:calc(100% - 12px);
+  background:none;color:rgba(255,255,255,.5);
+  font-family:inherit;font-size:.78rem;text-align:left;cursor:pointer;
+  flex-shrink:0;
+}
+.nav-fijar:hover{background:rgba(255,255,255,.12);color:#fff}
+.nav-fijar svg{width:17px;height:17px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.6}
+.nav-fijar .nav-lbl{opacity:0;transition:opacity .12s;white-space:nowrap}
+.nav.abierta .nav-fijar .nav-lbl{opacity:1}
+body.nav-fija .nav-fijar{color:var(--normal)}
+
+/* contador de alertas visible aun colapsada */
+.nav-links a .nav-badge{
+  position:absolute;left:26px;top:4px;min-width:15px;height:15px;padding:0 4px;
+  background:var(--critico);color:#0A0F16;border:2px solid var(--az2,#0A1420);
+  border-radius:8px;font-size:.57rem;font-weight:800;
+  display:grid;place-items:center;line-height:1;
+}
+.nav.abierta .nav-links a .nav-badge{left:auto;right:10px;top:9px;border-color:transparent}
+
+/* ── pie del nav: notificaciones, usuario, tema, móvil, salir ── */
+.nav-right{
+  overflow:hidden;padding:0 0 .35rem;gap:0;
+  border-top:1px solid rgba(255,255,255,.08);margin-top:.3rem;
+  display:flex;flex-direction:column;align-items:stretch;flex-shrink:0;
+}
+.nav-right .notif-btn,
+.nav-right .nav-logout{
+  display:flex;align-items:center;gap:.7rem;
+  height:33px;min-height:33px;padding:0 11px 0 14px;margin:2px 6px 0;
+  border-radius:5px;width:calc(100% - 12px);
+  font-size:.78rem;text-align:left;white-space:nowrap;
+  overflow:hidden;position:relative;flex-shrink:0;
+}
+.nav-right .notif-btn{font-size:1rem;padding-left:15px}
+.nav-right .nav-logout > .ic,
+.nav-right .notif-btn > .ic{width:17px;height:17px;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.6}
+.nav-right .nav-logout > .nav-lbl{opacity:0;transition:opacity .12s;overflow:hidden;text-overflow:ellipsis}
+.nav.abierta .nav-right .nav-logout > .nav-lbl{opacity:1}
+/* nombre del usuario: solo con la barra abierta */
+.nav-right .nav-user{
+  opacity:0;transition:opacity .12s;
+  padding:.2rem 14px .1rem;font-size:.7rem;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;max-width:100%;
+}
+.nav.abierta .nav-right .nav-user{opacity:1}
+/* el badge de notificaciones sigue visible colapsada */
+.nav-right .notif-btn .notif-badge{
+  position:absolute;left:25px;top:3px;min-width:15px;height:15px;padding:0 3px;
+  border:2px solid var(--az2,#0A1420);border-radius:8px;
+  font-size:.56rem;font-weight:800;display:grid;place-items:center;line-height:1;
+}
+.nav.abierta .nav-right .notif-btn .notif-badge{left:auto;right:10px;top:9px;border-color:transparent}
+.nav-hamburger{display:none!important}
+
+/* ══════════ 2. ESPECTRO ÓPTICO ══════════ */
+.espectro-wrap{padding:.6rem .8rem .45rem}
+.espectro-tit{
+  display:flex;justify-content:space-between;align-items:baseline;
+  font-size:.6rem;color:var(--txt2);text-transform:uppercase;
+  letter-spacing:.09em;margin-bottom:.3rem;
+}
+.espectro{
+  display:flex;height:21px;border-radius:3px;overflow:hidden;
+  background:var(--noc-up);border:1px solid var(--noc-line-soft);
+}
+.espectro i{display:block;height:100%;position:relative;transition:filter .15s}
+.espectro i:hover{filter:brightness(1.3)}
+.espectro i[data-n]::after{
+  content:attr(data-n);position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.62rem;font-weight:700;color:rgba(7,14,23,.82);
+}
+.espectro-escala{
+  display:flex;justify-content:space-between;font-size:.56rem;
+  color:var(--txt2);opacity:.7;margin-top:.18rem;
+  font-family:ui-monospace,Menlo,Consolas,monospace;
+}
+
+/* ══════════ 3. TARJETAS DE OLT ══════════ */
+.olt-metricas{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  border-top:1px solid var(--noc-line-soft);
+  border-bottom:1px solid var(--noc-line-soft);
+}
+.olt-metrica{
+  padding:.5rem .35rem;text-align:center;
+  border-right:1px solid var(--noc-line-soft);
+}
+.olt-metrica:last-child{border-right:0}
+.olt-metrica .v{font-size:1rem;font-weight:650;line-height:1.15;display:block;
+  font-variant-numeric:tabular-nums}
+.olt-metrica .l{font-size:.57rem;color:var(--txt2);text-transform:uppercase;
+  letter-spacing:.08em;display:block;margin-top:.08rem}
+
+/* puertos PON */
+.pon-port{
+  border-top-width:2px!important;border-top-style:solid!important;
+  font-variant-numeric:tabular-nums;
+}
+.pon-port.p-optimo{border-top-color:var(--optimo)!important}
+.pon-port.p-normal{border-top-color:var(--normal)!important}
+.pon-port.p-alerta{border-top-color:var(--alerta)!important}
+.pon-port.p-critico{border-top-color:var(--critico)!important}
+.pon-port.p-vacio{border-top-color:var(--muerto)!important}
+
+/* números tabulares en todo lo que sea dato */
+.num,.olt-metrica .v,.espectro i::after{font-variant-numeric:tabular-nums}
+
+@media (prefers-reduced-motion:reduce){
+  .nav,.nav-links a > .nav-lbl,.espectro i{transition:none!important}
+}
+@media(max-width:820px){
+  /* en pantallas chicas la barra vuelve al comportamiento original */
+  :root{--side-w:210px}
+  .nav{width:var(--side-w)}
+  .nav-links a > .nav-lbl,.nav-fijar .nav-lbl{opacity:1!important}
+  .nav-fijar{display:none}
+}
+
+/* ══════════ 4. VISTA DE OLTs EN MOSAICO ══════════ */
+#olt-list.olt-mosaico{
+  display:grid;
+  grid-template-columns:1fr;      /* 1 por fila en pantallas chicas */
+  gap:13px;
+}
+@media(min-width:760px){ #olt-list.olt-mosaico{grid-template-columns:repeat(2,1fr)} }
+@media(min-width:1180px){ #olt-list.olt-mosaico{grid-template-columns:repeat(3,1fr)} }
+.olt-card.olt-noc{
+  min-width:0;display:flex;flex-direction:column;
+  background:var(--noc-panel);border:1px solid var(--noc-line);
+  border-radius:7px;overflow:hidden;margin:0!important;padding:0!important;
+  transition:border-color .15s ease,transform .15s ease;
+}
+.olt-card.olt-noc:hover{border-color:#2A4460;transform:translateY(-1px)}
+
+/* franja de estado */
+.olt-noc .olt-cab{
+  display:flex;align-items:center;gap:.5rem;
+  padding:.6rem .8rem .55rem;border-bottom:1px solid var(--noc-line-soft);
+  position:relative;
+}
+.olt-noc .olt-cab::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--e,var(--muerto));
+}
+.olt-noc.e-optimo{--e:var(--optimo)}
+.olt-noc.e-alerta{--e:var(--alerta)}
+.olt-noc.e-critico{--e:var(--critico)}
+.olt-noc.e-muerto{--e:var(--muerto)}
+.olt-noc.e-critico,.olt-noc.e-muerto{opacity:.85}
+
+.olt-noc .olt-pill{
+  font-size:.6rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+  padding:.15rem .42rem;border-radius:3px;white-space:nowrap;
+  background:color-mix(in srgb,var(--e) 16%,transparent);
+  color:var(--e);border:1px solid color-mix(in srgb,var(--e) 32%,transparent);
+}
+.olt-noc .olt-nom{
+  font-weight:650;font-size:.87rem;color:var(--txt);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.olt-noc .olt-ip{
+  font-size:.68rem;color:var(--txt2);margin-left:auto;
+  font-family:ui-monospace,Menlo,Consolas,monospace;
+  text-decoration:none;white-space:nowrap;
+}
+.olt-noc a.olt-ip:hover{color:var(--normal);text-decoration:underline}
+
+/* estado vacío / caído */
+.olt-noc .olt-vacia{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:.3rem;padding:1.15rem .8rem;text-align:center;
+}
+.olt-noc .olt-vacia-ico{font-size:1.05rem;color:var(--critico);letter-spacing:.3em}
+.olt-noc .olt-vacia-txt{font-size:.76rem;color:var(--txt2)}
+.olt-noc .olt-vacia-sub{font-size:.63rem;color:var(--txt2);opacity:.7;
+  font-family:ui-monospace,Menlo,Consolas,monospace}
+
+/* puertos PON dentro del mosaico */
+.olt-noc .pon-grid{
+  display:flex;gap:3px;padding:.45rem .8rem .5rem;margin-top:auto;
+  flex-wrap:nowrap;
+}
+.olt-noc .pon-port{
+  flex:1;min-width:0;background:var(--noc-up);
+  border:1px solid var(--noc-line-soft);border-radius:3px;
+  padding:.28rem .1rem .3rem;text-align:center;cursor:default;
+  transition:background .12s;
+}
+.olt-noc .pon-port[onclick]{cursor:pointer}
+.olt-noc .pon-port[onclick]:hover{background:#1A2E45}
+.olt-noc .pon-port .pn{font-size:.54rem;color:var(--txt2);letter-spacing:.03em}
+.olt-noc .pon-port .pv{font-size:.82rem;font-weight:650;line-height:1.2;color:var(--txt);
+  font-variant-numeric:tabular-nums}
+.olt-noc .pon-port.p-vacio .pv{color:var(--muerto)}
+.olt-noc .pon-brk{font-size:.55rem;display:flex;gap:3px;justify-content:center;margin-top:1px}
+.olt-noc .pon-brk .ok{color:var(--optimo)}
+.olt-noc .pon-brk .bad{color:var(--critico)}
+.olt-noc .pon-temp{font-size:.52rem;color:var(--txt2);margin-top:1px}
+
+/* acciones al pie */
+.olt-noc .olt-acciones{
+  display:flex;align-items:center;gap:.25rem;
+  padding:.45rem .7rem .55rem;border-top:1px solid var(--noc-line-soft);
+}
+.olt-noc .olt-acciones .btn{padding:.18rem .4rem;font-size:.68rem}
+.olt-noc .olt-sello{
+  margin-left:auto;font-size:.63rem;color:var(--txt2);opacity:.75;
+  font-family:ui-monospace,Menlo,Consolas,monospace;white-space:nowrap;
+}
+
+/* ══════════ 5. MAPA OSCURO ══════════ */
+body.mapa-oscuro .leaflet-container{background:#0A1017}
+/* popups, tooltips y controles acompañan el tema */
+body.mapa-oscuro .leaflet-popup-content-wrapper,
+body.mapa-oscuro .leaflet-popup-tip{
+  background:var(--noc-panel);color:var(--txt);
+  box-shadow:0 3px 16px rgba(0,0,0,.6);
+  border:1px solid var(--noc-line);
+}
+body.mapa-oscuro .leaflet-popup-content{color:var(--txt)}
+body.mapa-oscuro .leaflet-popup-content a{color:var(--normal)}
+body.mapa-oscuro .leaflet-popup-close-button{color:var(--txt2)!important}
+body.mapa-oscuro .leaflet-popup-close-button:hover{color:var(--txt)!important}
+body.mapa-oscuro .leaflet-tooltip{
+  background:var(--noc-panel);color:var(--txt);border:1px solid var(--noc-line);
+  box-shadow:0 2px 10px rgba(0,0,0,.5);
+}
+body.mapa-oscuro .leaflet-tooltip-top:before{border-top-color:var(--noc-line)}
+body.mapa-oscuro .leaflet-tooltip-bottom:before{border-bottom-color:var(--noc-line)}
+body.mapa-oscuro .leaflet-bar a,
+body.mapa-oscuro .leaflet-control-zoom a{
+  background:var(--noc-panel);color:var(--txt);border-color:var(--noc-line);
+}
+body.mapa-oscuro .leaflet-bar a:hover{background:var(--noc-up)}
+body.mapa-oscuro .leaflet-control-attribution{
+  background:rgba(10,16,23,.75)!important;color:var(--txt2)!important;
+}
+body.mapa-oscuro .leaflet-control-attribution a{color:var(--txt2)!important}
+/* el cluster y los marcadores se ven mejor con un halo tenue */
+body.mapa-oscuro .marker-cluster{box-shadow:0 0 0 3px rgba(79,179,170,.15)}
+
+/* ══════════ 6. COMPONENTES COMUNES ══════════
+   Estandariza lo que YA usa clases: tarjetas, tablas, botones, campos.
+   No toca los estilos escritos a mano dentro del JS. */
+.card{
+  background:var(--noc-panel);border:1px solid var(--noc-line);
+  border-radius:8px;
+}
+.stitle{
+  display:flex;align-items:center;gap:.5rem;
+  font-size:.9rem;font-weight:650;letter-spacing:.01em;
+  padding-bottom:.5rem;margin-bottom:.7rem;
+  border-bottom:1px solid var(--noc-line-soft);
+}
+/* tablas */
+.tbl-wrap{border-radius:6px;overflow:auto}
+.tbl-wrap table{width:100%;border-collapse:collapse;font-size:.83rem}
+.tbl-wrap thead th{
+  position:sticky;top:0;z-index:2;
+  background:var(--noc-up);color:var(--txt2);
+  font-size:.66rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+  text-align:left;padding:.5rem .6rem;
+  border-bottom:1px solid var(--noc-line);white-space:nowrap;
+}
+.tbl-wrap tbody td{
+  padding:.45rem .6rem;border-bottom:1px solid var(--noc-line-soft);
+  vertical-align:middle;
+}
+.tbl-wrap tbody tr:hover{background:var(--noc-up)}
+.tbl-wrap tbody tr:last-child td{border-bottom:0}
+/* números alineados en columna */
+.tbl-wrap td,.tbl-wrap th{font-variant-numeric:tabular-nums}
+
+/* campos */
+input,select,textarea{
+  background:var(--noc-up);color:var(--txt);
+  border:1px solid var(--noc-line);border-radius:5px;
+  padding:.4rem .55rem;font-family:inherit;font-size:.84rem;
+  transition:border-color .12s,box-shadow .12s;
+}
+input:focus,select:focus,textarea:focus{
+  outline:none;border-color:var(--normal);
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--normal) 22%,transparent);
+}
+input::placeholder,textarea::placeholder{color:var(--txt2);opacity:.55}
+label{font-size:.72rem;color:var(--txt2);letter-spacing:.02em}
+
+/* botones: mismo alto y radio en todos lados */
+.btn{
+  border-radius:5px;font-weight:600;letter-spacing:.01em;
+  transition:filter .12s,transform .06s;border:1px solid transparent;
+}
+.btn:hover{filter:brightness(1.12)}
+.btn:active{transform:translateY(1px)}
+.btn-xs{padding:.2rem .45rem;font-size:.7rem}
+.btn-sm{padding:.3rem .6rem;font-size:.78rem}
+
+/* chips / badges */
+.badge,.chip{
+  border-radius:20px;font-size:.68rem;font-weight:650;
+  padding:.14rem .5rem;letter-spacing:.02em;
+}
+/* estado vacío */
+.empty{
+  text-align:center;color:var(--txt2);padding:1.6rem 1rem;
+  font-size:.85rem;border:1px dashed var(--noc-line);border-radius:8px;
+}
+
+/* Motivo del estado de la OLT (por qué dice "revisar") */
+.olt-noc .olt-motivo{
+  padding:.35rem .8rem .4rem;
+  font-size:.68rem; line-height:1.35; color:var(--txt2);
+  background:color-mix(in srgb, var(--e,var(--muerto)) 8%, transparent);
+  border-bottom:1px solid var(--noc-line-soft);
+}

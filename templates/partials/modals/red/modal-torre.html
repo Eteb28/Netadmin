@@ -1,0 +1,72 @@
+<div id="modal-torre" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-torre')">
+<div class="modal" style="max-width:650px">
+  <div class="modal-hd"><span id="mtorre-title">Nueva Torre</span><button class="modal-close" onclick="closeModal('modal-torre')">×</button></div>
+  <div class="modal-bd">
+    <input type="hidden" id="mtorre-id">
+    <div class="form-row">
+      <div><label>Nombre *</label><input id="mtorre-nombre" placeholder="Paraná - Torre Norte"></div>
+      <div><label>Tipo</label>
+        <select id="mtorre-tipo" onchange="torreTypoChange()">
+          <option value="repetidora">Repetidora</option>
+          <option value="principal">Principal / Backbone</option>
+          <option value="ap">AP (Access Point)</option>
+          <option value="nodo">Nodo de distribución</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row" id="mtorre-prov-row" style="display:none">
+      <div><label>Proveedor de conectividad</label>
+        <select id="mtorre-proveedor">
+          <option value="">Sin proveedor asignado</option>
+          <option value="ARSAT">ARSAT</option>
+          <option value="Gigared">Gigared</option>
+          <option value="Telecom">Telecom</option>
+          <option value="Support">Support</option>
+          <option value="ENERSA">ENERSA</option>
+          <option value="LEVEL3">LEVEL3</option>
+        </select>
+      </div>
+      <div></div>
+    </div>
+    <div class="form-row">
+      <div><label>Localidad</label><input id="mtorre-localidad" placeholder="Paraná" list="loc-datalist"></div>
+      <div><label>Dirección</label><input id="mtorre-direccion" placeholder="Calle y número / lugar"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Latitud</label><input id="mtorre-lat" placeholder="-31.7345 o 31°44'04.2&quot;S"></div>
+      <div><label>Longitud</label><input id="mtorre-lng" placeholder="-60.5280 o 60°31'41.0&quot;W"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Altura (mts)</label><input id="mtorre-altura" type="number" placeholder="35"></div>
+      <div><label>Estado</label>
+        <select id="mtorre-estado">
+          <option value="activa">Activa</option>
+          <option value="inactiva">Inactiva (corte temporal)</option>
+          <option value="mantenimiento">En mantenimiento</option>
+          <option value="baja">Dada de baja (desmantelada)</option>
+        </select>
+      </div>
+    </div>
+    <div><label>IPs de equipos (separadas por coma)</label><input id="mtorre-ips" placeholder="192.168.1.1, 192.168.1.2..." style="font-family:monospace"></div>
+    <div style="margin-top:.5rem"><label>Orientaciones / sectores</label><input id="mtorre-orient" placeholder="Sector Norte 0°, Sector Sur 180°..."></div>
+    <div style="margin-top:.5rem"><label>Torre padre (de la que depende esta torre)</label>
+      <select id="mtorre-padre"><option value="">Ninguna (torre principal)</option></select>
+    </div>
+    <div style="margin-top:.5rem"><label>Observaciones</label><textarea id="mtorre-obs" rows="2" placeholder="Notas técnicas..."></textarea></div>
+
+    <!-- Inventario + valoración (solo en edición) -->
+    <div id="mtorre-inventario" style="display:none;margin-top:1rem;border-top:1px solid var(--brd);padding-top:.8rem">
+      <div id="mtorre-valoracion" style="margin-bottom:.7rem"></div>
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem">
+        <span style="font-weight:600;font-size:.9rem">🧰 Equipamiento instalado</span>
+        <button type="button" class="btn btn-prim btn-sm" style="margin-left:auto" onclick="abrirEquipoInv()">+ Agregar equipo</button>
+      </div>
+      <div id="mtorre-equipos-list"></div>
+    </div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-gray" onclick="closeModal('modal-torre')">Cancelar</button>
+    <button class="btn btn-prim" onclick="saveTorre()">💾 Guardar</button>
+  </div>
+</div>
+</div>

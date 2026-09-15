@@ -1,0 +1,33 @@
+<div class="page" id="page-clientes">
+  <div class="card">
+    <div class="stitle">👥 Clientes</div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.7rem">
+      <input type="text" id="cli-q" placeholder="Buscar por nombre, N° cliente, DNI, IP, teléfono..." style="flex:1;min-width:200px" oninput="debouncedLoadClientes()">
+      <select id="cli-estado" onchange="loadClientes()"><option value="">Todos los estados</option><option value="activo">Vigente</option><option value="suspendido">Suspendido</option><option value="pte_rescision">Pte. Rescisión</option><option value="rescision">Rescindido</option><option value="pte_instalacion">Pte. Instalación</option><option value="pte_cambio">Pte. Cambio</option><option value="pte_calculo">Pte. Cálculo</option><option value="borrador">Borrador</option><option value="baja">Baja</option></select>
+      <select id="cli-tipo" onchange="loadClientes()"><option value="">Todos los tipos</option><option value="fibra">Fibra</option><option value="inalambrico">Inalámbrico</option></select>
+      <select id="cli-loc" onchange="loadClientes()"><option value="">Todas las localidades</option></select>
+      <select id="cli-impagas" onchange="loadClientes()" title="Filtrar por meses con facturas impagas">
+        <option value="">Cualquier estado de pago</option>
+        <option value="1">1 factura impaga</option>
+        <option value="2">2 facturas impagas</option>
+        <option value="3plus">3 o más facturas impagas</option>
+      </select>
+      <button class="btn btn-prim" onclick="openModalCliente()">+ Nuevo</button>
+      <button class="btn btn-gray" id="btn-exportar-clientes" onclick="abrirExportarClientes()" style="display:none">⬇️ Exportar</button>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>Nombre</th><th>Teléfono</th><th>Localidad</th><th>Tipo</th>
+          <th>Plan</th><th>NAP</th><th>Estado</th><th>Último Pago</th><th>Acciones</th>
+        </tr></thead>
+        <tbody id="cli-tbody"></tbody>
+      </table>
+    </div>
+    <div style="display:flex;align-items:center;gap:.5rem;margin-top:.6rem;font-size:.78rem;color:var(--txt2)">
+      <button class="btn btn-gray btn-sm" id="cli-prev" onclick="cliPage--; loadClientes()">‹ Anterior</button>
+      <span id="cli-pag-info"></span>
+      <button class="btn btn-gray btn-sm" id="cli-next" onclick="cliPage++; loadClientes()">Siguiente ›</button>
+    </div>
+  </div>
+</div>

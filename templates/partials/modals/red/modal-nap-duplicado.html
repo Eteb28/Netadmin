@@ -1,0 +1,24 @@
+<div id="modal-nap-duplicado" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-nap-duplicado')">
+<div class="modal" style="max-width:520px">
+  <div class="modal-hd" style="background:#dc3545;color:#fff">
+    <span>⚠️ NAP duplicado</span>
+    <button class="modal-close" onclick="closeModal('modal-nap-duplicado')" style="color:#fff">×</button>
+  </div>
+  <div class="modal-bd">
+    <p id="napdup-mensaje" style="margin:.5rem 0 1rem 0;font-size:.95rem"></p>
+    <div style="background:var(--surf2);border-left:4px solid #dc3545;padding:.7rem .9rem;border-radius:4px;margin-bottom:1rem">
+      <div style="font-size:.78rem;color:var(--txt2,#8FA6BF);margin-bottom:.2rem">Ya cargado:</div>
+      <div id="napdup-conflicto-nombre" style="font-weight:600;font-size:1rem"></div>
+      <div id="napdup-conflicto-id" style="font-size:.8rem;color:var(--txt2,#8FA6BF);margin-top:.15rem"></div>
+    </div>
+    <p style="font-size:.85rem;color:var(--txt2,#8FA6BF);margin:0">
+      Para continuar, modificá los datos o editá la NAP existente.
+    </p>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-gray" onclick="closeModal('modal-nap-duplicado')">Cancelar</button>
+    <button class="btn btn-am" onclick="abrirFichaNapConflicto()">📋 Editar NAP existente</button>
+    <button id="napdup-btn-forzar" class="btn btn-rj" style="display:none" onclick="forzarGuardadoNap()">⚠️ Forzar guardado</button>
+  </div>
+</div>
+</div>

@@ -1,0 +1,16 @@
+<div id="modal-monitoreo" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-monitoreo')">
+<div class="modal" style="max-width:400px">
+  <div class="modal-hd"><span>Agregar dispositivo a monitorear</span><button class="modal-close" onclick="closeModal('modal-monitoreo')">×</button></div>
+  <div class="modal-bd">
+    <div><label>Nombre</label><input id="mmon-nombre" placeholder="Torre Norte — MikroTik"></div>
+    <div style="margin-top:.5rem"><label>Tipo</label>
+      <select id="mmon-tipo"><option value="torre">Torre</option><option value="olt">OLT</option><option value="router">Router</option><option value="switch">Switch</option><option value="otro">Otro</option></select>
+    </div>
+    <div style="margin-top:.5rem"><label>IP</label><input id="mmon-ip" placeholder="192.168.x.x" style="font-family:monospace"></div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-gray" onclick="closeModal('modal-monitoreo')">Cancelar</button>
+    <button class="btn btn-prim" onclick="saveMonitoreo()">➕ Agregar</button>
+  </div>
+</div>
+</div>

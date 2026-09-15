@@ -1,0 +1,28 @@
+<div id="modal-instalado" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-instalado')">
+<div class="modal" style="max-width:520px">
+  <div class="modal-hd" style="background:#2e7d32;color:#fff">
+    <span>✅ Marcar como instalado</span>
+    <button class="modal-close" onclick="closeModal('modal-instalado')" style="color:#fff">×</button>
+  </div>
+  <div class="modal-bd">
+    <input type="hidden" id="minst-cli-id">
+    <div id="minst-cli-info" style="background:var(--surf2);padding:.6rem;border-radius:6px;margin-bottom:.7rem;font-size:.85rem"></div>
+    <div class="form-row">
+      <div><label>Señal inicial (dBm) <span style="color:#8FA6BF;font-size:.78rem;font-weight:400">(FTTH)</span></label>
+        <input id="minst-senal" placeholder="-23.5" style="font-family:monospace">
+      </div>
+      <div><label>Técnico</label>
+        <select id="minst-tecnico"></select>
+      </div>
+    </div>
+    <div><label>Observaciones</label>
+      <textarea id="minst-obs" rows="3" placeholder="Notas de la instalación..."></textarea>
+    </div>
+    <div id="minst-duracion-info" style="margin-top:.5rem;font-size:.82rem;color:var(--txt2)"></div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-gray" onclick="closeModal('modal-instalado')">Cancelar</button>
+    <button class="btn btn-vd" onclick="confirmarInstalacion()">✅ Confirmar instalación</button>
+  </div>
+</div>
+</div>

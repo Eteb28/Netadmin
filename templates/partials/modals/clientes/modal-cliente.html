@@ -1,0 +1,275 @@
+<div id="modal-cliente" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-cliente')">
+<div class="modal" style="max-width:700px">
+  <div class="modal-hd"><span id="mcli-title">Nuevo Cliente</span><button class="modal-close" onclick="closeModal('modal-cliente')">×</button></div>
+  <div id="mcli-perm-aviso" style="display:none;background:#2A2410;border-bottom:1px solid #ffe082;padding:.4rem .8rem;font-size:.78rem;color:#7a6a00"></div>
+  <div class="modal-bd" style="max-height:70vh;overflow-y:auto">
+    <input type="hidden" id="mcli-id">
+    <div class="mcli-tabs" id="mcli-tabs" style="display:none">
+      <button type="button" class="mcli-tab active" data-pane="general" onclick="mcliTab('general')">👤 General</button>
+      <button type="button" class="mcli-tab" data-pane="admin" onclick="mcliTab('admin')">💳 Administrativo</button>
+      <button type="button" class="mcli-tab" data-pane="tecnico" onclick="mcliTab('tecnico')">🔧 Técnico</button>
+      <button type="button" class="mcli-tab" data-pane="monitoreo" onclick="mcliTab('monitoreo')">📈 Monitoreo</button>
+      <button type="button" class="mcli-tab" data-pane="reclamos" onclick="mcliTab('reclamos')">📋 Reclamos</button>
+    </div>
+<div class="mcli-pane" data-pane="general">
+<div class="form-row">
+      <div><label>N° de Cliente <span style="color:#8FA6BF;font-size:.78rem;font-weight:400">(formato 000000)</span></label>
+        <input id="mcli-nro" placeholder="000000" maxlength="6" style="font-family:monospace;letter-spacing:1px"
+               oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+      </div>
+      <div><label>Nombre completo *</label><input id="mcli-nombre" placeholder="Nombre y apellido"></div>
+    </div>
+    <div class="form-row">
+      <div><label>DNI</label><input id="mcli-dni" placeholder="Sin puntos"></div>
+      <div><label>Email</label><input id="mcli-email" type="email" placeholder="correo@..."></div>
+    </div>
+    
+    <!-- Teléfonos múltiples -->
+    <div style="margin:.6rem 0;padding:.5rem .7rem;background:var(--surf2);border-radius:6px">
+      <label style="display:flex;align-items:center;gap:.4rem;font-weight:600">
+        📞 Teléfonos
+        <button type="button" class="btn btn-prim btn-xs" style="margin-left:auto" onclick="agregarTelefono()">+ Agregar</button>
+      </label>
+      <div id="mcli-tels-list" style="margin-top:.4rem"></div>
+    </div>
+    
+    <div class="form-row">
+      <div><label>Dirección</label><input id="mcli-dir" placeholder="Calle y número"></div>
+      <div><label>Localidad</label><input id="mcli-loc" placeholder="Localidad" list="loc-datalist"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Latitud</label><input id="mcli-lat" placeholder="-31.7345 o 31°44'04.2&quot;S"></div>
+      <div><label>Longitud</label><input id="mcli-lng" placeholder="-60.5280 o 60°31'41.0&quot;W"></div>
+    </div>
+    
+    <div style="margin:.3rem 0 .6rem">
+      <button type="button" class="btn btn-gray btn-sm" id="mcli-btn-mapa" onclick="verClienteEnMapa()">🗺️ Ver en el mapa</button>
+      <span id="mcli-sin-coord" style="display:none;font-size:.75rem;color:var(--txt2);margin-left:.5rem">Sin coordenadas cargadas</span>
+    </div><div class="form-row">
+      <div><label>Tipo de servicio</label>
+        <select id="mcli-tipo" onchange="toggleFtthFields()">
+          <option value="inalambrico">Inalámbrico</option>
+          <option value="fibra">Fibra óptica</option>
+        </select>
+      </div>
+      <div><label>Estado</label>
+        <select id="mcli-estado" onchange="toggleFtthFields()">
+          <option value="activo">Vigente</option>
+          <option value="suspendido">Suspendido</option>
+          <option value="pte_rescision">Pte. Rescisión</option>
+          <option value="rescision">Rescindido</option>
+          <option value="baja">Baja</option>
+          <optgroup label="— Estados ERP —">
+            <option value="pte_instalacion">Pte. Instalación</option>
+            <option value="pte_cambio">Pte. Cambio</option>
+            <option value="pte_calculo">Pte. Cálculo</option>
+            <option value="pte_suspension">Pte. Suspensión</option>
+            <option value="borrador">Borrador</option>
+            <option value="calculado">Calculado</option>
+            <option value="sin_contrato">Sin contrato</option>
+          </optgroup>
+          <optgroup label="— Workflow local —">
+            <option value="venta">🆕 En venta</option>
+            <option value="activacion_pendiente">⚙️ Activación pendiente</option>
+            <option value="instalacion_pendiente">🛠️ Instalación pendiente</option>
+          </optgroup>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div><label>Plan / Abono</label>
+        <input id="mcli-plan" placeholder="Plan..." list="plan-datalist" onchange="onPlanChange()" oninput="onPlanChange()">
+      </div>
+      <div><label>Precio mensual <span style="color:#8FA6BF;font-size:.78rem;font-weight:400">(se autocompleta del plan)</span></label>
+        <input id="mcli-precio" type="number" step="0.01" placeholder="0.00">
+      </div>
+    </div>
+    <div class="form-row">
+      <div><label>Agente comercial</label>
+        <select id="mcli-agente">
+          <option value="">— Sin asignar —</option>
+        </select>
+      </div>
+      <div></div>
+    </div>
+    <div class="form-row">
+      <div><label>Fecha de alta</label><input id="mcli-fecha-alta" type="date"></div>
+      <div><label>Último pago</label><input id="mcli-ultimo-pago" type="date"></div>
+    </div>
+    <div><label>Observaciones</label><textarea id="mcli-obs" rows="2" placeholder="Notas adicionales..."></textarea></div>
+    
+    <div id="mcli-reclamos" style="display:none;margin:.5rem 0;padding:.7rem .9rem;border-radius:8px;background:var(--surf2);border:1px solid var(--brd)">
+        <div style="font-size:.75rem;color:var(--txt2);margin-bottom:.4rem">📋 Reclamos en Tero</div>
+        <div id="mcli-reclamos-cont"></div>
+      </div>
+        <div style="margin-top:.8rem;border-top:1px solid var(--brd);padding-top:.6rem">
+      <div style="font-weight:600;font-size:.85rem;margin-bottom:.5rem">📜 Historial del cliente</div>
+      <div id="mcli-gen-hist"></div>
+    </div>
+</div>
+
+<div class="mcli-pane" data-pane="admin" style="display:none">
+
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem">
+        <span style="font-weight:600">💳 Estado de cuenta</span>
+        <span style="font-size:.72rem;color:var(--txt2);margin-left:auto">Recibos y pagos desde el ERP</span>
+      </div>
+      <div id="mcli-admin-cont"><div style="color:var(--txt2);padding:.4rem">Cargando…</div></div>
+      <div style="font-size:.72rem;color:var(--txt2);margin-top:.8rem;padding-top:.6rem;border-top:1px dashed var(--brd)">
+        Deuda consolidada, vencimientos y facturación completa dependen de mapear la lógica de morosidad del ERP (consulta pendiente con Silix). Lo que se ve arriba son los recibos ya sincronizados.
+      </div>
+    </div>
+<div class="mcli-pane" data-pane="tecnico" style="display:none">
+<div class="form-row">
+      <div><label>Modelo equipo</label><input id="mcli-equipo-modelo" placeholder="RouterBoard, ONU..."></div>
+      <div><label>Marca</label><input id="mcli-equipo-marca" placeholder="MikroTik, ZTE..."></div>
+    </div>
+    <div class="form-row">
+      <div><label>Nº de serie</label><input id="mcli-serie" placeholder="Serial number"></div>
+      <div><label>MAC</label><input id="mcli-mac" placeholder="AA:BB:CC:DD:EE:FF" style="font-family:monospace"></div>
+      <div><label>IP asignada</label><input id="mcli-ip" placeholder="192.168.x.x"></div>
+    </div>
+    
+    <div style="margin:-.2rem 0 .6rem;display:flex;gap:.4rem">
+      <button type="button" class="btn btn-gray btn-xs" onclick="abrirIpGestion()" title="Abrir en el navegador">🔗 Abrir IP</button>
+      <button type="button" class="btn btn-gray btn-xs" onclick="copiarIpGestion()" title="Copiar al portapapeles">📋 Copiar IP</button>
+      <input id="mcli-ip-puerto" placeholder="Puerto (opc.)" type="number" min="1" max="65535" style="width:110px;padding:.2rem .4rem;font-size:.72rem" title="Puerto para abrir http://IP:PUERTO">
+    </div><div class="form-row">
+      <div><label>PPPoE Usuario</label><input id="mcli-pppoe-user" placeholder="usuario" style="font-family:monospace"></div>
+      <div><label>PPPoE Clave</label><input id="mcli-pppoe-pass" placeholder="clave" style="font-family:monospace"></div>
+    </div>
+
+    <!-- Configuración de red avanzada -->
+    <hr class="sep">
+    <div class="form-row">
+      <div><label>Modo del equipo</label>
+        <select id="mcli-modo-equipo">
+          <option value="">— Sin especificar —</option>
+          <option value="bridge">Bridge</option>
+          <option value="router">Router</option>
+        </select>
+      </div>
+      <div id="mcli-vlan-wrap"><label>VLAN</label>
+        <input id="mcli-vlan" placeholder="ej. 100" style="font-family:monospace">
+      </div>
+    </div>
+    <label style="display:flex;align-items:center;gap:.45rem;cursor:pointer;font-weight:600;margin-top:.5rem">
+      <input type="checkbox" id="mcli-tiene-ip-publica" onchange="mcliToggleIpPublica()">
+      🌐 Tiene IP pública o puertos asignados
+    </label>
+    <div id="mcli-ip-publica-fields" style="display:none;margin-top:.4rem">
+      <div class="form-row">
+        <div><label>IP pública asignada</label>
+          <input id="mcli-ip-publica" placeholder="ej. 200.45.12.34" style="font-family:monospace"></div>
+        <div><label>Puertos asignados</label>
+          <input id="mcli-puertos-asignados" placeholder="ej. 8080, 5060-5070" style="font-family:monospace"></div>
+      </div>
+      <div style="font-size:.7rem;color:var(--txt2);margin-top:.2rem">
+        Usá "Puertos asignados" cuando el cliente no tiene una IP dedicada sino
+        redirecciones sobre una IP compartida (separá con comas o usá rangos).
+      </div>
+    </div>
+    
+    <!-- Campos FTTH (ocultos para inalámbrico) -->
+    <div id="ftth-fields" style="display:none">
+      <hr class="sep">
+      <div style="font-weight:600;margin-bottom:.4rem">📡 Conectividad FTTH</div>
+      <div class="form-row">
+        <div><label>NAP <span id="mcli-nap-estado" style="font-size:.78rem;font-weight:600"></span></label><input id="mcli-nap" placeholder="Nombre de NAP" list="nap-datalist" onblur="verNapOcupacion()" onchange="verNapOcupacion()"></div>
+        <div></div>
+      </div>
+      <div class="form-row">
+        <div><label>OLT</label><input id="mcli-olt-nombre" placeholder="Nombre OLT" list="olt-datalist"></div>
+        <div><label>Puerto PON</label><input id="mcli-olt-puerto" placeholder="1, 2, 3..." type="number" min="1"></div>
+      </div>
+      
+      
+      <div class="form-row">
+        <div><label>Señal de instalación (dBm)</label>
+          <input id="mcli-senal-instalacion" placeholder="-23.5" style="font-family:monospace">
+        </div>
+        <div></div>
+      </div>
+    </div>
+    
+    <!-- Campos Inalámbrico -->
+    <div id="inal-fields" style="display:none">
+      <hr class="sep">
+      <div style="font-weight:600;margin-bottom:.4rem">📶 Conectividad Inalámbrica</div>
+      <div class="form-row">
+        <div><label>Torre enlazada</label>
+          <select id="mcli-torre">
+            <option value="">— Sin torre —</option>
+          </select>
+        </div>
+        <div><label>AP del cual toma servicio</label>
+          <input id="mcli-ap" placeholder="ej: AP-Norte-5GHz">
+        </div>
+      </div>
+    </div>
+    
+    <div style="margin:.5rem 0;padding:.5rem;background:#2A2410;border-radius:6px;display:none" id="mcli-necesita-nap-wrap">
+      <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-weight:600;color:#e65100">
+        <input type="checkbox" id="mcli-necesita-nap"> ⭐ Necesita NAP (resaltar en mapa)
+      </label>
+      <small style="color:#8FA6BF">Marca este cliente como pendiente de ampliación de red FTTH</small>
+    </div>
+    <!-- Info migración FTTH -->
+    <div id="ftth-potencial-info" style="display:none;margin-top:.5rem"></div>
+    <div style="margin-top:.9rem;border-top:1px solid var(--brd);padding-top:.7rem">
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem;flex-wrap:wrap">
+        <span style="font-weight:600;font-size:.85rem">🔧 Estado y chequeos del equipo</span>
+        <button type="button" class="btn btn-gray btn-xs" onclick="showHistTab('equipos','mcli-tec-equipos')" style="margin-left:auto">📦 Histórico de equipos</button>
+      </div>
+      <div id="mcli-tec-cont"></div>
+      <div id="mcli-tec-equipos" style="margin-top:.5rem"></div>
+    </div>
+    </div>
+
+<div class="mcli-pane" data-pane="monitoreo" style="display:none">
+
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;flex-wrap:wrap">
+        <span style="font-size:.82rem;color:var(--txt2);font-weight:600" id="mon-titulo">📈 Señal óptica histórica</span>
+        <div style="display:flex;gap:.2rem;margin-left:auto" id="mon-periodo-btns">
+          <button type="button" class="btn btn-gray btn-xs mon-per" data-h="6" onclick="cargarMonitoreoCliente(6)">6 h</button>
+          <button type="button" class="btn btn-gray btn-xs mon-per" data-h="24" onclick="cargarMonitoreoCliente(24)">24 h</button>
+          <button type="button" class="btn btn-prim btn-xs mon-per" data-h="168" onclick="cargarMonitoreoCliente(168)">7 días</button>
+          <button type="button" class="btn btn-gray btn-xs mon-per" data-h="720" onclick="cargarMonitoreoCliente(720)">30 días</button>
+        </div>
+      </div>
+      <div id="mon-grafico" style="min-height:180px"></div>
+      <div id="mon-inalambrico-aviso" style="display:none;background:var(--surf2);border:1px dashed var(--brd);border-radius:8px;padding:.8rem;margin-top:.6rem;font-size:.82rem;color:var(--txt2)">
+        El monitoreo de clientes inalámbricos (señal, SNR, CCQ) depende del poller de Ubiquiti, que todavía no está integrado.
+      </div><div id="mcli-senal-live" style="display:none;margin:.5rem 0;padding:.7rem .9rem;border-radius:8px;background:var(--surf2);border:1px solid var(--brd)">
+        <div style="font-size:.75rem;color:var(--txt2);margin-bottom:.4rem">📡 Señal óptica actual (leída por SNMP de la OLT)</div>
+        <div id="mcli-senal-contenido"></div>
+      </div><!-- Históricos (visibles solo en edición) -->
+    <div id="hist-section" style="display:none;margin-top:1rem;border-top:2px solid var(--brd);padding-top:.7rem">
+      <div style="display:flex;gap:.4rem;margin-bottom:.5rem;flex-wrap:wrap">
+        <button type="button" class="btn btn-gray btn-sm" onclick="showHistTab('senales','hist-tab-content')">📡 Señales registradas</button>
+        <button type="button" class="btn btn-gray btn-sm" onclick="showHistTab('tendencia','hist-tab-content')">📈 Tendencia</button>
+        <button type="button" class="btn btn-gray btn-sm" onclick="showHistTab('torre_ap','hist-tab-content')">🗼 Torre/AP</button>
+        <button type="button" class="btn btn-prim btn-sm" style="margin-left:auto" onclick="agregarSenalNueva()">+ Registrar señal</button>
+      </div>
+      <div id="hist-tab-content" style="background:var(--surf2);border-radius:6px;padding:.6rem;font-size:.85rem;max-height:280px;overflow-y:auto"></div>
+    </div>
+
+    </div>
+
+<!-- Historial y estadísticas de reclamos técnicos (fases 2 y 3, /api/v2) -->
+<div class="mcli-pane" data-pane="reclamos" style="display:none">
+  <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem">
+    <span style="font-weight:600">📋 Reclamos técnicos</span>
+    <span style="font-size:.72rem;color:var(--txt2);margin-left:auto">
+      Causa y resolución tipificadas. Los tickets de Tero se ven en la sección Reclamos.</span>
+  </div>
+  <div id="mcli-rec-cont"><div style="color:var(--txt2);padding:.4rem">Cargando…</div></div>
+</div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-gray" onclick="closeModal('modal-cliente')">Cancelar</button>
+    <button id="btn-cli-venta" class="btn btn-am" onclick="saveCliente(false, true)" style="display:none">🆕 Crear como venta nueva</button>
+    <button class="btn btn-prim" onclick="saveCliente()">💾 Guardar</button>
+  </div>
+</div>
+</div>

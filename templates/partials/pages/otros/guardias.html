@@ -1,0 +1,17 @@
+<div class="page" id="page-guardias">
+  <div class="card">
+    <div class="stitle">🗓️ Guardias de sábado
+      <select id="guardia-anio" onchange="loadGuardias()" style="margin-left:auto;padding:.35rem;border:1px solid var(--brd);border-radius:6px"></select>
+      <select id="guardia-area" onchange="loadGuardias()" style="padding:.35rem;border:1px solid var(--brd);border-radius:6px">
+        <option value="Mesa de Ayuda">Mesa de Ayuda</option>
+      </select>
+    </div>
+    <div style="font-size:.82rem;color:var(--txt2);margin-bottom:.5rem">
+      Titular + refuerzo por sábado. ⚠ marca conflicto con vacaciones autorizadas.
+    </div>
+    <div id="guardias-list">Cargando…</div>
+    <div id="guardias-generar-wrap" style="display:none;margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--brd)">
+      <button class="btn btn-prim btn-sm" onclick="openModalGenerarGuardias()">🔄 Generar rotación automática</button>
+    </div>
+  </div>
+</div>

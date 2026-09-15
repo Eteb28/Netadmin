@@ -1,0 +1,10 @@
+<div class="page" id="page-torres">
+  <div class="card">
+    <div class="stitle">🗼 Torres Repetidoras <button class="btn btn-prim btn-sm" style="margin-left:auto" onclick="openModalTorre()">+ Nueva Torre</button></div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.7rem">
+      <input type="text" id="torre-q" placeholder="🔍 Buscar torre..." style="flex:1;min-width:200px" oninput="debouncedLoadTorres()">
+      <select id="torre-estado-fil" onchange="loadTorres()"><option value="">Todos los estados</option><option value="activa">Activas</option><option value="inactiva">Inactivas</option><option value="mantenimiento">Mantenimiento</option></select>
+    </div>
+    <div id="torres-list"></div>
+  </div>
+</div>

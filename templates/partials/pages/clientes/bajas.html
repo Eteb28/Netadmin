@@ -1,0 +1,18 @@
+<div class="page" id="page-bajas">
+  <div class="card">
+    <div class="stitle">📋 Gestión de Bajas</div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.7rem">
+      <select id="baja-loc" onchange="loadBajas()"><option value="">Todas las localidades</option></select>
+      <select id="baja-tipo" onchange="loadBajas()"><option value="">Todos los tipos</option><option value="fibra">Fibra</option><option value="inalambrico">Inalámbrico</option></select>
+      <select id="baja-orden" onchange="loadBajas()"><option value="fecha">Ordenar por fecha</option><option value="localidad">Por localidad</option><option value="nombre">Por nombre</option></select>
+      <button class="btn btn-vd" onclick="exportBajas()">⬇ Exportar CSV</button>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Nombre</th><th>Teléfono</th><th>Localidad</th><th>Tipo</th><th>Equipo / Serie</th><th>NAP</th><th>F. Rescisión</th><th>Días pendiente</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody id="baja-tbody"></tbody>
+      </table>
+    </div>
+    <div style="margin-top:.5rem;font-size:.78rem;color:var(--txt2)">Total: <b id="baja-total">0</b> registros</div>
+  </div>
+</div>

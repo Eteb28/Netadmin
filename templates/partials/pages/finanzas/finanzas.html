@@ -1,0 +1,28 @@
+<div class="page" id="page-finanzas">
+  <div class="stitle" style="display:flex;justify-content:space-between;align-items:center">
+    <span>💰 Módulo Financiero</span>
+    <div style="display:flex;gap:.3rem">
+      <button class="btn btn-am btn-xs" onclick="loadMorososDetalle()">📋 Detalle morosos</button>
+      <button class="btn btn-gray btn-xs" onclick="exportMorososCSV()">📥 Exportar CSV</button>
+    </div>
+  </div>
+  <div id="fin-resumen"></div>
+  <div id="fin-instalaciones" style="margin-top:.8rem"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-top:.8rem" class="fin-layout">
+    <div id="fin-salud"></div>
+    <div id="fin-funnel"></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-top:.8rem" class="fin-layout">
+    <div id="fin-evolucion"></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-top:.8rem" class="fin-layout">
+    <div id="fin-morosidad"></div>
+    <div id="fin-planes"></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-top:.8rem" class="fin-layout">
+    <div id="fin-torres"></div>
+    <div id="fin-olts"></div>
+    <div id="fin-naps"></div>
+  </div>
+  <div id="fin-morosos-detalle" style="margin-top:.8rem"></div>
+</div>

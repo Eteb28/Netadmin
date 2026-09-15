@@ -1,0 +1,23 @@
+<div class="page" id="page-usuarios">
+  <div class="card" style="margin-bottom:.7rem">
+    <div class="stitle">🟢 Usuarios conectados <span id="conectados-cnt" style="margin-left:auto;font-size:.85rem;color:var(--txt2)"></span></div>
+    <div id="conectados-list"></div>
+  </div>
+  <div class="card">
+    <div class="stitle">👤 Usuarios del Sistema <button class="btn btn-prim btn-sm" style="margin-left:auto" onclick="openModalUsuario()">+ Nuevo</button></div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody id="usr-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:.7rem">
+    <div class="stitle">📊 Uso del sistema (últimos 30 días)</div>
+    <div style="font-size:.82rem;color:var(--txt2);margin-bottom:.5rem">
+      Aperturas por sección. Sirve para saber qué módulos se usan y cuáles están muertos. Los datos empiezan a acumularse desde que se activó el registro.
+    </div>
+    <div id="uso-sistema">Cargando…</div>
+  </div>
+</div>

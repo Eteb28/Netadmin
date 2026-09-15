@@ -1,0 +1,91 @@
+<div class="page" id="page-config">
+  <!-- Módulos del sistema (instalación) -->
+  <div class="card" style="margin-bottom:.8rem">
+    <div class="stitle">🧩 Módulos del sistema
+      <small style="margin-left:auto;color:var(--txt2);font-weight:400">Activá solo los módulos contratados/necesarios en esta instalación</small>
+    </div>
+    <div id="cfg-modulos" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.4rem"></div>
+    <button class="btn btn-prim btn-sm" style="margin-top:.6rem" onclick="guardarModulosSistema()">Guardar módulos</button>
+  </div>
+  <div class="grid-2" style="align-items:start;gap:.8rem">
+    <!-- Telegram -->
+    <div class="card">
+      <div class="stitle">🤖 Alertas Telegram</div>
+      <div class="alert-box info" style="margin-bottom:.7rem">
+        Creá un bot en <b>@BotFather</b>, obtenés el token y el Chat ID del canal donde querés recibir alertas.
+      </div>
+      <div><label>Token del Bot</label><input id="cfg-tg-token" type="password" placeholder="123456:ABC..."></div>
+      <div style="margin-top:.5rem"><label>Chat ID</label><input id="cfg-tg-chatid" placeholder="-100123456789"></div>
+      <div style="margin-top:.7rem;display:flex;gap:.4rem">
+        <button class="btn btn-prim" onclick="saveConfig()">💾 Guardar</button>
+        <button class="btn btn-gray" onclick="testTelegram()">🧪 Probar conexión</button>
+      </div>
+      <div id="cfg-tg-result" style="margin-top:.5rem"></div>
+    </div>
+    <!-- Monitoreo -->
+    <div class="card">
+      <div class="stitle">📡 Configuración de Monitoreo</div>
+      <div><label>Intervalo de monitoreo (segundos)</label><input id="cfg-mon-intervalo" type="number" value="60" min="30" max="3600"></div>
+      <div style="margin-top:.5rem"><label>Umbral alerta NAP (clientes)</label><input id="cfg-nap-umbral" type="number" value="6" min="1" max="32"></div>
+      <div style="margin-top:.5rem"><label>Timeout de ping (segundos)</label><input id="cfg-ping-timeout" type="number" value="2" min="1" max="10"></div>
+      <div style="margin-top:.7rem"><button class="btn btn-prim" onclick="saveConfig()">💾 Guardar</button></div>
+    </div>
+    <!-- UISP -->
+    <div class="card">
+      <div class="stitle">🌐 Integración UISP (Ubiquiti)</div>
+      <div class="alert-box warn" style="margin-bottom:.7rem">Ingresá los datos de tu servidor UISP para sincronizar dispositivos automáticamente.</div>
+      <div><label>URL del servidor UISP</label><input id="cfg-uisp-url" placeholder="https://uisp.tuempresa.com"></div>
+      <div style="margin-top:.5rem"><label>Token API de UISP</label><input id="cfg-uisp-token" type="password" placeholder="Token de acceso UISP"></div>
+      <div style="margin-top:.7rem;display:flex;gap:.4rem">
+        <button class="btn btn-prim" onclick="saveConfig()">💾 Guardar</button>
+        <button class="btn btn-gray" onclick="testUisp()">🧪 Probar</button>
+      </div>
+    </div>
+    <!-- Empresa -->
+    <div class="card">
+      <div class="stitle">🏢 Datos de la Empresa</div>
+      <div class="form-row">
+        <div><label>Razón Social</label><input id="cfg-razon" placeholder="Telecomunicaciones S.A."></div>
+        <div><label>Nombre de Fantasía</label><input id="cfg-fantasia" placeholder="ERLAN"></div>
+      </div>
+      <div class="form-row" style="margin-top:.4rem">
+        <div><label>CUIT</label><input id="cfg-cuit" placeholder="30-00000000-0" style="font-family:monospace"></div>
+        <div><label>Teléfono</label><input id="cfg-tel" placeholder="0343-..."></div>
+      </div>
+      <div style="margin-top:.4rem"><label>Dirección</label><input id="cfg-dir" placeholder="Calle y número, ciudad"></div>
+      <div style="margin-top:.4rem"><label>Email</label><input id="cfg-email" type="email" placeholder="info@erlan.com.ar"></div>
+      <div style="margin-top:.7rem"><button class="btn btn-prim" onclick="saveEmpresa()">💾 Guardar empresa</button></div>
+    </div>
+  </div>
+  
+  <!-- Catálogos de reclamos técnicos (fase 2) -->
+  <div class="card" style="margin-top:.8rem">
+    <div class="stitle">📋 Catálogos de reclamos
+      <label style="margin-left:auto;font-weight:400;font-size:.76rem;display:flex;align-items:center;gap:.3rem">
+        <input type="checkbox" id="cfg-cat-inactivos" onchange="loadCatalogosReclamos()"> Ver inactivas
+      </label>
+      <button class="btn btn-gray btn-sm" style="margin-left:.5rem" onclick="loadCatalogosReclamos()">🔄</button>
+    </div>
+    <div class="alert-box info" style="margin-bottom:.6rem;font-size:.78rem">
+      Las opciones de <b>causa</b> y <b>resolución</b> que se ofrecen al cargar un reclamo en la ficha del
+      cliente. Se administran acá para no tener que tocar el código cada vez que aparece un caso nuevo.
+      Desactivar una opción <b>no borra nada</b>: los reclamos históricos la siguen mostrando, sólo deja
+      de ofrecerse en los nuevos.
+    </div>
+    <div id="cfg-catalogos"><div style="color:var(--txt2);padding:.4rem">Cargando…</div></div>
+  </div>
+
+  <!-- Panel de Permisos (sprint v8.1) -->
+  <div class="card" style="margin-top:.8rem">
+    <div class="stitle">🔐 Permisos de Usuarios
+      <button class="btn btn-prim btn-sm" style="margin-left:auto" onclick="loadPanelPermisos()">🔄 Recargar</button>
+    </div>
+    <div class="alert-box info" style="margin-bottom:.6rem">
+      Solo administradores pueden modificar permisos. Cada usuario tiene acceso a los módulos marcados,
+      con las acciones permitidas. El template del rol pre-carga los permisos típicos pero podés ajustarlos.
+    </div>
+    <div id="permisos-panel-content">
+      <div style="text-align:center;padding:1rem;color:var(--txt2)">Cargando...</div>
+    </div>
+  </div>
+</div>

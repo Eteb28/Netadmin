@@ -1,0 +1,23 @@
+<div id="modal-nap-olt" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeModal('modal-nap-olt')">
+<div class="modal" style="max-width:420px">
+  <div class="modal-hd"><span id="mnolt-title">Asignar OLT/PON a NAP</span><button class="modal-close" onclick="closeModal('modal-nap-olt')">×</button></div>
+  <div class="modal-bd">
+    <input type="hidden" id="mnolt-nap-id">
+    <div class="alert-box info" id="mnolt-info" style="margin-bottom:.6rem"></div>
+    <div>
+      <label>OLT</label>
+      <select id="mnolt-olt">
+        <option value="">Sin OLT asignada</option>
+      </select>
+    </div>
+    <div style="margin-top:.5rem">
+      <label>Puerto PON</label>
+      <input id="mnolt-pon" type="number" min="1" max="32" placeholder="Nº de puerto">
+    </div>
+  </div>
+  <div class="modal-ft">
+    <button class="btn btn-gray" onclick="closeModal('modal-nap-olt')">Cancelar</button>
+    <button class="btn btn-prim" onclick="saveNapOlt()">💾 Asignar</button>
+  </div>
+</div>
+</div>
