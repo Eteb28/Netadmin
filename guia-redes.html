@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Guía gráfica y completa de redes cableadas e inalámbricas: IP, subredes, VLAN, conectores, fibra, protocolos, puertos, Wi-Fi, marcas y comandos. Pensada como láminas de referencia para ERLAN NetAdmin.">
+<title>Guía de Redes · ERLAN NetAdmin</title>
+<style>
+/* ========================================================
+   guia-redes.html — Guía gráfica de redes (láminas/banners)
+   Estética heredada de ERLAN NetAdmin (main.css)
+   Autocontenido: sin dependencias externas, liviano.
+   ======================================================== */
+
+/* ---- Tokens de color (modo claro, calca la app) ---- */
+:root{
+  --fondo:#e6eaf0; --card:#ffffff; --card2:#f3f6fa; --card3:#eef2f7;
+  --txt:#1a2a3a; --txt2:#4a5c6a; --brd:#c2ccda; --brd2:#d7dee8;
+  /* familias de acento base de la app */
+  --az:#2d5a8e; --az2:#1a3d6b;
+  --sombra:0 2px 10px rgba(20,40,70,.10);
+  --sombra-h:0 8px 24px rgba(20,40,70,.16);
+  --radio:14px;
+}
+/* ---- Modo oscuro (respeta preferencia del SO, anulable) ---- */
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --fondo:#0e1620; --card:#16202c; --card2:#1b2735; --card3:#20303f;
+    --txt:#e7edf4; --txt2:#9fb2c4; --brd:#2b3a4b; --brd2:#33455a;
+    --sombra:0 2px 12px rgba(0,0,0,.45); --sombra-h:0 8px 26px rgba(0,0,0,.55);
+  }
+}
+:root[data-theme="dark"]{
+  --fondo:#0e1620; --card:#16202c; --card2:#1b2735; --card3:#20303f;
+  --txt:#e7edf4; --txt2:#9fb2c4; --brd:#2b3a4b; --brd2:#33455a;
+  --sombra:0 2px 12px rgba(0,0,0,.45); --sombra-h:0 8px 26px rgba(0,0,0,.55);
+}
+
+/* ---- Clases de acento por lámina (--acc claro, --acc2 oscuro) ---- */
+.a-azul {--acc:#2d5a8e;--acc2:#1a3d6b}
+.a-teal {--acc:#0f6e78;--acc2:#0a4f57}
+.a-mora {--acc:#5b3a8e;--acc2:#432a68}
+.a-cielo{--acc:#3f76b0;--acc2:#2d5a8e}
+.a-ambar{--acc:#bf6d1e;--acc2:#8c4a12}
+.a-verde{--acc:#2a6632;--acc2:#1e4a25}
+.a-cian {--acc:#147a8c;--acc2:#0d5a67}
+.a-rojo {--acc:#b03030;--acc2:#8b1f1f}
+.a-viol {--acc:#7a3f9e;--acc2:#5b2d78}
+.a-gris {--acc:#4a5c6a;--acc2:#33414d}
+.a-verd2{--acc:#317a3d;--acc2:#204f29}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:70px}
+body{
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  background:var(--fondo);color:var(--txt);
+  line-height:1.5;font-size:15px;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ---- Barra superior fija ---- */
+.top{
+  position:sticky;top:0;z-index:900;
+  background:#1a3d6b;color:#fff;
+  display:flex;align-items:center;gap:.6rem;
+  padding:.55rem 1rem;box-shadow:0 2px 8px rgba(0,0,0,.35);
+}
+.top .brand{font-weight:800;letter-spacing:.5px;white-space:nowrap}
+.top .brand small{font-weight:300;opacity:.75;margin-left:4px}
+.top .sep{flex:1}
+.top button{
+  background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.18);
+  border-radius:8px;padding:.4rem .7rem;cursor:pointer;font-size:.82rem;
+  white-space:nowrap;transition:.15s;
+}
+.top button:hover{background:rgba(255,255,255,.26)}
+
+.wrap{max-width:1120px;margin:0 auto;padding:22px 16px 60px}
+
+/* ---- Portada ---- */
+.cover{
+  background:linear-gradient(135deg,#1a3d6b,#2d5a8e 55%,#4d7fb5);
+  color:#fff;border-radius:var(--radio);padding:34px 28px;
+  box-shadow:var(--sombra);margin-bottom:22px;position:relative;overflow:hidden;
+}
+.cover::after{
+  content:"";position:absolute;right:-40px;top:-40px;width:220px;height:220px;
+  background:radial-gradient(circle,rgba(255,255,255,.18),transparent 70%);
+}
+.cover h1{font-size:2rem;line-height:1.15;margin-bottom:.4rem}
+.cover p{opacity:.92;max-width:70ch}
+.cover .meta{margin-top:14px;display:flex;flex-wrap:wrap;gap:8px}
+.cover .meta span{
+  background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.22);
+  padding:.25rem .6rem;border-radius:20px;font-size:.75rem;
+}
+
+/* ---- Índice ---- */
+.toc{
+  background:var(--card);border:1px solid var(--brd);border-radius:var(--radio);
+  padding:16px 18px;margin-bottom:26px;box-shadow:var(--sombra);
+}
+.toc h2{font-size:.95rem;color:var(--txt2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
+.toc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:8px}
+.toc-grid a{
+  display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--txt);
+  background:var(--card2);border:1px solid var(--brd);border-radius:10px;
+  padding:.55rem .7rem;font-size:.86rem;transition:.15s;
+}
+.toc-grid a:hover{border-color:var(--az);background:var(--card3);transform:translateY(-1px)}
+.toc-grid a b{color:var(--az);font-variant-numeric:tabular-nums}
+.toc-grid a .ico{font-size:1.15rem;line-height:1}
+
+/* ---- Lámina ---- */
+.lamina{
+  background:var(--card);border:1px solid var(--brd);border-radius:var(--radio);
+  box-shadow:var(--sombra);margin-bottom:26px;overflow:hidden;
+}
+.lam-head{
+  background:linear-gradient(120deg,var(--acc2),var(--acc));
+  color:#fff;padding:16px 20px;display:flex;align-items:center;gap:14px;
+}
+.lam-head .ico{font-size:2rem;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.3))}
+.lam-head .num{
+  margin-left:auto;font-weight:800;font-size:1.4rem;opacity:.6;
+  background:rgba(255,255,255,.12);border-radius:10px;padding:.1rem .6rem;
+}
+.lam-head h3{font-size:1.25rem;line-height:1.1}
+.lam-head p{font-size:.82rem;opacity:.9;margin-top:2px}
+.lam-body{padding:18px 20px 22px}
+
+/* ---- Rejillas y bloques ---- */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.block{
+  background:var(--card2);border:1px solid var(--brd);border-radius:12px;
+  padding:13px 15px;border-left:4px solid var(--acc);
+}
+.block h4{
+  font-size:.95rem;margin-bottom:9px;display:flex;align-items:center;gap:7px;
+  color:var(--txt);
+}
+.block h4 .dot{width:9px;height:9px;border-radius:50%;background:var(--acc);flex-shrink:0}
+.block p{font-size:.86rem;color:var(--txt2);margin-bottom:6px}
+.block ul{list-style:none;font-size:.85rem}
+.block ul li{padding:3px 0 3px 18px;position:relative;color:var(--txt)}
+.block ul li::before{content:"▸";position:absolute;left:0;color:var(--acc);font-weight:700}
+.full{grid-column:1/-1}
+.note{
+  font-size:.8rem;color:var(--txt2);background:var(--card3);
+  border-radius:8px;padding:.5rem .7rem;margin-top:10px;border:1px dashed var(--brd2);
+}
+.note b{color:var(--txt)}
+
+/* ---- Tablas ---- */
+.tbl-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--brd);margin-top:4px}
+table{border-collapse:collapse;width:100%;font-size:.82rem;background:var(--card)}
+thead th{
+  background:var(--acc);color:#fff;text-align:left;padding:.5rem .6rem;
+  font-weight:600;white-space:nowrap;position:sticky;top:0;
+}
+tbody td{padding:.44rem .6rem;border-top:1px solid var(--brd2);vertical-align:top}
+tbody tr:nth-child(even){background:var(--card2)}
+td code,p code,li code{
+  background:var(--card3);border:1px solid var(--brd2);border-radius:5px;
+  padding:.05rem .35rem;font-family:'Consolas',ui-monospace,monospace;font-size:.9em;
+}
+.mono{font-family:'Consolas',ui-monospace,monospace}
+
+/* ---- Chips / etiquetas ---- */
+.chip{
+  display:inline-block;background:var(--acc);color:#fff;border-radius:20px;
+  padding:.12rem .55rem;font-size:.72rem;font-weight:600;margin:2px 2px 2px 0;white-space:nowrap;
+}
+.chip.ghost{background:transparent;color:var(--acc);border:1px solid var(--acc)}
+.badge{border-radius:6px;padding:.08rem .45rem;font-size:.72rem;font-weight:700;color:#fff}
+.b-ok{background:#2a6632}.b-warn{background:#bf6d1e}.b-bad{background:#b03030}.b-info{background:#2d5a8e}
+
+/* ---- Pila OSI ---- */
+.osi{display:flex;flex-direction:column;gap:4px;margin-top:4px}
+.osi .cap{
+  display:flex;align-items:center;gap:10px;color:#fff;border-radius:8px;
+  padding:.5rem .7rem;font-size:.83rem;
+}
+.osi .cap .n{font-weight:800;background:rgba(255,255,255,.22);border-radius:6px;padding:0 .5rem;min-width:26px;text-align:center}
+.osi .cap .nm{font-weight:700;min-width:120px}
+.osi .cap .ej{opacity:.92;font-size:.78rem}
+
+/* ---- Pinout RJ45 ---- */
+.pinout{margin-top:6px}
+.pinout .lbl{font-size:.8rem;font-weight:700;margin:8px 0 4px}
+.pins{display:flex;gap:3px}
+.pin{flex:1;min-width:0;text-align:center;font-size:.6rem;color:#243}
+.pin .sw{height:34px;border-radius:4px 4px 0 0;border:1px solid rgba(0,0,0,.25);position:relative;overflow:hidden}
+.pin .sw.stripe{background:linear-gradient(135deg,#fff 0 46%,var(--c) 46% 54%,#fff 54%)}
+.pin small{display:block;font-size:.62rem;margin-top:2px;color:var(--txt2)}
+.pin b{display:block;font-size:.6rem;color:var(--txt)}
+
+/* ---- Canales Wi-Fi ---- */
+.chan{position:relative;height:74px;background:var(--card3);border:1px solid var(--brd);border-radius:10px;margin-top:8px;overflow:hidden}
+.chan .band{position:absolute;bottom:16px;height:34px;border-radius:18px;opacity:.55;top:auto}
+.chan .lab{position:absolute;bottom:0;font-size:.68rem;color:var(--txt2);transform:translateX(-50%)}
+.chan .ch{position:absolute;top:6px;font-size:.66rem;font-weight:700;transform:translateX(-50%)}
+
+/* ---- Swatch de color de cable/fibra ---- */
+.legend-colors{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.legend-colors span{display:flex;align-items:center;gap:6px;font-size:.78rem;color:var(--txt2)}
+.legend-colors i{width:16px;height:16px;border-radius:4px;border:1px solid rgba(0,0,0,.2)}
+
+/* ---- SVG diagramas ---- */
+.diag{width:100%;height:auto;background:var(--card3);border:1px solid var(--brd);border-radius:10px;margin-top:6px}
+.diag text{fill:var(--txt2);font-family:'Segoe UI',sans-serif}
+.diag .nodo{fill:var(--acc)}
+.diag .linea{stroke:var(--acc);stroke-width:2;fill:none}
+.diag .lbl{font-size:11px;fill:var(--txt)}
+
+/* ---- Aviso final ---- */
+.foot{
+  text-align:center;color:var(--txt2);font-size:.8rem;margin-top:10px;
+  padding-top:16px;border-top:1px solid var(--brd);
+}
+
+/* ---- Responsive ---- */
+@media (max-width:820px){
+  .grid2,.grid3{grid-template-columns:1fr}
+  .cover h1{font-size:1.55rem}
+  body{font-size:14px}
+}
+
+/* ---- Impresión: 1 lámina por hoja ---- */
+@media print{
+  :root{--fondo:#fff;--card:#fff;--card2:#f6f8fb;--card3:#eef2f7;--txt:#111;--txt2:#333;--brd:#bbb;--brd2:#ccc;--sombra:none}
+  .top,.print-hint{display:none!important}
+  .wrap{max-width:100%;padding:0}
+  .cover{margin:0 0 8mm}
+  .toc{page-break-after:always}
+  .lamina{page-break-inside:avoid;page-break-after:always;box-shadow:none;border:1px solid #999;margin:0 0 6mm}
+  thead th{position:static}
+  a{color:inherit;text-decoration:none}
+  @page{size:A4 portrait;margin:10mm}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════ BARRA SUPERIOR ═══════════ -->
+<div class="top">
+  <span class="brand">ERLAN <small>NetAdmin · Guía de Redes</small></span>
+  <span class="sep"></span>
+  <button onclick="toggleTema()" id="btnTema">🌓 Tema</button>
+  <button onclick="window.print()">🖨️ Imprimir / PDF</button>
+</div>
+
+<div class="wrap">
+
+  <!-- ═══════════ PORTADA ═══════════ -->
+  <div class="cover">
+    <h1>🌐 Guía Gráfica de Redes</h1>
+    <p>Referencia rápida y completa de redes <b>cableadas e inalámbricas</b>: direccionamiento IP, subredes, VLAN, conectores, fibra, protocolos, puertos, Wi-Fi, marcas y comandos. Diseñada como <b>láminas imprimibles</b> para tener a mano en el rack, el taller o la mochila.</p>
+    <div class="meta">
+      <span>📅 Rev. 2026</span>
+      <span>📄 11 láminas</span>
+      <span>🖨️ Imprime 1 lámina por hoja (A4)</span>
+      <span>📡 Enfoque ISP / WISP / FTTH</span>
+    </div>
+  </div>
+
+  <!-- ═══════════ ÍNDICE ═══════════ -->
+  <nav class="toc">
+    <h2>Índice de láminas</h2>
+    <div class="toc-grid">
+      <a href="#l1"><span class="ico">🧱</span><span><b>01</b> · Modelo OSI y TCP/IP</span></a>
+      <a href="#l2"><span class="ico">🔢</span><span><b>02</b> · Direccionamiento IPv4</span></a>
+      <a href="#l3"><span class="ico">✂️</span><span><b>03</b> · Subredes y CIDR</span></a>
+      <a href="#l4"><span class="ico">🆕</span><span><b>04</b> · IPv6 esencial</span></a>
+      <a href="#l5"><span class="ico">🏷️</span><span><b>05</b> · VLAN y troncales</span></a>
+      <a href="#l6"><span class="ico">🔌</span><span><b>06</b> · Cableado de cobre</span></a>
+      <a href="#l7"><span class="ico">💡</span><span><b>07</b> · Fibra óptica y FTTH</span></a>
+      <a href="#l8"><span class="ico">📨</span><span><b>08</b> · Protocolos y puertos</span></a>
+      <a href="#l9"><span class="ico">📶</span><span><b>09</b> · Wi-Fi e inalámbrico</span></a>
+      <a href="#l10"><span class="ico">🖥️</span><span><b>10</b> · Dispositivos y marcas</span></a>
+      <a href="#l11"><span class="ico">🗺️</span><span><b>11</b> · Topologías y comandos</span></a>
+    </div>
+    <div class="note print-hint">💡 <b>Tip:</b> usá <b>🖨️ Imprimir / PDF</b> y elegí "Guardar como PDF". Cada lámina sale en una hoja A4 lista para plastificar o pegar como banner.</div>
+  </nav>
+
+  <!-- ═══════════ LÁMINA 1 · OSI / TCP-IP ═══════════ -->
+  <section class="lamina a-azul" id="l1">
+    <header class="lam-head">
+      <span class="ico">🧱</span>
+      <div><h3>Modelo OSI y TCP/IP</h3><p>Cómo se apilan los protocolos: de los bits al clic del usuario</p></div>
+      <span class="num">01</span>
+    </header>
+    <div class="lam-body">
+      <div class="block full">
+        <h4><span class="dot"></span>Las 7 capas OSI (arriba = software, abajo = cable)</h4>
+        <div class="osi">
+          <div class="cap" style="background:#5b3a8e"><span class="n">7</span><span class="nm">Aplicación</span><span class="ej">HTTP · HTTPS · DNS · DHCP · FTP · SMTP · SNMP</span></div>
+          <div class="cap" style="background:#6a4a95"><span class="n">6</span><span class="nm">Presentación</span><span class="ej">TLS/SSL · cifrado · JPEG · ASCII · compresión</span></div>
+          <div class="cap" style="background:#7a5aa0"><span class="n">5</span><span class="nm">Sesión</span><span class="ej">Establece/mantiene diálogos · RPC · NetBIOS</span></div>
+          <div class="cap" style="background:#2a6632"><span class="n">4</span><span class="nm">Transporte</span><span class="ej">TCP · UDP · puertos · segmentos</span></div>
+          <div class="cap" style="background:#2d5a8e"><span class="n">3</span><span class="nm">Red</span><span class="ej">IP · ICMP · IPsec · enrutamiento · paquetes</span></div>
+          <div class="cap" style="background:#8c4a12"><span class="n">2</span><span class="nm">Enlace</span><span class="ej">Ethernet · MAC · ARP · 802.1Q (VLAN) · switch</span></div>
+          <div class="cap" style="background:#4a5c6a"><span class="n">1</span><span class="nm">Física</span><span class="ej">Cable · fibra · RJ45 · radio 802.11 · bits</span></div>
+        </div>
+      </div>
+      <div class="grid2" style="margin-top:16px">
+        <div class="block">
+          <h4><span class="dot"></span>TCP/IP (el modelo real de Internet)</h4>
+          <ul>
+            <li><b>Aplicación</b> → capas OSI 5-6-7</li>
+            <li><b>Transporte</b> → OSI 4 (TCP/UDP)</li>
+            <li><b>Internet</b> → OSI 3 (IP)</li>
+            <li><b>Acceso a red</b> → OSI 1-2 (Ethernet/Wi-Fi)</li>
+          </ul>
+          <div class="note"><b>Regla mental:</b> el problema casi siempre está en <b>capa 1</b> (¿está conectado?), <b>capa 3</b> (¿IP/gateway bien?) o <b>capa 7</b> (¿el servicio responde?). Diagnosticá de abajo hacia arriba.</div>
+        </div>
+        <div class="block">
+          <h4><span class="dot"></span>Unidad de datos (PDU) y dónde vive cada equipo</h4>
+          <ul>
+            <li>Capa 1: <b>bits</b> → hub, repetidor, transceiver</li>
+            <li>Capa 2: <b>trama (frame)</b> → switch, AP, bridge</li>
+            <li>Capa 3: <b>paquete</b> → router, switch L3, firewall</li>
+            <li>Capa 4: <b>segmento (TCP)</b> / datagrama (UDP)</li>
+            <li>Capa 5-7: <b>datos</b> → servidores, PCs, apps</li>
+          </ul>
+          <p style="margin-top:6px"><span class="chip ghost">Mnemotecnia</span> "<b>F</b>íjate <b>E</b>n <b>R</b>edes <b>T</b>odo <b>S</b>e <b>P</b>uede <b>A</b>rreglar" = Física, Enlace, Red, Transporte, Sesión, Presentación, Aplicación.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ LÁMINA 2 · IPv4 ═══════════ -->
+  <section class="lamina a-teal" id="l2">
+    <header class="lam-head">
+      <span class="ico">🔢</span>
+      <div><h3>Direccionamiento IPv4</h3><p>32 bits · 4 octetos (0-255) · notación decimal punteada</p></div>
+      <span class="num">02</span>
+    </header>
+    <div class="lam-body">
+      <div class="grid2">
+        <div class="block">
+          <h4><span class="dot"></span>Rangos privados — RFC 1918 (¡memorizar!)</h4>
+          <div class="tbl-wrap"><table><thead><tr><th>Bloque</th><th>Rango</th><th>Uso típico</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">10.0.0.0/8</td><td class="mono">10.0.0.0 – 10.255.255.255</td><td>Redes grandes / ISP interno</td></tr>
+            <tr><td class="mono">172.16.0.0/12</td><td class="mono">172.16.0.0 – 172.31.255.255</td><td>Empresas medianas</td></tr>
+            <tr><td class="mono">192.168.0.0/16</td><td class="mono">192.168.0.0 – 192.168.255.255</td><td>Hogar / oficinas chicas</td></tr>
+          </tbody></table></div>
+          <div class="note"><b>WISP:</b> los clientes detrás de NAT suelen recibir estas IP; hacia Internet salen con IP pública compartida.</div>
+        </div>
+        <div class="block">
+          <h4><span class="dot"></span>Clases históricas (contexto, ya no se asignan así)</h4>
+          <div class="tbl-wrap"><table><thead><tr><th>Clase</th><th>1er octeto</th><th>Máscara</th><th>Uso</th></tr></thead>
+          <tbody>
+            <tr><td><b>A</b></td><td class="mono">1 – 126</td><td class="mono">/8</td><td>Enormes</td></tr>
+            <tr><td><b>B</b></td><td class="mono">128 – 191</td><td class="mono">/16</td><td>Medianas</td></tr>
+            <tr><td><b>C</b></td><td class="mono">192 – 223</td><td class="mono">/24</td><td>Chicas</td></tr>
+            <tr><td><b>D</b></td><td class="mono">224 – 239</td><td>—</td><td>Multicast</td></tr>
+            <tr><td><b>E</b></td><td class="mono">240 – 255</td><td>—</td><td>Experimental</td></tr>
+          </tbody></table></div>
+          <p style="margin-top:6px"><span class="badge b-info">127</span> queda reservado para <b>loopback</b>, por eso la clase A llega solo a 126.</p>
+        </div>
+      </div>
+
+      <div class="block full" style="margin-top:16px">
+        <h4><span class="dot"></span>Direcciones especiales que hay que reconocer al toque</h4>
+        <div class="tbl-wrap"><table><thead><tr><th>Dirección / bloque</th><th>Nombre</th><th>Qué significa</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">127.0.0.1</td><td>Loopback</td><td>"Yo mismo" (localhost). Probar la pila TCP/IP local.</td></tr>
+          <tr><td class="mono">169.254.0.0/16</td><td>APIPA / Link-local</td><td>El equipo <b>no recibió DHCP</b>. Síntoma clásico de "sin internet".</td></tr>
+          <tr><td class="mono">100.64.0.0/10</td><td>CGNAT (RFC 6598)</td><td>NAT del operador. <b>Muy usado por ISP/WISP</b> por falta de IPv4 públicas.</td></tr>
+          <tr><td class="mono">0.0.0.0</td><td>Ruta por defecto / "cualquiera"</td><td>Como origen: "sin IP". Como destino/ruta: default gateway.</td></tr>
+          <tr><td class="mono">255.255.255.255</td><td>Broadcast limitado</td><td>A todos los hosts del segmento local.</td></tr>
+          <tr><td class="mono">224.0.0.0/4</td><td>Multicast</td><td>A un grupo (IPTV, OSPF, streaming).</td></tr>
+        </tbody></table></div>
+      </div>
+
+      <div class="grid3" style="margin-top:16px">
+        <div class="block"><h4><span class="dot"></span>Pública vs privada</h4><p><b>Pública:</b> única en Internet, enrutable.<br><b>Privada:</b> se repite en cada red, necesita <b>NAT</b> para salir.</p></div>
+        <div class="block"><h4><span class="dot"></span>Estática vs dinámica</h4><p><b>Estática:</b> fija a mano (servidores, routers, cámaras).<br><b>Dinámica:</b> la reparte el <b>DHCP</b> (clientes).</p></div>
+        <div class="block"><h4><span class="dot"></span>Tipos de envío</h4><p><b>Unicast</b> 1→1 · <b>Broadcast</b> 1→todos · <b>Multicast</b> 1→grupo · <b>Anycast</b> 1→el más cercano.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ LÁMINA 3 · SUBREDES ═══════════ -->
+  <section class="lamina a-mora" id="l3">
+    <header class="lam-head">
+      <span class="ico">✂️</span>
+      <div><h3>Subredes y CIDR</h3><p>Partir una red en trozos · máscaras · cálculo de hosts</p></div>
+      <span class="num">03</span>
+    </header>
+    <div class="lam-body">
+      <div class="block full">
+        <h4><span class="dot"></span>Tabla CIDR (la que más se consulta)</h4>
+        <div class="tbl-wrap"><table><thead><tr><th>CIDR</th><th>Máscara</th><th>Direcciones</th><th>Hosts útiles</th><th>Wildcard (ACL)</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">/24</td><td class="mono">255.255.255.0</td><td>256</td><td><b>254</b></td><td class="mono">0.0.0.255</td></tr>
+          <tr><td class="mono">/25</td><td class="mono">255.255.255.128</td><td>128</td><td>126</td><td class="mono">0.0.0.127</td></tr>
+          <tr><td class="mono">/26</td><td class="mono">255.255.255.192</td><td>64</td><td>62</td><td class="mono">0.0.0.63</td></tr>
+          <tr><td class="mono">/27</td><td class="mono">255.255.255.224</td><td>32</td><td>30</td><td class="mono">0.0.0.31</td></tr>
+          <tr><td class="mono">/28</td><td class="mono">255.255.255.240</td><td>16</td><td>14</td><td class="mono">0.0.0.15</td></tr>
+          <tr><td class="mono">/29</td><td class="mono">255.255.255.248</td><td>8</td><td>6</td><td class="mono">0.0.0.7</td></tr>
+          <tr><td class="mono">/30</td><td class="mono">255.255.255.252</td><td>4</td><td>2</td><td class="mono">0.0.0.3</td></tr>
+          <tr><td class="mono">/31</td><td class="mono">255.255.255.254</td><td>2</td><td>2 *</td><td class="mono">0.0.0.1</td></tr>
+          <tr><td class="mono">/32</td><td class="mono">255.255.255.255</td><td>1</td><td>1</td><td class="mono">0.0.0.0</td></tr>
+          <tr><td class="mono">/16</td><td class="mono">255.255.0.0</td><td>65.536</td><td>65.534</td><td class="mono">0.0.255.255</td></tr>
+          <tr><td class="mono">/8</td><td class="mono">255.0.0.0</td><td>16.777.216</td><td>16.777.214</td><td class="mono">0.255.255.255</td></tr>
+        </tbody></table></div>
+        <div class="note">* <b>/31</b> (RFC 3021) y <b>/32</b>: casos especiales para enlaces punto a punto y hosts sueltos, sin restar red/broadcast.</div>
+      </div>
+
+      <div class="grid2" style="margin-top:16px">
+        <div class="block">
+          <h4><span class="dot"></span>Fórmulas clave</h4>
+          <ul>
+            <li>Direcciones totales = <code>2^(32 − prefijo)</code></li>
+            <li>Hosts útiles = <code>2^(32 − prefijo) − 2</code></li>
+            <li>Se restan 2: <b>dirección de red</b> + <b>broadcast</b></li>
+            <li>Salto de subred = <code>256 − octeto de la máscara</code></li>
+          </ul>
+          <p style="margin-top:6px">Octetos de máscara útiles: <span class="chip">128</span><span class="chip">192</span><span class="chip">224</span><span class="chip">240</span><span class="chip">248</span><span class="chip">252</span><span class="chip">254</span><span class="chip">255</span></p>
+        </div>
+        <div class="block">
+          <h4><span class="dot"></span>Ejemplo: dividir <span class="mono">192.168.1.0/24</span> en /26</h4>
+          <p>/26 → salto = 256 − 192 = <b>64</b>. Salen 4 subredes:</p>
+          <div class="tbl-wrap"><table><thead><tr><th>Subred</th><th>Rango útil</th><th>Broadcast</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">.0/26</td><td class="mono">.1 – .62</td><td class="mono">.63</td></tr>
+            <tr><td class="mono">.64/26</td><td class="mono">.65 – .126</td><td class="mono">.127</td></tr>
+            <tr><td class="mono">.128/26</td><td class="mono">.129 – .190</td><td class="mono">.191</td></tr>
+            <tr><td class="mono">.192/26</td><td class="mono">.193 – .254</td><td class="mono">.255</td></tr>
+          </tbody></table></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ LÁMINA 4 · IPv6 ═══════════ -->
+  <section class="lamina a-cielo" id="l4">
+    <header class="lam-head">
+      <span class="ico">🆕</span>
+      <div><h3>IPv6 esencial</h3><p>128 bits · 8 grupos hexadecimales · sin broadcast ni (casi) NAT</p></div>
+      <span class="num">04</span>
+    </header>
+    <div class="lam-body">
+      <div class="grid2">
+        <div class="block">
+          <h4><span class="dot"></span>Formato y abreviación</h4>
+          <p>Completa:<br><code>2001:0db8:0000:0000:0000:ff00:0042:8329</code></p>
+          <p>Abreviada (quitar ceros a la izquierda + <code>::</code> una sola vez):<br><code>2001:db8::ff00:42:8329</code></p>
+          <ul>
+            <li>Prefijo de subred típico: <b>/64</b></li>
+            <li>Prefijo que asigna el ISP: <b>/48</b> o <b>/56</b></li>
+            <li>Autoconfiguración: <b>SLAAC</b> (sin DHCP) o DHCPv6</li>
+          </ul>
+        </div>
+        <div class="block">
+          <h4><span class="dot"></span>Tipos de dirección</h4>
+          <div class="tbl-wrap"><table><thead><tr><th>Prefijo</th><th>Tipo</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">2000::/3</td><td>Global unicast (pública)</td></tr>
+            <tr><td class="mono">fc00::/7 (fd00::/8)</td><td>Unique Local — "privada"</td></tr>
+            <tr><td class="mono">fe80::/10</td><td>Link-local (siempre presente)</td></tr>
+            <tr><td class="mono">ff00::/8</td><td>Multicast</td></tr>
+            <tr><td class="mono">::1</td><td>Loopback</td></tr>
+            <tr><td class="mono">::</td><td>Sin especificar</td></tr>
+          </tbody></table></div>
+        </div>
+      </div>
+      <div class="block full" style="margin-top:16px">
+        <h4><span class="dot"></span>IPv4 vs IPv6 de un vistazo</h4>
+        <div class="tbl-wrap"><table><thead><tr><th>Aspecto</th><th>IPv4</th><th>IPv6</th></tr></thead>
+        <tbody>
+          <tr><td>Longitud</td><td>32 bits (~4.300 millones)</td><td>128 bits (número astronómico)</td></tr>
+          <tr><td>Notación</td><td>Decimal punteada</td><td>Hexadecimal con <code>:</code></td></tr>
+          <tr><td>Broadcast</td><td>Sí</td><td><b>No</b> (usa multicast)</td></tr>
+          <tr><td>NAT</td><td>Habitual (por escasez)</td><td>Pensado para no necesitarlo</td></tr>
+          <tr><td>Autoconfig</td><td>DHCP</td><td>SLAAC / DHCPv6</td></tr>
+        </tbody></table></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ LÁMINA 5 · VLAN ═══════════ -->
+  <section class="lamina a-ambar" id="l5">
+    <header class="lam-head">
+      <span class="ico">🏷️</span>
+      <div><h3>VLAN y troncales (802.1Q)</h3><p>Redes lógicas sobre el mismo switch · segmentar sin recablear</p></div>
+      <span class="num">05</span>
+    </header>
+    <div class="lam-body">
+      <div class="grid2">
+        <div class="block">
+          <h4><span class="dot"></span>Concepto y numeración</h4>
+          <p>Una VLAN es un <b>dominio de broadcast lógico</b>: separa el tráfico como si fueran switches distintos. Regla de oro: <b>1 VLAN = 1 subred IP</b>.</p>
+          <div class="tbl-wrap"><table><thead><tr><th>VLAN ID</th><th>Estado</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">0 y 4095</td><td>Reservadas</td></tr>
+            <tr><td class="mono">1</td><td>Default (evitar usarla en producción)</td></tr>
+            <tr><td class="mono">2 – 1001</td><td>Rango normal</td></tr>
+            <tr><td class="mono">1002 – 1005</td><td>Reservadas (legacy Cisco)</td></tr>
+            <tr><td class="mono">1006 – 4094</td><td>Rango extendido</td></tr>
+          </tbody></table></div>
+          <div class="note">El ID de VLAN son <b>12 bits</b> → 0 a 4095.</div>
+        </div>
+        <div class="block">
+          <h4><span class="dot"></span>Etiqueta 802.1Q (4 bytes en la trama)</h4>
+          <ul>
+            <li><b>TPID</b> <code>0x8100</code> — marca "trama con VLAN"</li>
+            <li><b>PCP</b> 3 bits — prioridad QoS (802.1p)</li>
+            <li><b>DEI</b> 1 bit — descartable</li>
+            <li><b>VID</b> 12 bits — el número de VLAN</li>
+          </ul>
+          <p style="margin-top:6px"><span class="chip">Access</span> puerto en 1 VLAN (el PC no sabe nada).<br><span class="chip">Trunk</span> lleva muchas VLAN etiquetadas entre switches.<br><span class="chip ghost">Nativa</span> la VLAN sin etiqueta dentro del trunk.</p>
+        </div>
+      </div>
+      <div class="grid2" style="margin-top:16px">
+        <div class="block">
+          <h4><span class="dot"></span>Plan de VLAN típico</h4>
+          <div class="tbl-wrap"><table><thead><tr><th>ID</th><th>Nombre</th><th>Uso</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">10</td><td>DATOS</td><td>PCs, notebooks</td></tr>
+            <tr><td class="mono">20</td><td>VOZ</td><td>Teléfonos IP (VoIP)</td></tr>
+            <tr><td class="mono">30</td><td>GESTION</td><td>Switches, APs, OLT</td></tr>
+            <tr><td class="mono">40</td><td>WIFI-INVITADOS</td><td>Aislada de la LAN</td></tr>
+            <tr><td class="mono">99</td><td>NATIVA</td><td>Sin uso real (seguridad)</td></tr>
+          </tbody></table></div>
+        </div>
+        <div class="block">
+          <h4><span class="dot"></span>¿Por qué usarlas? + enrutar entre VLAN</h4>
+          <ul>
+            <li>🔒 Seguridad: aísla invitados / cámaras / gestión</li>
+            <li>📉 Menos broadcast = red más ágil</li>
+            <li>🧩 Orden lógico sin tirar cables nuevos</li>
+          </ul>
+          <p style="margin-top:6px"><b>Inter-VLAN routing</b> (para que se hablen): router-on-a-stick, <b>switch de capa 3</b> con <b>SVI</b>, o un firewall. Sin routing, cada VLAN queda incomunicada.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ LÁMINA 6 · COBRE ═══════════ -->
+  <section class="lamina a-verde" id="l6">
+    <header class="lam-head">
+      <span class="ico">🔌</span>
+      <div><h3>Cableado de cobre (Ethernet)</h3><p>Categorías · RJ45 · normas T568 · PoE · límite 100 m</p></div>
+      <span class="num">06</span>
+    </header>
+    <div class="lam-body">
+      <div class="block full">
+        <h4><span class="dot"></span>Categorías de cable par trenzado</h4>
+        <div class="tbl-wrap"><table><thead><tr><th>Categoría</th><th>Ancho de banda</th><th>Velocidad</th><th>Distancia</th><th>Nota</th></tr></thead>
+        <tbody>
+          <tr><td><b>Cat5</b></td><td>100 MHz</td><td>100 Mbps</td><td>100 m</td><td>Obsoleto</td></tr>
+          <tr><td><b>Cat5e</b></td><td>100 MHz</td><td>1 Gbps</td><td>100 m</td><td>Mínimo aceptable hoy</td></tr>
+          <tr><td><b>Cat6</b></td><td>250 MHz</td><td>1 Gbps (10G ≤55 m)</td><td>100 m</td><td>El más común</td></tr>
+          <tr><td><b>Cat6a</b></td><td>500 MHz</td><td>10 Gbps</td><td>100 m</td><td>10G a distancia completa</td></tr>
+          <tr><td><b>Cat7</b></td><td>600 MHz</td><td>10 Gbps</td><td>100 m</td><td>Siempre blindado</td></tr>
+          <tr><td><b>Cat8</b></td><td>2000 MHz</td><td>25 / 40 Gbps</td><td>30 m</td><td>Datacenter, corto alcance</td></tr>
+        </tbody></table></div>
+        <div class="note"><b>Regla:</b> el enlace Ethernet de cobre no pasa de <b>100 m</b>. Más lejos → fibra o radio.</div>
+      </div>
+
+      <div class="grid2" style="margin-top:16px">
+        <div class="block">
+          <h4><span class="dot"></span>Pinout RJ45 (8P8C) — mirando el conector con la lengüeta abajo</h4>
+          <div class="pinout">
+            <div class="lbl">T568B <span class="badge b-info">el más usado</span></div>
+            <div class="pins">
+              <div class="pin"><div class="sw stripe" style="--c:#e67e22"></div><b>Bl-Nar</b><small>1</small></div>
+              <div class="pin"><div class="sw" style="background:#e67e22"></div><b>Naranja</b><small>2</small></div>
+              <div class="pin"><div class="sw stripe" style="--c:#27ae60"></div><b>Bl-Ver</b><small>3</small></div>
+              <div class="pin"><div class="sw" style="background:#2980d9"></div><b>Azul</b><small>4</small></div>
+              <div class="pin"><div class="sw stripe" style="--c:#2980d9"></div><b>Bl-Azu</b><small>5</small></div>
+              <div class="pin"><div class="sw" style="background:#27ae60"></div><b>Verde</b><small>6</small></div>
+              <div class="pin"><div class="sw stripe" style="--c:#7f5539"></div><b>Bl-Mar</b><small>7</small></div>
+              <div class="pin"><div class="sw" style="background:#7f5539"></div><b>Marrón</b><small>8</small></div>
+            </div>
+            <div class="lbl">T568A <span class="badge b-ok">normativo</span></div>
+            <div class="pins">
+              <div class="pin"><div class="sw stripe" style="--c:#27ae60"></div><b>Bl-Ver</b><small>1</small></div>
+              <div class="pin"><div class="sw" style="background:#27ae60"></div><b>Verde</b><small>2</small></div>
+              <div class="pin"><div class="sw stripe" style="--c:#e67e22"></div><b>Bl-Nar</b><small>3</small></div>
+              <div class="pin"><div class="sw" style="background:#2980d9"></div><b>Azul</b><small>4</small></div>
+              <div class="pin"><div class="sw stripe" style="--c:#2980d9"></div><b>Bl-Azu</b><small>5</small></div>
+              <div class="pin"><div class="sw" style="background:#e67e22"></div><b>Naranja</b><small>6</small></div>
+              <div class="pin"><div class="sw stripe" style="--c:#7f5539"></div><b>Bl-Mar</b><small>7</small></div>
+              <div class="pin"><div class="sw" style="background:#7f5539"></div><b>Marrón</b><small>8</small></div>
+            </div>
+          </div>
+          <div class="note">A y B solo intercambian el par <b>verde ↔ naranja</b>. Elegí una norma y usala en todo el edificio.</div>
+        </div>
+        <div class="block">
+          <h4><span class="dot"></span>Tipos de cable, blindaje y PoE</h4>
+          <p><b>Directo</b> (ambos extremos igual): PC↔switch, AP↔switch.<br><b>Cruzado</b> (un extremo A, otro B): equipos iguales antiguos. Hoy el <b>Auto-MDIX</b> lo hace innecesario.<br><b>Consola/rollover</b>: administrar routers/switches.</p>
+          <p style="margin-top:6px"><b>Blindaje:</b> <span class="chip ghost">UTP</span> sin blindaje · <span class="chip ghost">FTP</span> lámina global · <span class="chip ghost">STP/S-FTP</span> par + global (ambientes ruidosos).</p>
+          <h4 style="margin-top:10px"><span class="dot"></span>PoE (energía por el mismo cable)</h4>
+          <div class="tbl-wrap"><table><thead><tr><th>Norma</th><th>Nombre</th><th>Potencia</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">802.3af</td><td>PoE</td><td>~15,4 W</td></tr>
+            <tr><td class="mono">802.3at</td><td>PoE+</td><td>~30 W</td></tr>
+            <tr><td class="mono">802.3bt</td><td>PoE++ (Type 3/4)</td><td>60 / 100 W</td></tr>
+          </tbody></table></div>
+          <div class="note">Ideal para <b>APs, cámaras IP y teléfonos</b> sin enchufe cerca.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ LÁMINA 7 · FIBRA ═══════════ -->
+  <section class="lamina a-cian" id="l7">
+    <header class="lam-head">
+      <span class="ico">💡</span>
+      <div><h3>Fibra óptica y FTTH</h3><p>Monomodo vs multimodo · conectores · transceivers · GPON</p></div>
+      <span class="num">07</span>
+    </header>
+    <div class="lam-body">
+      <div class="grid2">
+        <div class="block">
+          <h4><span class="dot"></span>Tipos de fibra</h4>
+          <div class="tbl-wrap"><table><thead><tr><th>Tipo</th><th>Núcleo</th><th>Alcance</th><th>Color camisa</th></tr></thead>
+          <tbody>
+            <tr><td><b>Monomodo</b> OS2</td><td>9 µm</td><td>Km (láser)</td><td>Amarillo</td></tr>
+            <tr><td><b>Multimodo</b> OM1</td><td>62,5 µm</td><td>Corto</td><td>Naranja</td></tr>
+            <tr><td>OM2</td><td>50 µm</td><td>Corto</td><td>Naranja</td></tr>
+            <tr><td>OM3 / OM4</td><td>50 µm</td><td>Medio (10-100G)</td><td>Aqua</td></tr>
+            <tr><td>OM5</td><td>50 µm</td><td>Medio</td><td>Lima</td></tr>
+          </tbody></table></div>
+          <div class="note"><b>Regla:</b> larga distancia (enlaces ISP, backhaul) → <b>monomodo</b>. Dentro de un edificio/datacenter → multimodo.</div>
+        </div>
+        <div class="block">
+          <h4><span class="dot"></span>Conectores</h4>
+          <ul>
+            <li><b>LC</b> — pequeño, dúplex, <b>el más común hoy</b></li>
+            <li><b>SC</b> — cuadrado, push-pull (muy usado en FTTH)</li>
+            <li><b>ST</b> — bayoneta redonda (instalaciones viejas)</li>
+            <li><b>FC</b> — rosca metálica (equipos de medición)</li>
+            <li><b>MPO/MTP</b> — multifibra para 40/100G</li>
+          </ul>
+          <p style="margin-top:6px"><b>Pulido:</b> <span class="chip" style="--acc:#2980d9">UPC azul</span> uso general · <span class="chip" style="--acc:#27ae60">APC verde</span> mejor retorno óptico → <b>GPON/FTTH</b>. ¡No mezclar APC con UPC!</p>
+        </div>
+      </div>
+      <div class="grid2" style="margin-top:16px">
+        <div class="block">
+          <h4><span class="dot"></span>Transceivers (módulos SFP)</h4>
+          <div class="tbl-wrap"><table><thead><tr><th>Módulo</th><th>Velocidad</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">SFP</td><td>1 Gbps</td></tr>
+            <tr><td class="mono">SFP+</td><td>10 Gbps</td></tr>
+            <tr><td class="mono">SFP28</td><td>25 Gbps</td></tr>
+            <tr><td class="mono">QSFP+</td><td>40 Gbps</td></tr>
+            <tr><td class="mono">QSFP28</td><td>100 Gbps</td></tr>
+          </tbody></table></div>
+        </div>
+        <div class="block">
+          <h4><span class="dot"></span>GPON / FTTH (tu red de fibra al hogar)</h4>
+          <ul>
+            <li><b>OLT</b> en la central ↔ <b>ONU/ONT</b> en casa del cliente</li>
+            <li><b>Splitters</b> pasivos 1:8 · 1:16 · 1:32 · 1:64</li>
+            <li>Bajada ~2,5 Gbps compartida / subida ~1,25 Gbps</li>
+            <li>Longitudes de onda: <b>1490 nm</b> bajada, <b>1310 nm</b> subida, 1550 nm video</li>
+          </ul>
+          <div class="note"><b>ERLAN:</b> las NAPs de la app son estas cajas de empalme/splitter en la calle.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ LÁMINA 8 · PROTOCOLOS Y PUERTOS ═══════════ -->
+  <section class="lamina a-rojo" id="l8">
+    <header class="lam-head">
+      <span class="ico">📨</span>
+      <div><h3>Protocolos y puertos</h3><p>TCP vs UDP · puertos conocidos · qué protocolo hace qué</p></div>
+      <span class="num">08</span>
+    </header>
+    <div class="lam-body">
+      <div class="grid2">
+        <div class="block">
+          <h4><span class="dot"></span>TCP vs UDP</h4>
+          <div class="tbl-wrap"><table><thead><tr><th></th><th>TCP</th><th>UDP</th></tr></thead>
+          <tbody>
+            <tr><td>Conexión</td><td>Sí (handshake)</td><td>No</td></tr>
+            <tr><td>Fiabilidad</td><td>Garantiza y reordena</td><td>Sin garantía</td></tr>
+            <tr><td>Velocidad</td><td>Más lento</td><td>Más rápido</td></tr>
+            <tr><td>Usos</td><td>Web, mail, archivos</td><td>Voz, video, DNS, juegos</td></tr>
+          </tbody></table></div>
+          <div class="note"><b>Rangos:</b> conocidos <code>0-1023</code> · registrados <code>1024-49151</code> · efímeros <code>49152-65535</code>.</div>
+        </div>
+        <div class="block">
+          <h4><span class="dot"></span>Protocolos por función</h4>
+          <ul>
+            <li><b>Enrutamiento:</b> OSPF, BGP, RIP, EIGRP, IS-IS</li>
+            <li><b>Acceso ISP:</b> PPPoE, DHCP, RADIUS, SNMP</li>
+            <li><b>Seguridad/VPN:</b> IPsec, TLS, WireGuard, OpenVPN</li>
+            <li><b>Servicios:</b> DNS, HTTP/S, SMTP/IMAP, NTP</li>
+          </ul>
+        </div>
+      </div>
+      <div class="block full" style="margin-top:16px">
+        <h4><span class="dot"></span>Puertos que conviene saber de memoria</h4>
+        <div class="grid2" style="gap:0 16px">
+          <div class="tbl-wrap"><table><thead><tr><th>Puerto</th><th>Proto</th><th>Servicio</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">20/21</td><td>TCP</td><td>FTP (archivos)</td></tr>
+            <tr><td class="mono">22</td><td>TCP</td><td>SSH / SFTP (admin seguro)</td></tr>
+            <tr><td class="mono">23</td><td>TCP</td><td>Telnet (inseguro)</td></tr>
+            <tr><td class="mono">25 / 587</td><td>TCP</td><td>SMTP (correo saliente)</td></tr>
+            <tr><td class="mono">53</td><td>TCP/UDP</td><td>DNS (nombres)</td></tr>
+            <tr><td class="mono">67/68</td><td>UDP</td><td>DHCP (server/cliente)</td></tr>
+            <tr><td class="mono">80</td><td>TCP</td><td>HTTP (web)</td></tr>
+            <tr><td class="mono">123</td><td>UDP</td><td>NTP (hora)</td></tr>
+            <tr><td class="mono">143 / 993</td><td>TCP</td><td>IMAP / IMAPS</td></tr>
+            <tr><td class="mono">161/162</td><td>UDP</td><td>SNMP (monitoreo)</td></tr>
+          </tbody></table></div>
+          <div class="tbl-wrap"><table><thead><tr><th>Puerto</th><th>Proto</th><th>Servicio</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">179</td><td>TCP</td><td>BGP (enrutamiento ISP)</td></tr>
+            <tr><td class="mono">443</td><td>TCP</td><td>HTTPS (web segura)</td></tr>
+            <tr><td class="mono">445</td><td>TCP</td><td>SMB (archivos Windows)</td></tr>
+            <tr><td class="mono">514</td><td>UDP</td><td>Syslog (logs)</td></tr>
+            <tr><td class="mono">1812/1813</td><td>UDP</td><td><b>RADIUS</b> (auth / accounting)</td></tr>
+            <tr><td class="mono">3306 / 5432</td><td>TCP</td><td>MySQL / PostgreSQL</td></tr>
+            <tr><td class="mono">3389</td><td>TCP</td><td>RDP (escritorio remoto)</td></tr>
+            <tr><td class="mono">5060/5061</td><td>UDP/TCP</td><td>SIP (VoIP)</td></tr>
+            <tr><td class="mono">8291</td><td>TCP</td><td><b>Winbox</b> (MikroTik)</td></tr>
+            <tr><td class="mono">8080</td><td>TCP</td><td>HTTP alternativo / proxy</td></tr>
+          </tbody></table></div>
+        </div>
+        <div class="note"><b>ERLAN:</b> RADIUS (1812/1813) autentica a tus clientes PPPoE; Winbox (8291) administra los MikroTik; PostgreSQL (5432) es donde sincroniza <code>sync_pg.py</code>.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ LÁMINA 9 · WI-FI ═══════════ -->
+  <section class="lamina a-viol" id="l9">
+    <header class="lam-head">
+      <span class="ico">📶</span>
+      <div><h3>Wi-Fi e inalámbrico</h3><p>Estándares · bandas y canales · seguridad · enlaces WISP</p></div>
+      <span class="num">09</span>
+    </header>
+    <div class="lam-body">
+      <div class="block full">
+        <h4><span class="dot"></span>Estándares 802.11 y nombre comercial</h4>
+        <div class="tbl-wrap"><table><thead><tr><th>Estándar</th><th>Nombre</th><th>Año</th><th>Banda</th><th>Vel. máx teórica</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">802.11b/g</td><td>—</td><td>1999/2003</td><td>2,4 GHz</td><td>11 / 54 Mbps</td></tr>
+          <tr><td class="mono">802.11a</td><td>—</td><td>1999</td><td>5 GHz</td><td>54 Mbps</td></tr>
+          <tr><td class="mono">802.11n</td><td><b>Wi-Fi 4</b></td><td>2009</td><td>2,4 / 5 GHz</td><td>600 Mbps</td></tr>
+          <tr><td class="mono">802.11ac</td><td><b>Wi-Fi 5</b></td><td>2014</td><td>5 GHz</td><td>~6,9 Gbps</td></tr>
+          <tr><td class="mono">802.11ax</td><td><b>Wi-Fi 6</b></td><td>2019</td><td>2,4 / 5 GHz</td><td>9,6 Gbps</td></tr>
+          <tr><td class="mono">802.11ax</td><td><b>Wi-Fi 6E</b></td><td>2021</td><td>+ 6 GHz</td><td>9,6 Gbps</td></tr>
+          <tr><td class="mono">802.11be</td><td><b>Wi-Fi 7</b></td><td>2024</td><td>2,4 / 5 / 6 GHz</td><td>~46 Gbps</td></tr>
+        </tbody></table></div>
+      </div>
+      <div class="grid2" style="margin-top:16px">
+        <div class="block">
+          <h4><span class="dot"></span>Bandas y canales</h4>
+          <p><b>2,4 GHz:</b> más alcance y penetración, pero saturada. Solo <b>3 canales no se pisan: 1, 6 y 11</b>.</p>
+          <div class="chan" aria-label="Canales 1, 6 y 11 sin solapamiento">
+            <div class="band" style="left:4%;width:30%;background:#7a3f9e"></div>
+            <div class="band" style="left:35%;width:30%;background:#2a6632"></div>
+            <div class="band" style="left:66%;width:30%;background:#bf6d1e"></div>
+            <div class="ch" style="left:19%">Canal 1</div>
+            <div class="ch" style="left:50%">Canal 6</div>
+            <div class="ch" style="left:81%">Canal 11</div>
+            <div class="lab" style="left:4%">2,412</div>
+            <div class="lab" style="left:50%">2,437 GHz</div>
+            <div class="lab" style="left:96%">2,462</div>
+          </div>
+          <p style="margin-top:8px"><b>5 GHz:</b> muchos canales, menos interferencia, menos alcance (incluye DFS). <b>6 GHz:</b> espectro nuevo y limpio (Wi-Fi 6E/7). Anchos: 20/40/80/160 MHz.</p>
+        </div>
+        <div class="block">
+          <h4><span class="dot"></span>Seguridad inalámbrica</h4>
+          <div class="tbl-wrap"><table><thead><tr><th>Protocolo</th><th>Estado</th></tr></thead>
+          <tbody>
+            <tr><td>WEP</td><td><span class="badge b-bad">Roto</span> no usar</td></tr>
+            <tr><td>WPA (TKIP)</td><td><span class="badge b-bad">Obsoleto</span></td></tr>
+            <tr><td>WPA2 (AES/CCMP)</td><td><span class="badge b-warn">Mínimo</span></td></tr>
+            <tr><td>WPA3 (SAE)</td><td><span class="badge b-ok">Recomendado</span></td></tr>
+          </tbody></table></div>
+          <p style="margin-top:6px"><b>Personal (PSK):</b> una contraseña compartida.<br><b>Enterprise (802.1X):</b> usuario+clave contra <b>RADIUS</b> (ideal empresas).</p>
+          <p style="margin-top:6px"><span class="chip ghost">SSID</span> nombre de la red · <span class="chip ghost">BSSID</span> MAC del AP · <span class="chip ghost">Roaming</span> saltar de AP sin cortar.</p>
+        </div>
+      </div>
+      <div class="block full" style="margin-top:16px">
+        <h4><span class="dot"></span>Enlaces WISP (radio de larga distancia)</h4>
+        <p><b>PtP</b> (punto a punto): backhaul entre torres. <b>PtMP</b> (punto a multipunto): un sector reparte a muchos clientes. Necesitás <b>línea de vista (LoS)</b> despejada y respetar la <b>zona de Fresnel</b>. Bandas usuales: <b>5 GHz</b> (airMAX/Cambium) y <b>60 GHz</b> para tramos cortos de alta capacidad.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ LÁMINA 10 · DISPOSITIVOS Y MARCAS ═══════════ -->
+  <section class="lamina a-gris" id="l10">
+    <header class="lam-head">
+      <span class="ico">🖥️</span>
+      <div><h3>Dispositivos y marcas</h3><p>Qué hace cada caja y quién la fabrica</p></div>
+      <span class="num">10</span>
+    </header>
+    <div class="lam-body">
+      <div class="block full">
+        <h4><span class="dot"></span>Dispositivos por función</h4>
+        <div class="tbl-wrap"><table><thead><tr><th>Equipo</th><th>Capa</th><th>Para qué sirve</th></tr></thead>
+        <tbody>
+          <tr><td><b>Hub / Repetidor</b></td><td>1</td><td>Repite la señal a todos. Obsoleto.</td></tr>
+          <tr><td><b>Switch</b></td><td>2</td><td>Conmuta por MAC, maneja VLAN y STP.</td></tr>
+          <tr><td><b>Switch L3</b></td><td>2/3</td><td>Conmuta + enruta entre VLAN (SVI).</td></tr>
+          <tr><td><b>Router</b></td><td>3</td><td>Une redes distintas, NAT, rutas.</td></tr>
+          <tr><td><b>Access Point (AP)</b></td><td>2</td><td>Da Wi-Fi a la red cableada.</td></tr>
+          <tr><td><b>Firewall / UTM</b></td><td>3-7</td><td>Filtra tráfico, VPN, seguridad.</td></tr>
+          <tr><td><b>Módem / ONT / ONU</b></td><td>1-2</td><td>Convierte el medio del ISP (fibra/cable) a Ethernet.</td></tr>
+        </tbody></table></div>
+      </div>
+      <div class="grid3" style="margin-top:16px">
+        <div class="block">
+          <h4><span class="dot"></span>WISP / ISP</h4>
+          <p>MikroTik · Ubiquiti (UniFi / airMAX) · Cambium · Mimosa · TP-Link Omada</p>
+        </div>
+        <div class="block">
+          <h4><span class="dot"></span>Empresarial</h4>
+          <p>Cisco · Juniper · Aruba (HPE) · Extreme · Huawei</p>
+        </div>
+        <div class="block">
+          <h4><span class="dot"></span>Fibra / GPON</h4>
+          <p>Huawei · ZTE · Nokia · Fiberhome · VSOL · TP-Link</p>
+        </div>
+        <div class="block">
+          <h4><span class="dot"></span>Firewall / Seguridad</h4>
+          <p>Fortinet (FortiGate) · Palo Alto · SonicWall · pfSense / OPNsense</p>
+        </div>
+        <div class="block">
+          <h4><span class="dot"></span>Hogar / SOHO</h4>
+          <p>TP-Link · Tenda · Mercusys · D-Link · Netgear · ASUS</p>
+        </div>
+        <div class="block">
+          <h4><span class="dot"></span>Cámaras / IoT (PoE)</h4>
+          <p>Hikvision · Dahua · Reolink · Ubiquiti Protect</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ LÁMINA 11 · TOPOLOGÍAS Y COMANDOS ═══════════ -->
+  <section class="lamina a-verd2" id="l11">
+    <header class="lam-head">
+      <span class="ico">🗺️</span>
+      <div><h3>Topologías y comandos</h3><p>Cómo se conectan las redes + diagnóstico rápido</p></div>
+      <span class="num">11</span>
+    </header>
+    <div class="lam-body">
+      <div class="grid2">
+        <div class="block">
+          <h4><span class="dot"></span>Topologías físicas/lógicas</h4>
+          <svg class="diag" viewBox="0 0 340 150" role="img" aria-label="Diagramas de topología estrella, malla y árbol">
+            <!-- Estrella -->
+            <g transform="translate(55,40)">
+              <circle class="nodo" cx="0" cy="0" r="9"/>
+              <g stroke="var(--acc)" stroke-width="2">
+                <line x1="0" y1="0" x2="-35" y2="-25"/><line x1="0" y1="0" x2="35" y2="-25"/>
+                <line x1="0" y1="0" x2="-40" y2="20"/><line x1="0" y1="0" x2="40" y2="20"/>
+              </g>
+              <circle cx="-35" cy="-25" r="5" fill="var(--txt2)"/><circle cx="35" cy="-25" r="5" fill="var(--txt2)"/>
+              <circle cx="-40" cy="20" r="5" fill="var(--txt2)"/><circle cx="40" cy="20" r="5" fill="var(--txt2)"/>
+            </g>
+            <text class="lbl" x="55" y="95" text-anchor="middle">Estrella</text>
+            <!-- Malla -->
+            <g transform="translate(170,40)">
+              <g stroke="var(--acc)" stroke-width="1.5">
+                <line x1="-30" y1="-20" x2="30" y2="-20"/><line x1="-30" y1="-20" x2="-30" y2="25"/>
+                <line x1="30" y1="-20" x2="30" y2="25"/><line x1="-30" y1="25" x2="30" y2="25"/>
+                <line x1="-30" y1="-20" x2="30" y2="25"/><line x1="30" y1="-20" x2="-30" y2="25"/>
+              </g>
+              <circle class="nodo" cx="-30" cy="-20" r="6"/><circle class="nodo" cx="30" cy="-20" r="6"/>
+              <circle class="nodo" cx="-30" cy="25" r="6"/><circle class="nodo" cx="30" cy="25" r="6"/>
+            </g>
+            <text class="lbl" x="170" y="95" text-anchor="middle">Malla (mesh)</text>
+            <!-- Árbol -->
+            <g transform="translate(285,30)">
+              <g stroke="var(--acc)" stroke-width="2">
+                <line x1="0" y1="0" x2="-25" y2="25"/><line x1="0" y1="0" x2="25" y2="25"/>
+                <line x1="-25" y1="25" x2="-35" y2="48"/><line x1="-25" y1="25" x2="-15" y2="48"/>
+                <line x1="25" y1="25" x2="15" y2="48"/><line x1="25" y1="25" x2="35" y2="48"/>
+              </g>
+              <circle class="nodo" cx="0" cy="0" r="7"/>
+              <circle cx="-25" cy="25" r="5" fill="var(--txt2)"/><circle cx="25" cy="25" r="5" fill="var(--txt2)"/>
+              <circle cx="-35" cy="48" r="4" fill="var(--txt2)"/><circle cx="-15" cy="48" r="4" fill="var(--txt2)"/>
+              <circle cx="15" cy="48" r="4" fill="var(--txt2)"/><circle cx="35" cy="48" r="4" fill="var(--txt2)"/>
+            </g>
+            <text class="lbl" x="285" y="95" text-anchor="middle">Árbol / jerárquica</text>
+          </svg>
+          <ul style="margin-top:8px">
+            <li><b>Estrella:</b> todo al switch central (la más común en LAN)</li>
+            <li><b>Malla:</b> muchos caminos, tolerante a fallos (backbone/WISP)</li>
+            <li><b>Árbol:</b> núcleo → distribución → acceso (empresas)</li>
+          </ul>
+        </div>
+        <div class="block">
+          <h4><span class="dot"></span>Comandos de diagnóstico</h4>
+          <div class="tbl-wrap"><table><thead><tr><th>Windows</th><th>Linux</th><th>Para qué</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">ipconfig /all</td><td class="mono">ip a</td><td>Ver IP, MAC, gateway, DNS</td></tr>
+            <tr><td class="mono">ping</td><td class="mono">ping</td><td>¿Hay conectividad?</td></tr>
+            <tr><td class="mono">tracert</td><td class="mono">traceroute</td><td>Ruta salto a salto</td></tr>
+            <tr><td class="mono">nslookup</td><td class="mono">dig</td><td>Resolver DNS</td></tr>
+            <tr><td class="mono">arp -a</td><td class="mono">ip neigh</td><td>Tabla ARP (IP↔MAC)</td></tr>
+            <tr><td class="mono">netstat -ano</td><td class="mono">ss -tulpn</td><td>Puertos/conexiones abiertas</td></tr>
+            <tr><td class="mono">route print</td><td class="mono">ip route</td><td>Tabla de rutas</td></tr>
+            <tr><td class="mono">ipconfig /flushdns</td><td class="mono">resolvectl flush-caches</td><td>Limpiar caché DNS</td></tr>
+          </tbody></table></div>
+        </div>
+      </div>
+      <div class="block full" style="margin-top:16px">
+        <h4><span class="dot"></span>Unidades: no confundir bits con bytes</h4>
+        <p><b>Velocidad</b> se mide en <b>bits</b>: <code>Mbps</code> (megabit/s). <b>Tamaño</b> en <b>bytes</b>: <code>MB</code> (megabyte). <b>1 byte = 8 bits</b>. Un plan de <b>100 Mbps</b> baja como mucho a <b>~12,5 MB/s</b>. Prefijos: <code>K</code>=mil · <code>M</code>=millón · <code>G</code>=mil millones.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="foot">
+    🌐 <b>ERLAN NetAdmin — Guía Gráfica de Redes</b> · Referencia de estudio y campo · Revisión 2026<br>
+    Los valores de velocidad son máximos teóricos; en la práctica dependen de distancia, interferencia y equipos.
+  </div>
+
+</div><!-- /wrap -->
+
+<script>
+/* JS mínimo: recordar preferencia de tema (claro/oscuro). Sin librerías. */
+(function(){
+  try{
+    var guardado = localStorage.getItem('guiaRedesTema');
+    if(guardado){ document.documentElement.setAttribute('data-theme', guardado); }
+  }catch(e){/* modo privado: seguimos con el tema del sistema */}
+})();
+function toggleTema(){
+  var el = document.documentElement;
+  var actual = el.getAttribute('data-theme');
+  // Si no hay override, deducimos del sistema para alternar de forma coherente.
+  if(!actual){
+    actual = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  var nuevo = actual === 'dark' ? 'light' : 'dark';
+  el.setAttribute('data-theme', nuevo);
+  try{ localStorage.setItem('guiaRedesTema', nuevo); }catch(e){}
+}
+</script>
+</body>
+</html>
